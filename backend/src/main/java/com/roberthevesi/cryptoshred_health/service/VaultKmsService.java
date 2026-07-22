@@ -53,8 +53,16 @@ public class VaultKmsService {
 
     /** Unwraps (decrypts) a wrapped DEK string using Vault Transit KEK. */
     public byte[] unwrapDek(String keyName, String wrappedDek) {
-        Plaintext plaintext = vaultOperations.opsForTransit().decrypt(keyName, Ciphertext.of(wrappedDek));
-        return Base64.getDecoder().decode(plaintext.asString());
+        try {
+            Plaintext plaintext = vaultOperations.opsForTransit().decrypt(keyName, Ciphertext.of(wrappedDek));
+            if (plaintext == null || plaintext.asString() == null) {
+                throw new IllegalStateException("Vault returned null plaintext for key: " + keyName);
+            }
+            return Base64.getDecoder().decode(plaintext.asString());
+        } catch (Exception e) {
+            log.warn("Vault Transit unwrap failed for key {}: {}", keyName, e.getMessage());
+            throw new IllegalStateException("Vault Transit KEK missing or invalid: " + keyName, e);
+        }
     }
 
     /** Permanently destroys (deletes) the KEK from Vault Transit Engine. */

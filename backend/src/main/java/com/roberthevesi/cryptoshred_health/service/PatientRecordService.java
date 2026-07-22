@@ -1,6 +1,7 @@
 package com.roberthevesi.cryptoshred_health.service;
 
 import com.roberthevesi.cryptoshred_health.dto.AttachmentResponse;
+import com.roberthevesi.cryptoshred_health.dto.PatientRecordEventDto;
 import com.roberthevesi.cryptoshred_health.dto.PatientRecordRequest;
 import com.roberthevesi.cryptoshred_health.dto.PatientRecordResponse;
 import com.roberthevesi.cryptoshred_health.model.EncryptionKey;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
@@ -30,6 +32,7 @@ public class PatientRecordService {
     private final UserRepository userRepository;
     private final VaultKmsService vaultKmsService;
     private final EnvelopeEncryptionService envelopeEncryptionService;
+    private final EventLogPublisher eventLogPublisher;
 
     @Transactional
     public PatientRecordResponse create(PatientRecordRequest request, String currentUserEmail) {
@@ -68,7 +71,22 @@ public class PatientRecordService {
         record.setEncryptionKey(encryptionKey);
         record.setOwner(owner);
 
-        return toResponse(patientRecordRepository.save(record));
+        PatientRecord savedRecord = patientRecordRepository.save(record);
+
+        // 4. Publish encrypted event to Kafka event log
+        eventLogPublisher.publishEvent(PatientRecordEventDto.builder()
+                .eventId(UUID.randomUUID())
+                .patientRecordId(savedRecord.getId())
+                .eventType("RECORD_CREATED")
+                .vaultKeyName(vaultKeyName)
+                .wrappedDek(wrappedDek)
+                .iv(encryptedPayload.ivBase64())
+                .encryptedDataBlob(encryptedPayload.ciphertextBase64())
+                .patientName(savedRecord.getPatientName())
+                .timestamp(LocalDateTime.now())
+                .build());
+
+        return toResponse(savedRecord);
     }
 
     @Transactional(readOnly = true)
@@ -133,7 +151,23 @@ public class PatientRecordService {
             }
         }
 
-        return toResponse(patientRecordRepository.save(record));
+        PatientRecord updatedRecord = patientRecordRepository.save(record);
+
+        if (updatedRecord.getEncryptionKey() != null) {
+            eventLogPublisher.publishEvent(PatientRecordEventDto.builder()
+                    .eventId(UUID.randomUUID())
+                    .patientRecordId(updatedRecord.getId())
+                    .eventType("RECORD_UPDATED")
+                    .vaultKeyName(updatedRecord.getEncryptionKey().getVaultKeyName())
+                    .wrappedDek(updatedRecord.getEncryptionKey().getWrappedDek())
+                    .iv(updatedRecord.getEncryptionKey().getIv())
+                    .encryptedDataBlob(updatedRecord.getEncryptedDataBlob())
+                    .patientName(updatedRecord.getPatientName())
+                    .timestamp(LocalDateTime.now())
+                    .build());
+        }
+
+        return toResponse(updatedRecord);
     }
 
     @Transactional

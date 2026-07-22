@@ -50,8 +50,9 @@ pnpm-debug.log*
 # ── Database & Backup Dumps ────────────────────────────────────────────────
 backups/
 pgdata/
+vaultdata/
 
 # ── Gemini / Agent Metadata ────────────────────────────────────────────────
 .gemini/
-.knowledge/
+
 

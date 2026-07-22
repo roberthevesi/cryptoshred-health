@@ -1,6 +1,7 @@
 package com.roberthevesi.cryptoshred_health.service;
 
 import com.roberthevesi.cryptoshred_health.dto.DeletionProofResponse;
+import com.roberthevesi.cryptoshred_health.dto.PatientRecordEventDto;
 import com.roberthevesi.cryptoshred_health.model.EncryptionKey;
 import com.roberthevesi.cryptoshred_health.model.PatientAttachment;
 import com.roberthevesi.cryptoshred_health.model.PatientRecord;
@@ -35,6 +36,7 @@ public class ErasureService {
     private final PatientRecordRepository patientRecordRepository;
     private final EncryptionKeyRepository encryptionKeyRepository;
     private final VaultKmsService vaultKmsService;
+    private final EventLogPublisher eventLogPublisher;
 
     @Transactional
     public DeletionProofResponse forgetPatient(UUID patientRecordId, String requestedBy) {
@@ -47,6 +49,7 @@ public class ErasureService {
         }
 
         LocalDateTime timestamp = LocalDateTime.now();
+        String vaultKeyName = record.getEncryptionKey() != null ? record.getEncryptionKey().getVaultKeyName() : null;
 
         // Step 1: Nullify sensitive fields & attachments (data minimisation)
         record.setMedicalNotes("[SHREDDED]");
@@ -84,7 +87,20 @@ public class ErasureService {
 
         patientRecordRepository.save(record);
 
-        // Step 3: Build immutable audit trail and hash it
+        // Step 3: Publish RECORD_SHREDDED event to Kafka log
+        eventLogPublisher.publishEvent(PatientRecordEventDto.builder()
+                .eventId(UUID.randomUUID())
+                .patientRecordId(patientRecordId)
+                .eventType("RECORD_SHREDDED")
+                .vaultKeyName(vaultKeyName)
+                .wrappedDek(null)
+                .iv(null)
+                .encryptedDataBlob(null)
+                .patientName(record.getPatientName())
+                .timestamp(timestamp)
+                .build());
+
+        // Step 4: Build immutable audit trail and hash it
         String auditTrail = buildAuditTrail(patientRecordId, requestedBy, timestamp);
         String sha256Hash = sha256Hex(auditTrail);
 
