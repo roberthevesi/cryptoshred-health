@@ -1,0 +1,97 @@
+package com.roberthevesi.cryptoshred_health.service;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.roberthevesi.cryptoshred_health.dto.PatientRecordEventDto;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
+
+class KafkaEventLogCryptoShredTest {
+
+    private EnvelopeEncryptionService envelopeEncryptionService;
+    private VaultKmsService vaultKmsService;
+    private EventLogConsumer eventLogConsumer;
+
+    @BeforeEach
+    void setUp() {
+        envelopeEncryptionService = new EnvelopeEncryptionService();
+        vaultKmsService = Mockito.mock(VaultKmsService.class);
+        eventLogConsumer = new EventLogConsumer(new ObjectMapper(), vaultKmsService, envelopeEncryptionService);
+    }
+
+    @Test
+    void testPreShredKafkaEventDecryptionSucceeds() {
+        // Arrange
+        byte[] dek = envelopeEncryptionService.generateDek();
+        String originalNotes = "Patient presented with acute migraines.";
+        EnvelopeEncryptionService.EncryptedPayload encryptedPayload =
+                envelopeEncryptionService.encrypt(originalNotes.getBytes(StandardCharsets.UTF_8), dek);
+
+        String vaultKeyName = "patient_kek_test123";
+        String wrappedDek = "wrapped_dek_base64_sample";
+
+        when(vaultKmsService.unwrapDek(vaultKeyName, wrappedDek)).thenReturn(dek);
+
+        PatientRecordEventDto event = PatientRecordEventDto.builder()
+                .eventId(UUID.randomUUID())
+                .patientRecordId(UUID.randomUUID())
+                .eventType("RECORD_CREATED")
+                .vaultKeyName(vaultKeyName)
+                .wrappedDek(wrappedDek)
+                .iv(encryptedPayload.ivBase64())
+                .encryptedDataBlob(encryptedPayload.ciphertextBase64())
+                .patientName("John Doe")
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        // Act
+        String decryptedText = eventLogConsumer.attemptDecryptEventPayload(event);
+
+        // Assert
+        assertEquals(originalNotes, decryptedText);
+    }
+
+    @Test
+    void testPostShredKafkaEventDecryptionFailsWhenKekDestroyed() {
+        // Arrange
+        byte[] dek = envelopeEncryptionService.generateDek();
+        String originalNotes = "Confidential psychiatric evaluation notes.";
+        EnvelopeEncryptionService.EncryptedPayload encryptedPayload =
+                envelopeEncryptionService.encrypt(originalNotes.getBytes(StandardCharsets.UTF_8), dek);
+
+        String vaultKeyName = "patient_kek_shredded999";
+        String wrappedDek = "wrapped_dek_base64_sample";
+
+        // Simulate Vault returning error because key was deleted
+        when(vaultKmsService.unwrapDek(anyString(), anyString()))
+                .thenThrow(new RuntimeException("Vault key invalid or destroyed"));
+
+        PatientRecordEventDto event = PatientRecordEventDto.builder()
+                .eventId(UUID.randomUUID())
+                .patientRecordId(UUID.randomUUID())
+                .eventType("RECORD_CREATED")
+                .vaultKeyName(vaultKeyName)
+                .wrappedDek(wrappedDek)
+                .iv(encryptedPayload.ivBase64())
+                .encryptedDataBlob(encryptedPayload.ciphertextBase64())
+                .patientName("Jane Smith")
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        // Act & Assert: Attempting post-shred decryption of immutable Kafka event log fails
+        IllegalStateException ex = assertThrows(
+                IllegalStateException.class,
+                () -> eventLogConsumer.attemptDecryptEventPayload(event)
+        );
+
+        assertTrue(ex.getMessage().contains("Vault KEK destroyed"));
+    }
+}
