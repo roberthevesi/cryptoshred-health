@@ -4,11 +4,11 @@ services:
     container_name: postgres_db
     restart: always
     environment:
-      POSTGRES_USER: root
-      POSTGRES_PASSWORD: toor
-      POSTGRES_DB: healthdb
+      POSTGRES_USER: ${POSTGRES_USER:-root}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-toor}
+      POSTGRES_DB: ${POSTGRES_DB:-healthdb}
     ports:
-      - "5433:5432"
+      - "${POSTGRES_PORT:-5433}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
 
@@ -17,9 +17,9 @@ services:
     container_name: vault_kms
     restart: always
     ports:
-      - "8200:8200"
+      - "${VAULT_PORT:-8200}:8200"
     environment:
-      VAULT_DEV_ROOT_TOKEN_ID: "root"
+      VAULT_DEV_ROOT_TOKEN_ID: "${VAULT_DEV_ROOT_TOKEN:-root}"
       VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
     cap_add:
       - IPC_LOCK
