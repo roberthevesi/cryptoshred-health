@@ -33,6 +33,7 @@ public class PatientRecordService {
     private final VaultKmsService vaultKmsService;
     private final EnvelopeEncryptionService envelopeEncryptionService;
     private final EventLogPublisher eventLogPublisher;
+    private final PatientRecordCacheService patientRecordCacheService;
 
     @Transactional
     public PatientRecordResponse create(PatientRecordRequest request, String currentUserEmail) {
@@ -86,7 +87,9 @@ public class PatientRecordService {
                 .timestamp(LocalDateTime.now())
                 .build());
 
-        return toResponse(savedRecord);
+        PatientRecordResponse response = toResponse(savedRecord);
+        patientRecordCacheService.put(savedRecord.getId(), response);
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -108,7 +111,36 @@ public class PatientRecordService {
     public PatientRecordResponse findById(UUID id, String currentUserEmail) {
         PatientRecord record = findRecord(id);
         checkReadAccess(record, findUser(currentUserEmail));
-        return toResponse(record);
+
+        // 1. Check Redis cache
+        PatientRecordResponse cached = patientRecordCacheService.get(id);
+        if (cached != null) {
+            // Validate Vault KEK status if cached entry was active when cached
+            if (!cached.isShredded() && record.getEncryptionKey() != null) {
+                try {
+                    vaultKmsService.unwrapDek(
+                            record.getEncryptionKey().getVaultKeyName(),
+                            record.getEncryptionKey().getWrappedDek());
+                    return cached;
+                } catch (Exception e) {
+                    log.warn("Redis CACHE HIT detected destroyed Vault KEK for record {}. Zero-purge invalidation triggered.", id);
+                    cached.setShredded(true);
+                    cached.setMedicalNotes("[SHREDDED]");
+                    cached.setDiagnosis("[SHREDDED]");
+                    cached.setAllergies("[SHREDDED]");
+                    cached.setPrescriptions("[SHREDDED]");
+                    cached.setEncryptedDataBlob(null);
+                    patientRecordCacheService.evict(id);
+                    return cached;
+                }
+            }
+            return cached;
+        }
+
+        // 2. Cache miss — decrypt from DB & put in Redis
+        PatientRecordResponse response = toResponse(record);
+        patientRecordCacheService.put(id, response);
+        return response;
     }
 
     @Transactional
@@ -167,7 +199,9 @@ public class PatientRecordService {
                     .build());
         }
 
-        return toResponse(updatedRecord);
+        PatientRecordResponse updatedResponse = toResponse(updatedRecord);
+        patientRecordCacheService.put(id, updatedResponse);
+        return updatedResponse;
     }
 
     @Transactional
@@ -179,7 +213,9 @@ public class PatientRecordService {
             throw new AccessDeniedException("Not authorized to delete this record");
         }
         patientRecordRepository.delete(record);
+        patientRecordCacheService.evict(id);
     }
+
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 

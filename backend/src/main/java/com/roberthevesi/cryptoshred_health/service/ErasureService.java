@@ -37,6 +37,7 @@ public class ErasureService {
     private final EncryptionKeyRepository encryptionKeyRepository;
     private final VaultKmsService vaultKmsService;
     private final EventLogPublisher eventLogPublisher;
+    private final PatientRecordCacheService patientRecordCacheService;
 
     @Transactional
     public DeletionProofResponse forgetPatient(UUID patientRecordId, String requestedBy) {
@@ -87,7 +88,10 @@ public class ErasureService {
 
         patientRecordRepository.save(record);
 
-        // Step 3: Publish RECORD_SHREDDED event to Kafka log
+        // Step 3: Proactive cache eviction in Redis
+        patientRecordCacheService.evict(patientRecordId);
+
+        // Step 4: Publish RECORD_SHREDDED event to Kafka log
         eventLogPublisher.publishEvent(PatientRecordEventDto.builder()
                 .eventId(UUID.randomUUID())
                 .patientRecordId(patientRecordId)
@@ -100,7 +104,7 @@ public class ErasureService {
                 .timestamp(timestamp)
                 .build());
 
-        // Step 4: Build immutable audit trail and hash it
+        // Step 5: Build immutable audit trail and hash it
         String auditTrail = buildAuditTrail(patientRecordId, requestedBy, timestamp);
         String sha256Hash = sha256Hex(auditTrail);
 
@@ -117,9 +121,10 @@ public class ErasureService {
     }
 
     private String buildAuditTrail(UUID recordId, String requestedBy, LocalDateTime timestamp) {
-        return String.format("ACTION=CRYPTO_SHRED|RECORD_ID=%s|REQUESTED_BY=%s|TIMESTAMP=%s",
+        return String.format("ACTION=CRYPTO_SHRED|RECORD_ID=%s|REQUESTED_BY=%s|STORAGE_LAYERS=POSTGRES_DB,KAFKA_EVENT_LOG,REDIS_CACHE|TIMESTAMP=%s",
                 recordId, requestedBy, timestamp);
     }
+
 
     private String sha256Hex(String input) {
         try {
