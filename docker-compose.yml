@@ -72,6 +72,15 @@ services:
       timeout: 3s
       retries: 5
 
+  redis-insight:
+    image: redis/redisinsight:latest
+    container_name: redis_insight
+    restart: always
+    ports:
+      - "5540:5540"
+    depends_on:
+      - redis
+
 volumes:
   pgdata:
   vaultdata:
