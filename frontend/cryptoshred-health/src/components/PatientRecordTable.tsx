@@ -20,6 +20,7 @@ import apiClient from '../lib/axios';
 import { useAuth } from '../contexts/AuthContext';
 import CreateRecordModal from './CreateRecordModal';
 import PdfViewerModal from './PdfViewerModal';
+import ViewRecordModal from './ViewRecordModal';
 import type { PatientRecord, PatientAttachment } from '../types';
 
 export default function PatientRecordTable() {
@@ -28,9 +29,11 @@ export default function PatientRecordTable() {
 
   const [showModal, setShowModal] = useState(false);
   const [editRecord, setEditRecord] = useState<PatientRecord | null>(null);
+  const [viewRecordId, setViewRecordId] = useState<string | null>(null);
 
   const [viewPdfState, setViewPdfState] = useState<{ recordId: string; attachment: PatientAttachment } | null>(null);
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
+
 
   const { data: records = [], isLoading, isError, refetch } = useQuery<PatientRecord[]>({
     queryKey: ['records'],
@@ -241,6 +244,15 @@ export default function PatientRecordTable() {
                       {/* 7. Actions */}
                       <td className="px-4 py-4 text-right">
                         <div className="inline-flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => setViewRecordId(record.id)}
+                            className="btn-ghost px-2 py-1 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/60 flex items-center gap-1 text-xs font-mono border border-emerald-800/40 rounded-lg"
+                            title="Fetch & View Details from Redis Cache"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            <span>View (Cache)</span>
+                          </button>
+
                           {isDoctor && !record.shredded && (
                             <>
                               <button
@@ -260,7 +272,7 @@ export default function PatientRecordTable() {
                             </>
                           )}
                           {record.shredded && (
-                            <ShieldOff className="h-4 w-4 text-red-400/80 inline" />
+                            <ShieldOff className="h-4 w-4 text-red-400/80 inline ml-1" />
                           )}
                         </div>
                       </td>
@@ -320,6 +332,15 @@ export default function PatientRecordTable() {
         />
       )}
 
+      {/* View Record (Redis Cache) Modal */}
+      {viewRecordId && (
+        <ViewRecordModal
+          recordId={viewRecordId}
+          onClose={() => setViewRecordId(null)}
+          onViewPdf={(recId, att) => setViewPdfState({ recordId: recId, attachment: att })}
+        />
+      )}
+
       {/* PDF Viewer Modal */}
       {viewPdfState && (
         <PdfViewerModal
@@ -331,3 +352,4 @@ export default function PatientRecordTable() {
     </>
   );
 }
+
