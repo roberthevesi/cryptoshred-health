@@ -104,8 +104,35 @@ public class PatientRecordService {
             records = patientRecordRepository.findAll();
         }
 
-        return records.stream().map(this::toResponse).collect(Collectors.toList());
+        return records.stream().map(record -> {
+            PatientRecordResponse cached = patientRecordCacheService.get(record.getId());
+            if (cached != null) {
+                if (!cached.isShredded() && record.getEncryptionKey() != null) {
+                    try {
+                        vaultKmsService.unwrapDek(
+                                record.getEncryptionKey().getVaultKeyName(),
+                                record.getEncryptionKey().getWrappedDek());
+                        return cached;
+                    } catch (Exception e) {
+                        log.warn("Redis CACHE HIT in findAll detected destroyed Vault KEK for record {}. Zero-purge invalidation triggered.", record.getId());
+                        cached.setShredded(true);
+                        cached.setMedicalNotes("[SHREDDED]");
+                        cached.setDiagnosis("[SHREDDED]");
+                        cached.setAllergies("[SHREDDED]");
+                        cached.setPrescriptions("[SHREDDED]");
+                        cached.setEncryptedDataBlob(null);
+                        patientRecordCacheService.evict(record.getId());
+                        return cached;
+                    }
+                }
+                return cached;
+            }
+            PatientRecordResponse response = toResponse(record);
+            patientRecordCacheService.put(record.getId(), response);
+            return response;
+        }).collect(Collectors.toList());
     }
+
 
     @Transactional(readOnly = true)
     public PatientRecordResponse findById(UUID id, String currentUserEmail) {
