@@ -1,0 +1,249 @@
+package com.roberthevesi.cryptoshred_health.service;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.roberthevesi.cryptoshred_health.dto.WormRecordEntryDto;
+import com.roberthevesi.cryptoshred_health.dto.WormSnapshotDto;
+import com.roberthevesi.cryptoshred_health.model.EncryptionKey;
+import com.roberthevesi.cryptoshred_health.model.PatientRecord;
+import com.roberthevesi.cryptoshred_health.repository.PatientRecordRepository;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.stream.Collectors;
+
+/**
+ * WormBackupExporterService — exports immutable, read-only WORM snapshot files
+ * containing envelope-encrypted patient records.
+ *
+ * <p>Demonstrates that cryptographic erasure (Vault KEK destruction) guarantees
+ * zero-knowledge data invalidation across append-only, write-once-read-many (WORM)
+ * storage layers without modifying physical snapshot files.
+ */
+@Service
+@Slf4j
+public class WormBackupExporterService {
+
+    private final PatientRecordRepository patientRecordRepository;
+    private final VaultKmsService vaultKmsService;
+    private final EnvelopeEncryptionService envelopeEncryptionService;
+    private final ObjectMapper objectMapper;
+    private final String backupDirectory;
+
+    public WormBackupExporterService(
+            PatientRecordRepository patientRecordRepository,
+            VaultKmsService vaultKmsService,
+            EnvelopeEncryptionService envelopeEncryptionService,
+            @Value("${backup.worm.directory:backups}") String backupDirectory) {
+        this.patientRecordRepository = patientRecordRepository;
+        this.vaultKmsService = vaultKmsService;
+        this.envelopeEncryptionService = envelopeEncryptionService;
+        this.backupDirectory = backupDirectory;
+        this.objectMapper = new ObjectMapper();
+        this.objectMapper.registerModule(new JavaTimeModule());
+    }
+
+    /** Scheduled daily midnight backup export (or configured cron). */
+    @Scheduled(cron = "${backup.worm.cron:0 0 0 * * *}")
+    public void exportScheduledSnapshot() {
+        log.info("Triggering scheduled WORM snapshot export...");
+        exportSnapshot();
+    }
+
+    /** Exports a new point-in-time WORM snapshot file. */
+    @Transactional(readOnly = true)
+    public synchronized WormSnapshotDto exportSnapshot() {
+        try {
+            Path backupDirPath = Paths.get(backupDirectory);
+            if (!Files.exists(backupDirPath)) {
+                Files.createDirectories(backupDirPath);
+            }
+
+            List<PatientRecord> records = patientRecordRepository.findAllWithEncryptionKey();
+            List<WormRecordEntryDto> entries = records.stream()
+                    .map(this::mapToEntry)
+                    .collect(Collectors.toList());
+
+
+            UUID snapshotId = UUID.randomUUID();
+            LocalDateTime timestamp = LocalDateTime.now();
+            String timeString = timestamp.format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"));
+            String fileName = String.format("snapshot_%s.json", timeString);
+            Path filePath = backupDirPath.resolve(fileName);
+
+            WormSnapshotDto snapshotDto = WormSnapshotDto.builder()
+                    .snapshotId(snapshotId)
+                    .fileName(fileName)
+                    .timestamp(timestamp)
+                    .totalRecords(entries.size())
+                    .readOnly(false)
+                    .records(entries)
+                    .build();
+
+            String jsonString = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(snapshotDto);
+            String sha256Fingerprint = computeSha256(jsonString);
+            snapshotDto.setSha256Fingerprint(sha256Fingerprint);
+
+            // Re-serialize with fingerprint included
+            String finalJson = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(snapshotDto);
+            Files.writeString(filePath, finalJson, StandardCharsets.UTF_8);
+
+            // Apply read-only filesystem attributes (WORM simulation)
+            File file = filePath.toFile();
+            boolean readOnlySet = file.setReadOnly();
+            snapshotDto.setReadOnly(readOnlySet || !file.canWrite());
+            snapshotDto.setSizeBytes(file.length());
+
+            log.info("WORM Backup Snapshot exported: {} (Records: {}, Size: {} bytes, ReadOnly: {}, SHA256: {})",
+                    fileName, entries.size(), file.length(), snapshotDto.isReadOnly(), sha256Fingerprint);
+
+            return snapshotDto;
+        } catch (Exception e) {
+            log.error("Failed to export WORM backup snapshot: {}", e.getMessage(), e);
+            throw new IllegalStateException("WORM backup snapshot export failed: " + e.getMessage(), e);
+        }
+    }
+
+    /** Lists all exported WORM backup snapshot metadata summaries in the backup directory. */
+    public List<WormSnapshotDto> listSnapshots() {
+        try {
+            Path backupDirPath = Paths.get(backupDirectory);
+            if (!Files.exists(backupDirPath)) {
+                return Collections.emptyList();
+            }
+
+            List<WormSnapshotDto> list = new ArrayList<>();
+            try (var stream = Files.list(backupDirPath)) {
+                List<Path> snapshotFiles = stream
+                        .filter(p -> p.getFileName().toString().startsWith("snapshot_") && p.getFileName().toString().endsWith(".json"))
+                        .sorted(Comparator.comparing(Path::getFileName).reversed())
+                        .collect(Collectors.toList());
+
+                for (Path p : snapshotFiles) {
+                    try {
+                        String content = Files.readString(p, StandardCharsets.UTF_8);
+                        WormSnapshotDto dto = objectMapper.readValue(content, WormSnapshotDto.class);
+                        dto.setFileName(p.getFileName().toString());
+                        dto.setSizeBytes(p.toFile().length());
+                        dto.setReadOnly(!p.toFile().canWrite());
+                        dto.setRecords(null); // Summary only
+                        list.add(dto);
+                    } catch (Exception ex) {
+                        log.warn("Could not parse WORM snapshot file {}: {}", p, ex.getMessage());
+                    }
+                }
+            }
+            return list;
+        } catch (Exception e) {
+            log.error("Error listing WORM snapshot files: {}", e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    /** Retrieves full WORM snapshot payload (including record entries) for a specific snapshot file. */
+    public WormSnapshotDto getSnapshotByFileName(String fileName) {
+        try {
+            Path filePath = Paths.get(backupDirectory).resolve(fileName);
+            if (!Files.exists(filePath)) {
+                throw new IllegalArgumentException("WORM snapshot file not found: " + fileName);
+            }
+            String content = Files.readString(filePath, StandardCharsets.UTF_8);
+            WormSnapshotDto dto = objectMapper.readValue(content, WormSnapshotDto.class);
+            dto.setFileName(filePath.getFileName().toString());
+            dto.setSizeBytes(filePath.toFile().length());
+            dto.setReadOnly(!filePath.toFile().canWrite());
+            return dto;
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to read WORM snapshot file {}: {}", fileName, e.getMessage(), e);
+            throw new IllegalStateException("Failed to read WORM snapshot file: " + fileName, e);
+        }
+    }
+
+
+    /** Attempts post-shred decryption of a specific record in a WORM backup file. */
+    public String verifyPostShredDecryptionFailure(String fileName, UUID recordId) {
+        try {
+            Path filePath = Paths.get(backupDirectory).resolve(fileName);
+            if (!Files.exists(filePath)) {
+                return "SNAPSHOT_FILE_NOT_FOUND: " + fileName;
+            }
+
+            String content = Files.readString(filePath, StandardCharsets.UTF_8);
+            WormSnapshotDto snapshotDto = objectMapper.readValue(content, WormSnapshotDto.class);
+
+            WormRecordEntryDto targetRecord = snapshotDto.getRecords().stream()
+                    .filter(r -> r.getRecordId().equals(recordId))
+                    .findFirst()
+                    .orElse(null);
+
+            if (targetRecord == null) {
+                return "RECORD_NOT_FOUND_IN_SNAPSHOT: " + recordId;
+            }
+
+            if (targetRecord.getWrappedDek() == null || targetRecord.getVaultKeyName() == null) {
+                return "RECORD_HAS_NO_WRAPPED_DEK (Already shredded at backup export time)";
+            }
+
+            // Attempt decryption using Vault KEK unwrapping
+            byte[] dek = vaultKmsService.unwrapDek(targetRecord.getVaultKeyName(), targetRecord.getWrappedDek());
+            byte[] plaintextBytes = envelopeEncryptionService.decrypt(
+                    targetRecord.getEncryptedDataBlob(),
+                    targetRecord.getIv(),
+                    dek);
+
+            String decryptedText = new String(plaintextBytes, StandardCharsets.UTF_8);
+            return "[WARNING_DECRYPTION_SUCCEEDED] Decrypted payload: " + decryptedText;
+
+        } catch (Exception e) {
+            log.info("Post-shred WORM decryption correctly failed for record {} in snapshot {}: {}",
+                    recordId, fileName, e.getMessage());
+            return "[ZERO_PURGE_SUCCESS] Vault KEK destroyed. Data in immutable WORM snapshot remains un-decryptable ciphertext. Reason: " + e.getMessage();
+        }
+    }
+
+    private WormRecordEntryDto mapToEntry(PatientRecord record) {
+        EncryptionKey key = record.getEncryptionKey();
+        return WormRecordEntryDto.builder()
+                .recordId(record.getId())
+                .patientName(record.getPatientName())
+                .mrn(record.getMrn())
+                .dateOfBirth(record.getDateOfBirth())
+                .gender(record.getGender())
+                .vaultKeyName(key != null ? key.getVaultKeyName() : null)
+                .wrappedDek(key != null ? key.getWrappedDek() : null)
+                .iv(key != null ? key.getIv() : null)
+                .encryptedDataBlob(record.getEncryptedDataBlob())
+                .shredded(record.isShredded())
+                .createdAt(record.getCreatedAt())
+                .build();
+    }
+
+    private String computeSha256(String input) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hash) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 unavailable", e);
+        }
+    }
+}

@@ -48,9 +48,11 @@ pnpm-debug.log*
 .env.production.local
 
 # ── Database & Backup Dumps ────────────────────────────────────────────────
-backups/
+**/backups/*.json
+!**/backups/.gitkeep
 pgdata/
 vaultdata/
+
 
 # ── Gemini / Agent Metadata ────────────────────────────────────────────────
 .gemini/

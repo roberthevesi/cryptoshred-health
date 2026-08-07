@@ -121,7 +121,7 @@ public class ErasureService {
     }
 
     private String buildAuditTrail(UUID recordId, String requestedBy, LocalDateTime timestamp) {
-        return String.format("ACTION=CRYPTO_SHRED|RECORD_ID=%s|REQUESTED_BY=%s|STORAGE_LAYERS=POSTGRES_DB,KAFKA_EVENT_LOG,REDIS_CACHE|TIMESTAMP=%s",
+        return String.format("ACTION=CRYPTO_SHRED|RECORD_ID=%s|REQUESTED_BY=%s|STORAGE_LAYERS=POSTGRES_DB,KAFKA_EVENT_LOG,REDIS_CACHE,WORM_BACKUP|TIMESTAMP=%s",
                 recordId, requestedBy, timestamp);
     }
 
