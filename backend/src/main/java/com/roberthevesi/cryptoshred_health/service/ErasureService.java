@@ -1,7 +1,8 @@
 package com.roberthevesi.cryptoshred_health.service;
 
-import com.roberthevesi.cryptoshred_health.dto.DeletionProofResponse;
 import com.roberthevesi.cryptoshred_health.dto.PatientRecordEventDto;
+import com.roberthevesi.cryptoshred_health.dto.ProofVerificationResponseDto;
+import com.roberthevesi.cryptoshred_health.dto.VerifiableDeletionProofDto;
 import com.roberthevesi.cryptoshred_health.model.EncryptionKey;
 import com.roberthevesi.cryptoshred_health.model.PatientAttachment;
 import com.roberthevesi.cryptoshred_health.model.PatientRecord;
@@ -16,17 +17,19 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
- * ErasureService — implements the Crypto-Shredding (Right-to-be-Forgotten) pattern.
+ * ErasureService — implements the Verifiable Crypto-Shredding (Right-to-be-Forgotten) pattern.
  *
  * <p>Instead of physically deleting data rows (which may still reside in backups),
  * crypto-shredding irreversibly destroys the encryption key protecting the sensitive
  * payload and attachment blobs. Without the key, the ciphertext is computationally irrecoverable.
  *
- * <p>Returns a {@link DeletionProofResponse} containing a SHA-256 fingerprint of the
- * audit trail — a signed, verifiable record suitable for GDPR Article 17 compliance.
+ * <p>Returns a {@link VerifiableDeletionProofDto} containing a digital RSA signature
+ * and Merkle tree inclusion proof suitable for GDPR Article 17 compliance verification.
  */
 @Service
 @RequiredArgsConstructor
@@ -38,9 +41,11 @@ public class ErasureService {
     private final VaultKmsService vaultKmsService;
     private final EventLogPublisher eventLogPublisher;
     private final PatientRecordCacheService patientRecordCacheService;
+    private final ProofSigningService proofSigningService;
+    private final MerkleTreeService merkleTreeService;
 
     @Transactional
-    public DeletionProofResponse forgetPatient(UUID patientRecordId, String requestedBy) {
+    public VerifiableDeletionProofDto forgetPatient(UUID patientRecordId, String requestedBy) {
         PatientRecord record = patientRecordRepository.findById(patientRecordId)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Patient record not found: " + patientRecordId));
@@ -108,23 +113,96 @@ public class ErasureService {
         String auditTrail = buildAuditTrail(patientRecordId, requestedBy, timestamp);
         String sha256Hash = sha256Hex(auditTrail);
 
-        log.info("Erasure complete for record {}. Proof hash: {}", patientRecordId, sha256Hash);
+        // Step 6: Add leaf hash to Merkle Tree and retrieve root & path
+        merkleTreeService.addLeaf(sha256Hash);
+        String merkleRoot = merkleTreeService.getMerkleRoot();
+        List<String> merklePath = merkleTreeService.getInclusionProof(sha256Hash);
 
-        return new DeletionProofResponse(
-                timestamp,
-                patientRecordId,
-                requestedBy,
-                sha256Hash,
-                "DELETED",
-                auditTrail
-        );
+        // Step 7: Create canonical data string for RSA digital signature
+        String canonicalPayloadToSign = buildCanonicalSignPayload(patientRecordId, timestamp, sha256Hash, merkleRoot);
+        String digitalSignature = proofSigningService.sign(canonicalPayloadToSign);
+
+        log.info("Erasure complete for record {}. Proof hash: {}, Signature: {}", patientRecordId, sha256Hash, digitalSignature);
+
+        return VerifiableDeletionProofDto.builder()
+                .proofVersion("1.0")
+                .patientRecordId(patientRecordId)
+                .vaultKeyName(vaultKeyName)
+                .requestedBy(requestedBy)
+                .timestamp(timestamp)
+                .status("DELETED")
+                .coveredStorageLayers(List.of("POSTGRES_DB", "KAFKA_EVENT_LOG", "REDIS_CACHE", "WORM_BACKUP"))
+                .layerStatus(Map.of(
+                        "POSTGRES_DB", "TEXT_NULLIFIED",
+                        "KAFKA_EVENT_LOG", "KEY_DESTROYED_PAYLOAD_UNREADABLE",
+                        "REDIS_CACHE", "CACHE_EVICTED",
+                        "WORM_BACKUP", "ZERO_PURGE_UNDECRYPTABLE"
+                ))
+                .auditTrail(auditTrail)
+                .auditTrailHash(sha256Hash)
+                .merkleRoot(merkleRoot)
+                .merklePath(merklePath)
+                .signatureAlgorithm("SHA256withRSA")
+                .digitalSignature(digitalSignature)
+                .build();
+    }
+
+    public ProofVerificationResponseDto verifyProofArtifact(VerifiableDeletionProofDto proof) {
+        if (proof == null) {
+            return ProofVerificationResponseDto.builder()
+                    .valid(false)
+                    .verificationMessage("Proof artifact is null")
+                    .verifiedAt(LocalDateTime.now())
+                    .build();
+        }
+
+        // 1. Check SHA-256 payload integrity
+        String expectedHash = sha256Hex(proof.getAuditTrail());
+        boolean payloadIntegrityValid = expectedHash.equalsIgnoreCase(proof.getAuditTrailHash());
+
+        // 2. Check RSA Digital Signature
+        String canonicalPayload = buildCanonicalSignPayload(proof.getPatientRecordId(), proof.getTimestamp(), proof.getAuditTrailHash(), proof.getMerkleRoot());
+        boolean signatureValid = proofSigningService.verify(canonicalPayload, proof.getDigitalSignature());
+
+        // 3. Check Merkle inclusion if root and path provided
+        boolean merkleValid = true;
+        if (proof.getMerkleRoot() != null && proof.getMerklePath() != null) {
+            merkleValid = merkleTreeService.verifyInclusion(proof.getAuditTrailHash(), proof.getMerklePath(), proof.getMerkleRoot());
+        }
+
+        boolean overallValid = payloadIntegrityValid && signatureValid && merkleValid;
+
+        String message;
+        if (!payloadIntegrityValid) {
+            message = "FAILED: Audit trail payload has been tampered with (SHA-256 hash mismatch).";
+        } else if (!signatureValid) {
+            message = "FAILED: Digital signature is invalid or forged.";
+        } else if (!merkleValid) {
+            message = "FAILED: Merkle tree inclusion path verification failed.";
+        } else {
+            message = "SUCCESS: Deletion proof artifact is valid, untampered, and signed by system authority.";
+        }
+
+        return ProofVerificationResponseDto.builder()
+                .valid(overallValid)
+                .payloadIntegrityValid(payloadIntegrityValid)
+                .signatureValid(signatureValid)
+                .merkleInclusionValid(merkleValid)
+                .verificationMessage(message)
+                .verifiedAt(LocalDateTime.now())
+                .verifiedByAlgorithm(proof.getSignatureAlgorithm() != null ? proof.getSignatureAlgorithm() : "SHA256withRSA")
+                .build();
+    }
+
+    private String buildCanonicalSignPayload(UUID recordId, LocalDateTime timestamp, String sha256Hash, String merkleRoot) {
+        return String.format("RECORD_ID=%s|TIMESTAMP=%s|HASH=%s|MERKLE_ROOT=%s",
+                recordId, timestamp, sha256Hash, merkleRoot);
     }
 
     private String buildAuditTrail(UUID recordId, String requestedBy, LocalDateTime timestamp) {
         return String.format("ACTION=CRYPTO_SHRED|RECORD_ID=%s|REQUESTED_BY=%s|STORAGE_LAYERS=POSTGRES_DB,KAFKA_EVENT_LOG,REDIS_CACHE,WORM_BACKUP|TIMESTAMP=%s",
                 recordId, requestedBy, timestamp);
     }
-
 
     private String sha256Hex(String input) {
         try {

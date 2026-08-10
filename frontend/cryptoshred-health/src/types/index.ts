@@ -58,12 +58,31 @@ export interface PatientRecordRequest {
 }
 
 export interface DeletionProof {
+  proofVersion?: string;
   timestamp: string;
   patientRecordId: string;
+  vaultKeyName?: string;
   requestedBy: string;
-  sha256Hash: string;
+  sha256Hash?: string;
+  auditTrailHash?: string;
   status: string;
   auditTrail: string;
+  coveredStorageLayers?: string[];
+  layerStatus?: Record<string, string>;
+  merkleRoot?: string;
+  merklePath?: string[];
+  signatureAlgorithm?: string;
+  digitalSignature?: string;
+}
+
+export interface ProofVerificationResponse {
+  valid: boolean;
+  signatureValid: boolean;
+  payloadIntegrityValid: boolean;
+  merkleInclusionValid: boolean;
+  verificationMessage: string;
+  verifiedAt: string;
+  verifiedByAlgorithm: string;
 }
 
 export interface ApiError {
