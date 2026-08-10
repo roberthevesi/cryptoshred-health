@@ -7,11 +7,13 @@ import {
   LogOut,
   ChevronDown,
   Activity,
+  FileCheck2,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import PatientRecordTable from '../components/PatientRecordTable';
 import DeletionProofCard from '../components/DeletionProofCard';
+import VerifyProofModal from '../components/VerifyProofModal';
 import apiClient from '../lib/axios';
 import type { DeletionProof, PatientRecord } from '../types';
 
@@ -32,6 +34,7 @@ export default function DashboardPage() {
   const [selectedRecordId, setSelectedRecordId] = useState('');
   const [deletionProof, setDeletionProof] = useState<DeletionProof | null>(null);
   const [eraseError, setEraseError] = useState('');
+  const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
 
   const { data: allRecords = [] } = useQuery<PatientRecord[]>({
     queryKey: ['records'],
@@ -98,6 +101,13 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsVerifyModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-800/60 text-emerald-400 text-xs font-medium transition"
+            >
+              <FileCheck2 className="h-3.5 w-3.5 text-emerald-400" />
+              Verify Proof Artifact
+            </button>
             <div className="text-right hidden sm:block">
               <p className="text-sm font-medium text-white">{user?.email}</p>
               <span className={`${ROLE_BADGE[user?.role ?? '']} text-xs`}>{user?.role}</span>
@@ -232,6 +242,12 @@ export default function DashboardPage() {
           </div>
         )}
       </main>
+
+      <VerifyProofModal
+        isOpen={isVerifyModalOpen}
+        onClose={() => setIsVerifyModalOpen(false)}
+        token={user?.token || ''}
+      />
     </div>
   );
 }
