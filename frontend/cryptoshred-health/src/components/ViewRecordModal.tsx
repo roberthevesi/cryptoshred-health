@@ -1,195 +1,519 @@
+import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
-import { X, ShieldCheck, ShieldOff, Zap, Activity, Heart, AlertTriangle, Pill, FileText, File } from 'lucide-react';
+import {
+  X,
+  Activity,
+  FileText,
+  Building,
+  Key,
+  ShieldAlert,
+  Calendar,
+  Lock,
+  AlertTriangle,
+  Pill,
+  User,
+  Heart,
+  File,
+  Eye,
+} from 'lucide-react';
 import apiClient from '../lib/axios';
+import PatientBanner from './PatientBanner';
+import VitalsCard from './VitalsCard';
+import PdfViewerModal from './PdfViewerModal';
 import type { PatientRecord, PatientAttachment } from '../types';
 
-interface ViewRecordModalProps {
+interface Props {
   recordId: string;
   onClose: () => void;
-  onViewPdf: (recordId: string, attachment: PatientAttachment) => void;
 }
 
-export default function ViewRecordModal({ recordId, onClose, onViewPdf }: ViewRecordModalProps) {
-  const { data: record, isLoading, isError, refetch } = useQuery<PatientRecord>({
-    queryKey: ['record-detail', recordId],
-    queryFn: () => apiClient.get<PatientRecord>(`/records/${recordId}`).then((res) => res.data),
+type Tab = 'summary' | 'soap' | 'clinical' | 'admin' | 'documents' | 'security';
+
+export default function ViewRecordModal({ recordId, onClose }: Props) {
+  const [activeTab, setActiveTab] = useState<Tab>('summary');
+  const [viewPdfAttachment, setViewPdfAttachment] = useState<PatientAttachment | null>(null);
+
+  const { data: record, isLoading, isError } = useQuery<PatientRecord>({
+    queryKey: ['record', recordId],
+    queryFn: () => apiClient.get<PatientRecord>(`/records/${recordId}`).then((r) => r.data),
   });
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto glass-card p-6 border border-slate-700 shadow-2xl space-y-6">
-        
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-        >
-          <X className="h-5 w-5" />
-        </button>
-
-        {/* Modal Header */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4 pr-8">
-          <div>
-            <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              Patient Record Details
-            </h2>
-            <p className="text-xs text-slate-400 font-mono mt-0.5">ID: {recordId}</p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full bg-emerald-950/80 text-emerald-400 border border-emerald-700/60 shadow-glow">
-              <Zap className="h-3.5 w-3.5 text-emerald-400" />
-              Redis Cache HIT ⚡
-            </span>
-          </div>
+  if (isLoading) {
+    return createPortal(
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
+        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-2xl">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mb-4" />
+          <p className="text-sm font-medium text-slate-700">Decrypting patient EHR record via Vault KMS...</p>
         </div>
+      </div>,
+      document.body
+    );
+  }
 
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-12 gap-3">
-            <div className="h-8 w-8 animate-spin rounded-full border-3 border-brand-500 border-t-transparent" />
-            <p className="text-sm font-mono text-slate-400">Fetching record from Redis Cache...</p>
-          </div>
-        ) : isError || !record ? (
-          <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
-            <ShieldOff className="h-10 w-10 text-red-400" />
-            <p className="text-slate-300 font-medium">Failed to fetch record from cache</p>
-            <button onClick={() => refetch()} className="btn-ghost text-xs">
-              Retry Fetch
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-5 text-sm">
-            {/* Status Banner */}
-            {record.shredded ? (
-              <div className="rounded-xl border border-red-800/80 bg-red-950/40 p-4 flex items-center gap-3">
-                <ShieldOff className="h-6 w-6 text-red-400 shrink-0" />
-                <div>
-                  <h4 className="font-bold text-red-300">Crypto-Shredded Record</h4>
-                  <p className="text-xs text-red-400/90 mt-0.5">
-                    The Vault KEK for this record has been permanently destroyed. Sensitive payloads in PostgreSQL and Redis Cache return [SHREDDED].
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="rounded-xl border border-brand-800/60 bg-brand-950/30 p-3.5 flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <ShieldCheck className="h-5 w-5 text-brand-400" />
-                  <span className="text-xs font-semibold text-slate-200">Envelope Encrypted Payload (AES-256-GCM)</span>
-                </div>
-                <span className="text-[10px] font-mono bg-brand-900/60 text-brand-300 border border-brand-700/60 px-2 py-0.5 rounded-full">
-                  Vault KEK Active
+  if (isError || !record) {
+    return createPortal(
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
+        <div className="w-full max-w-md rounded-2xl border border-red-200 bg-white p-6 text-center shadow-2xl">
+          <ShieldAlert className="mx-auto h-12 w-12 text-red-500 mb-3" />
+          <h3 className="text-lg font-bold text-slate-900 mb-2">Record Decryption Failed</h3>
+          <p className="text-sm text-slate-500 mb-6">
+            Unable to load patient chart. The record may have been crypto-shredded or the Vault KMS key is inaccessible.
+          </p>
+          <button onClick={onClose} className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold">
+            Close Chart
+          </button>
+        </div>
+      </div>,
+      document.body
+    );
+  }
+
+  return (
+    <>
+      {createPortal(
+        <div
+          id="view-record-modal-overlay"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 overflow-y-auto"
+          onClick={(e) => e.target === e.currentTarget && onClose()}
+        >
+          <div className="w-full max-w-5xl rounded-2xl border border-slate-200 bg-white shadow-2xl my-auto max-h-[92vh] flex flex-col overflow-hidden">
+            {/* Modal Top Bar */}
+            <div className="flex items-center justify-between px-6 py-3 border-b border-slate-200 bg-slate-50/90">
+              <div className="flex items-center gap-2">
+                <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-xs font-mono font-semibold uppercase tracking-wider text-slate-600">
+                  Electronic Health Record (EHR) Chart
+                </span>
+                <span className="text-xs font-mono px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700">
+                  {record.mrn || record.id.slice(0, 8)}
                 </span>
               </div>
-            )}
-
-            {/* Patient Header Card */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-surface p-4 rounded-xl border border-slate-800">
-              <div>
-                <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Patient Name</span>
-                <p className="font-bold text-white text-base mt-0.5">{record.patientName}</p>
-                <p className="text-xs text-brand-400 font-mono mt-0.5">MRN: {record.mrn || 'N/A'}</p>
-              </div>
-
-              <div className="space-y-1 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400">Date of Birth:</span>
-                  <span className="font-mono text-slate-200">{record.dateOfBirth || 'N/A'}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400">Gender / Blood:</span>
-                  <span className="font-mono text-slate-200">{record.gender || 'N/A'} ({record.bloodType || 'N/A'})</span>
-                </div>
-              </div>
+              <button onClick={onClose} id="modal-close" className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition">
+                <X className="h-5 w-5" />
+              </button>
             </div>
 
-            {/* Vitals */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-surface p-3 rounded-xl border border-slate-800 flex items-center gap-3">
-                <Activity className="h-5 w-5 text-emerald-400 shrink-0" />
-                <div>
-                  <span className="text-[11px] text-slate-400 block">Blood Pressure</span>
-                  <span className="font-mono font-semibold text-slate-200">
-                    {record.shredded ? '[SHREDDED]' : record.bloodPressure || '120/80 mmHg'}
-                  </span>
-                </div>
-              </div>
-
-              <div className="bg-surface p-3 rounded-xl border border-slate-800 flex items-center gap-3">
-                <Heart className="h-5 w-5 text-rose-400 shrink-0" />
-                <div>
-                  <span className="text-[11px] text-slate-400 block">Heart Rate</span>
-                  <span className="font-mono font-semibold text-slate-200">
-                    {record.shredded ? '[SHREDDED]' : record.heartRate ? `${record.heartRate} bpm` : '72 bpm'}
-                  </span>
-                </div>
-              </div>
+            {/* Patient Header Banner */}
+            <div className="p-6 pb-2 bg-white">
+              <PatientBanner record={record} showVitalsSummary={false} />
             </div>
 
-            {/* Clinical Observations */}
-            <div className="space-y-3">
-              <div>
-                <span className="text-xs font-semibold text-slate-400 flex items-center gap-1.5 mb-1">
-                  <FileText className="h-3.5 w-3.5 text-emerald-400" /> Diagnosis
-                </span>
-                <div className="p-3 bg-surface rounded-xl border border-slate-800 text-slate-200 font-medium">
-                  {record.shredded ? '[SHREDDED]' : record.diagnosis || 'General Examination'}
-                </div>
-              </div>
+            {/* Navigation Tabs */}
+            <div className="flex border-b border-slate-200 bg-slate-50 px-6 gap-2 overflow-x-auto text-xs font-medium py-2">
+              <button
+                onClick={() => setActiveTab('summary')}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
+                  activeTab === 'summary'
+                    ? 'bg-blue-600 text-white font-semibold shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <Activity className="h-3.5 w-3.5" /> Clinical Summary &amp; Vitals
+              </button>
+              <button
+                onClick={() => setActiveTab('soap')}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
+                  activeTab === 'soap'
+                    ? 'bg-blue-600 text-white font-semibold shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <FileText className="h-3.5 w-3.5" /> SOAP Clinical Notes
+              </button>
+              <button
+                onClick={() => setActiveTab('clinical')}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
+                  activeTab === 'clinical'
+                    ? 'bg-blue-600 text-white font-semibold shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <Pill className="h-3.5 w-3.5" /> Meds, Allergies &amp; History
+              </button>
+              <button
+                onClick={() => setActiveTab('admin')}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
+                  activeTab === 'admin'
+                    ? 'bg-blue-600 text-white font-semibold shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <Building className="h-3.5 w-3.5" /> Admin &amp; Insurance
+              </button>
+              <button
+                onClick={() => setActiveTab('documents')}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
+                  activeTab === 'documents'
+                    ? 'bg-blue-600 text-white font-semibold shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <File className="h-3.5 w-3.5" /> Documents ({record.attachments?.length ?? 0})
+              </button>
+              <button
+                onClick={() => setActiveTab('security')}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
+                  activeTab === 'security'
+                    ? 'bg-blue-600 text-white font-semibold shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <Key className="h-3.5 w-3.5" /> KMS Audit &amp; Proof
+              </button>
+            </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <span className="text-xs font-semibold text-slate-400 flex items-center gap-1.5 mb-1">
-                    <AlertTriangle className="h-3.5 w-3.5 text-amber-400" /> Allergies
-                  </span>
-                  <div className="p-2.5 bg-surface rounded-xl border border-slate-800 text-slate-200 text-xs">
-                    {record.shredded ? '[SHREDDED]' : record.allergies || 'None Known'}
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-white">
+              {/* TAB 1: Clinical Summary & Vitals */}
+              {activeTab === 'summary' && (
+                <div className="space-y-5 animate-fade-in">
+                  <div>
+                    <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                      <Activity className="h-3.5 w-3.5 text-blue-600" /> Current Biometric Telemetry
+                    </h3>
+                    <VitalsCard record={record} />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Chief Complaint & Diagnosis */}
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                      <h4 className="text-xs font-semibold text-blue-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <FileText className="h-3.5 w-3.5" /> Encounter Overview
+                      </h4>
+                      <div>
+                        <span className="text-[11px] font-medium text-slate-500 block">Chief Complaint</span>
+                        <p className="text-sm font-semibold text-slate-900 mt-0.5">
+                          {record.chiefComplaint || 'Routine medical encounter'}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-[11px] font-medium text-slate-500 block">Primary Diagnosis / ICD-10</span>
+                        <p className="text-sm font-semibold text-blue-700 mt-0.5">
+                          {record.diagnosis || 'No primary diagnosis recorded'}
+                        </p>
+                      </div>
+                      {record.followUpDate && (
+                        <div>
+                          <span className="text-[11px] font-medium text-slate-500 block">Scheduled Follow-up</span>
+                          <p className="text-xs font-medium text-emerald-700 mt-0.5 flex items-center gap-1">
+                            <Calendar className="h-3.5 w-3.5" /> {record.followUpDate}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Attending Care Team */}
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                      <h4 className="text-xs font-semibold text-blue-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <Building className="h-3.5 w-3.5" /> Care Team &amp; Facility
+                      </h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <span className="text-[11px] font-medium text-slate-500 block">Attending Doctor</span>
+                          <p className="text-sm font-semibold text-slate-900 mt-0.5">
+                            {record.attendingDoctor || 'Dr. Alistair Finch, MD'}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-[11px] font-medium text-slate-500 block">Department</span>
+                          <p className="text-sm font-semibold text-slate-700 mt-0.5">
+                            {record.department || 'General Practice'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="border-t border-slate-200 pt-3">
+                        <span className="text-[11px] font-medium text-slate-500 block">Primary Insurance</span>
+                        <p className="text-xs font-medium text-slate-700 mt-0.5">
+                          {record.insuranceProvider || 'Direct Clinical Billing'} {record.insurancePolicyNumber ? `• Policy: ${record.insurancePolicyNumber}` : ''}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
+              )}
 
-                <div>
-                  <span className="text-xs font-semibold text-slate-400 flex items-center gap-1.5 mb-1">
-                    <Pill className="h-3.5 w-3.5 text-brand-400" /> Prescriptions
-                  </span>
-                  <div className="p-2.5 bg-surface rounded-xl border border-slate-800 text-slate-200 text-xs font-mono">
-                    {record.shredded ? '[SHREDDED]' : record.prescriptions || 'None Recorded'}
+              {/* TAB 2: SOAP Notes */}
+              {activeTab === 'soap' && (
+                <div className="space-y-4 animate-fade-in">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+                      <span className="text-xs font-bold text-blue-700 uppercase tracking-wider block">
+                        [S] Subjective History
+                      </span>
+                      <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
+                        {record.soapSubjective || record.medicalNotes || 'No subjective narrative recorded.'}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+                      <span className="text-xs font-bold text-blue-700 uppercase tracking-wider block">
+                        [O] Objective Examination
+                      </span>
+                      <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
+                        {record.soapObjective || 'Physical examination and objective vitals recorded in biometric chart.'}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+                      <span className="text-xs font-bold text-blue-700 uppercase tracking-wider block">
+                        [A] Clinical Assessment
+                      </span>
+                      <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
+                        {record.soapAssessment || record.diagnosis || 'Clinical evaluation consistent with primary presentation.'}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+                      <span className="text-xs font-bold text-blue-700 uppercase tracking-wider block">
+                        [P] Treatment &amp; Management Plan
+                      </span>
+                      <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
+                        {record.soapPlan || 'Continue active prescription regimen and monitor vitals.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {record.medicalNotes && (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block flex items-center gap-1.5">
+                        <Lock className="h-3.5 w-3.5 text-blue-600" /> Confidential Clinical Annotations
+                      </span>
+                      <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
+                        {record.medicalNotes}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 3: Meds, Allergies & History */}
+              {activeTab === 'clinical' && (
+                <div className="space-y-4 animate-fade-in">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                    <h4 className="text-xs font-semibold text-rose-600 uppercase tracking-wider flex items-center gap-1.5">
+                      <AlertTriangle className="h-3.5 w-3.5" /> Documented Allergies &amp; Adverse Reactions
+                    </h4>
+                    <p className="text-sm font-medium text-slate-900">
+                      {record.allergies || 'No Known Drug Allergies (NKDA)'}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                    <h4 className="text-xs font-semibold text-blue-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <Pill className="h-3.5 w-3.5" /> Active Prescriptions &amp; Dosages
+                    </h4>
+                    <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed font-mono">
+                      {record.prescriptions || 'No active outpatient prescriptions recorded.'}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+                      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">
+                        Chronic Conditions
+                      </span>
+                      <p className="text-xs text-slate-700 leading-relaxed">
+                        {record.chronicConditions || 'None documented.'}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+                      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">
+                        Immunizations &amp; Vaccines
+                      </span>
+                      <p className="text-xs text-slate-700 leading-relaxed">
+                        {record.immunizationStatus || 'Standard immunization schedule.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {record.lifestyleFactors && (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+                      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">
+                        Lifestyle &amp; Social History
+                      </span>
+                      <p className="text-xs text-slate-700 leading-relaxed">
+                        {record.lifestyleFactors}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 4: Admin & Insurance */}
+              {activeTab === 'admin' && (
+                <div className="space-y-4 animate-fade-in">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                      <h4 className="text-xs font-semibold text-blue-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <User className="h-3.5 w-3.5" /> Patient Contact Details
+                      </h4>
+                      <div className="space-y-2 text-xs">
+                        <div>
+                          <span className="text-slate-500 block">Phone:</span>
+                          <span className="text-slate-800 font-medium">{record.phone || 'Not provided'}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 block">Email:</span>
+                          <span className="text-slate-800 font-medium">{record.email || record.ownerEmail}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 block">Residential Address:</span>
+                          <span className="text-slate-800 font-medium">{record.address || 'Not provided'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                      <h4 className="text-xs font-semibold text-rose-600 uppercase tracking-wider flex items-center gap-1.5">
+                        <Heart className="h-3.5 w-3.5" /> Emergency Contact
+                      </h4>
+                      <div className="space-y-2 text-xs">
+                        <div>
+                          <span className="text-slate-500 block">Name:</span>
+                          <span className="text-slate-800 font-medium">{record.emergencyContactName || 'Not recorded'}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 block">Relationship:</span>
+                          <span className="text-slate-800 font-medium">{record.emergencyContactRelationship || '—'}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 block">Emergency Phone:</span>
+                          <span className="text-slate-800 font-medium">{record.emergencyContactPhone || '—'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                    <h4 className="text-xs font-semibold text-blue-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <Building className="h-3.5 w-3.5" /> Insurance &amp; Billing Policy
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                      <div>
+                        <span className="text-slate-500 block">Provider:</span>
+                        <span className="text-slate-800 font-medium">{record.insuranceProvider || 'None'}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block">Policy / Member ID:</span>
+                        <span className="font-mono text-slate-800 font-medium">{record.insurancePolicyNumber || '—'}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block">Group Number:</span>
+                        <span className="font-mono text-slate-800 font-medium">{record.insuranceGroupNumber || '—'}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
-              <div>
-                <span className="text-xs font-semibold text-slate-400 flex items-center gap-1.5 mb-1">
-                  <FileText className="h-3.5 w-3.5 text-brand-400" /> Clinical Medical Notes
-                </span>
-                <div className="p-3 bg-surface rounded-xl border border-slate-800 text-slate-200 whitespace-pre-wrap font-mono text-xs leading-relaxed">
-                  {record.shredded ? '[SHREDDED]' : record.medicalNotes || 'No notes attached.'}
+              {/* TAB 5: Documents */}
+              {activeTab === 'documents' && (
+                <div className="space-y-4 animate-fade-in">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      Attached Diagnostic Reports &amp; Imaging
+                    </h4>
+                    <span className="text-xs text-slate-500">
+                      {record.attachments?.length ?? 0} Encrypted Document(s)
+                    </span>
+                  </div>
+
+                  {(!record.attachments || record.attachments.length === 0) ? (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-8 text-center">
+                      <File className="mx-auto h-8 w-8 text-slate-400 mb-2" />
+                      <p className="text-xs text-slate-500 font-medium">No diagnostic documents attached to this encounter chart.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {record.attachments.map((att) => (
+                        <div
+                          key={att.id}
+                          className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50 hover:border-slate-300 transition"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 border border-blue-200 text-blue-600">
+                              <FileText className="h-4 w-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-semibold text-slate-900 truncate">{att.fileName}</p>
+                              <p className="text-[11px] text-slate-500 font-mono">
+                                {(att.fileSize / 1024).toFixed(1)} KB • {att.shredded ? 'Shredded' : 'AES-256 Encrypted'}
+                              </p>
+                            </div>
+                          </div>
+
+                          {!att.shredded && (
+                            <button
+                              onClick={() => setViewPdfAttachment(att)}
+                              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 text-xs font-medium transition border border-slate-200 shadow-sm"
+                            >
+                              <Eye className="h-3.5 w-3.5" /> View
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
+
+              {/* TAB 6: Security & KMS Audit */}
+              {activeTab === 'security' && (
+                <div className="space-y-4 animate-fade-in">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                    <h4 className="text-xs font-semibold text-emerald-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <Key className="h-3.5 w-3.5" /> Cryptographic Key Hierarchy &amp; Zero-Purge Architecture
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                      <div>
+                        <span className="text-slate-500 block">Record UUID:</span>
+                        <span className="font-mono text-slate-700">{record.id}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block">Encryption Standard:</span>
+                        <span className="font-mono text-slate-700">AES-256-GCM (Authenticated Envelope Encryption)</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block">KMS Key Lifecycle:</span>
+                        <span className="text-slate-700 font-medium">HashiCorp Vault Transit Engine (`/v1/transit`)</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block">Shredding Status:</span>
+                        <span className={`font-semibold ${record.shredded ? 'text-red-700' : 'text-emerald-700'}`}>
+                          {record.shredded ? 'DESTROYED (Irreversible Crypto-Shred)' : 'ACTIVE & VERIFIED'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Attachments */}
-            {record.attachments && record.attachments.length > 0 && (
-              <div>
-                <span className="text-xs font-semibold text-slate-400 mb-2 block">PDF Attachments</span>
-                <div className="flex flex-wrap gap-2">
-                  {record.attachments.map((att) => (
-                    <button
-                      key={att.id}
-                      onClick={() => {
-                        onClose();
-                        onViewPdf(record.id, att);
-                      }}
-                      className="px-3 py-1.5 rounded-lg bg-brand-950/60 border border-brand-700/60 text-brand-300 hover:text-white hover:bg-brand-900/80 text-xs flex items-center gap-2 font-mono"
-                    >
-                      <File className="h-3.5 w-3.5 text-brand-400" />
-                      <span>{att.fileName}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Modal Footer */}
+            <div className="flex items-center justify-between px-6 py-3 border-t border-slate-200 bg-slate-50/90 text-xs text-slate-500">
+              <span>Created: {new Date(record.createdAt).toLocaleString()}</span>
+              <button
+                onClick={onClose}
+                className="px-4 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-medium transition shadow-sm"
+              >
+                Close Chart
+              </button>
+            </div>
           </div>
-        )}
-      </div>
-    </div>
+        </div>,
+        document.body
+      )}
+
+      {/* PDF Modal if active */}
+      {viewPdfAttachment && (
+        <PdfViewerModal
+          recordId={record.id}
+          attachment={viewPdfAttachment}
+          onClose={() => setViewPdfAttachment(null)}
+        />
+      )}
+    </>
   );
 }

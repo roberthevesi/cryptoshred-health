@@ -5,6 +5,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
+import PatientDetailPage from './pages/PatientDetailPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -31,6 +32,15 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <DashboardPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/patients/:patientId"
+              element={
+                <ProtectedRoute>
+                  <PatientDetailPage />
                 </ProtectedRoute>
               }
             />

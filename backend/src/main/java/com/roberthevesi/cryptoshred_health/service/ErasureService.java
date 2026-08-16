@@ -8,6 +8,7 @@ import com.roberthevesi.cryptoshred_health.model.PatientAttachment;
 import com.roberthevesi.cryptoshred_health.model.PatientRecord;
 import com.roberthevesi.cryptoshred_health.repository.EncryptionKeyRepository;
 import com.roberthevesi.cryptoshred_health.repository.PatientRecordRepository;
+import com.roberthevesi.cryptoshred_health.repository.PatientRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -43,6 +44,7 @@ public class ErasureService {
     private final PatientRecordCacheService patientRecordCacheService;
     private final ProofSigningService proofSigningService;
     private final MerkleTreeService merkleTreeService;
+    private final PatientRepository patientRepository;
 
     @Transactional
     public VerifiableDeletionProofDto forgetPatient(UUID patientRecordId, String requestedBy) {
@@ -108,6 +110,26 @@ public class ErasureService {
                 .patientName(record.getPatientName())
                 .timestamp(timestamp)
                 .build());
+
+        // Step 4.5: Anonymise patient in new table if exists
+        try {
+            if (record.getMrn() != null) {
+                patientRepository.findByPatientId(record.getMrn()).ifPresent(patient -> {
+                    patient.setFirstName("[REDACTED]");
+                    patient.setLastName("[REDACTED]");
+                    patient.setEmail(null);
+                    patient.setPhoneNumber(null);
+                    patient.setAddress(null);
+                    patient.setNhsNumber(null);
+                    patient.setDateOfBirth(null);
+                    patient.setActive(false);
+                    patientRepository.save(patient);
+                    log.info("Patient {} anonymised successfully.", record.getMrn());
+                });
+            }
+        } catch (Exception e) {
+            log.warn("Failed to anonymise patient in PatientRepository: {}", e.getMessage());
+        }
 
         // Step 5: Build immutable audit trail and hash it
         String auditTrail = buildAuditTrail(patientRecordId, requestedBy, timestamp);

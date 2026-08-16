@@ -30,11 +30,38 @@ export interface PatientRecord {
   bloodType?: string;
   bloodPressure?: string;
   heartRate?: number;
+  oxygenSaturation?: string;
+  temperature?: string;
+  respiratoryRate?: string;
+  heightCm?: string;
+  weightKg?: string;
+  bmi?: string;
+  painScore?: number;
   allergies?: string | null;
   prescriptions?: string | null;
+  chiefComplaint?: string;
+  chronicConditions?: string;
+  immunizationStatus?: string;
+  lifestyleFactors?: string;
+  followUpDate?: string;
   diagnosis: string | null;
   medicalNotes: string | null;
+  soapSubjective?: string;
+  soapObjective?: string;
+  soapAssessment?: string;
+  soapPlan?: string;
   encryptedDataBlob: string | null;
+  attendingDoctor?: string;
+  department?: string;
+  insuranceProvider?: string;
+  insurancePolicyNumber?: string;
+  insuranceGroupNumber?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  emergencyContactName?: string;
+  emergencyContactRelationship?: string;
+  emergencyContactPhone?: string;
   shredded: boolean;
   ownerEmail: string;
   attachments?: PatientAttachment[];
@@ -48,12 +75,39 @@ export interface PatientRecordRequest {
   dateOfBirth?: string;
   gender?: string;
   bloodType?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  emergencyContactName?: string;
+  emergencyContactRelationship?: string;
+  emergencyContactPhone?: string;
+  attendingDoctor?: string;
+  department?: string;
+  insuranceProvider?: string;
+  insurancePolicyNumber?: string;
+  insuranceGroupNumber?: string;
   bloodPressure?: string;
   heartRate?: number;
+  respiratoryRate?: string;
+  temperature?: string;
+  oxygenSaturation?: string;
+  heightCm?: string;
+  weightKg?: string;
+  bmi?: string;
+  painScore?: number;
   allergies?: string;
   prescriptions?: string;
+  chiefComplaint?: string;
+  chronicConditions?: string;
+  immunizationStatus?: string;
+  lifestyleFactors?: string;
+  followUpDate?: string;
   diagnosis: string;
   medicalNotes: string;
+  soapSubjective?: string;
+  soapObjective?: string;
+  soapAssessment?: string;
+  soapPlan?: string;
   encryptedDataBlob?: string;
 }
 
@@ -88,4 +142,59 @@ export interface ProofVerificationResponse {
 export interface ApiError {
   message: string;
   status: number;
+}
+
+export interface GP {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber: string;
+  gmcNumber: string;
+  specialisation: string;
+  practiceName: string;
+  isActive?: boolean;
+  active?: boolean;
+  createdAt: string;
+}
+
+export interface Patient {
+  id: string;
+  patientId: string;
+  firstName: string;
+  lastName: string;
+  dateOfBirth: string;
+  gender: string;
+  email: string;
+  phoneNumber: string;
+  address: string;
+  nhsNumber?: string;
+  gp?: GP;
+  isActive?: boolean;
+  active?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PatientRequest {
+  patientId: string;
+  firstName: string;
+  lastName: string;
+  dateOfBirth?: string;
+  gender?: string;
+  email?: string;
+  phoneNumber?: string;
+  address?: string;
+  nhsNumber?: string;
+  gpId?: string;
+}
+
+export interface GpRequest {
+  firstName: string;
+  lastName: string;
+  email?: string;
+  phoneNumber?: string;
+  gmcNumber: string;
+  specialisation?: string;
+  practiceName?: string;
 }
