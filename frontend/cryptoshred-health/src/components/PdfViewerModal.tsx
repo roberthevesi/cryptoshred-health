@@ -54,26 +54,30 @@ export default function PdfViewerModal({ recordId, attachment, onClose }: Props)
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="glass-card w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden animate-slide-up border border-slate-700 shadow-2xl">
+      <div className="w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden animate-slide-up bg-white border border-slate-200 shadow-2xl rounded-2xl">
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700/80 bg-surface">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50/80">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600/20 ring-1 ring-brand-500/30">
-              <FileText className="h-5 w-5 text-brand-400" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 ring-1 ring-blue-200">
+              <FileText className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-white text-base flex items-center gap-2">
+              <h3 className="font-semibold text-slate-900 text-base flex items-center gap-2">
                 {attachment.fileName}
                 {attachment.shredded ? (
-                  <span className="badge-shredded">SHREDDED</span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200">
+                    SHREDDED
+                  </span>
                 ) : (
-                  <span className="badge-active">AES-256 DECRYPTED</span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    AES-256 DECRYPTED
+                  </span>
                 )}
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500">
                 {formatSize(attachment.fileSize)} • Uploaded {new Date(attachment.createdAt).toLocaleDateString()}
               </p>
             </div>
@@ -84,49 +88,49 @@ export default function PdfViewerModal({ recordId, attachment, onClose }: Props)
               <a
                 href={fileUrl}
                 download={attachment.fileName}
-                className="btn-ghost text-xs px-3 py-1.5 flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-medium flex items-center gap-1.5 transition"
               >
                 <Download className="h-4 w-4" /> Download
               </a>
             )}
-            <button onClick={onClose} className="btn-ghost p-2 rounded-xl text-slate-400 hover:text-white">
+            <button onClick={onClose} className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition">
               <X className="h-5 w-5" />
             </button>
           </div>
         </div>
 
         {/* Security Banner */}
-        <div className="px-6 py-2.5 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2 text-slate-300">
-            <Lock className="h-3.5 w-3.5 text-brand-400" />
+        <div className="px-6 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2 text-slate-600">
+            <Lock className="h-3.5 w-3.5 text-blue-600" />
             <span>End-to-End Key Protected Document Payload</span>
           </div>
           {attachment.shredded ? (
-            <span className="text-red-400 flex items-center gap-1 font-mono">
-              <ShieldAlert className="h-3.5 w-3.5" /> Key Material Nullified
+            <span className="text-red-700 flex items-center gap-1 font-mono">
+              <ShieldAlert className="h-3.5 w-3.5 text-red-600" /> Key Material Nullified
             </span>
           ) : (
-            <span className="text-emerald-400 flex items-center gap-1">
-              <ShieldCheck className="h-3.5 w-3.5" /> Key Validated
+            <span className="text-emerald-700 flex items-center gap-1">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> Key Validated
             </span>
           )}
         </div>
 
         {/* Body Viewer Content */}
-        <div className="flex-1 bg-slate-950 relative flex items-center justify-center p-2">
+        <div className="flex-1 bg-slate-100 relative flex items-center justify-center p-3">
           {isLoading && (
             <div className="flex flex-col items-center gap-3">
-              <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-500 border-t-transparent" />
-              <p className="text-sm text-slate-400 font-mono">Decrypting payload from storage...</p>
+              <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+              <p className="text-sm text-slate-600 font-mono">Decrypting payload from storage...</p>
             </div>
           )}
 
           {error && (
-            <div className="flex flex-col items-center gap-3 text-center max-w-md p-6 bg-red-950/40 border border-red-800/50 rounded-2xl">
-              <ShieldAlert className="h-12 w-12 text-red-400" />
-              <h4 className="text-lg font-semibold text-white">Access Unavailable</h4>
-              <p className="text-sm text-red-300/90">{error}</p>
-              <div className="mt-2 text-xs text-slate-400 font-mono bg-surface p-3 rounded-xl w-full text-left">
+            <div className="flex flex-col items-center gap-3 text-center max-w-md p-6 bg-white border border-red-200 rounded-2xl shadow-lg">
+              <ShieldAlert className="h-12 w-12 text-red-500" />
+              <h4 className="text-lg font-semibold text-slate-900">Access Unavailable</h4>
+              <p className="text-sm text-red-700">{error}</p>
+              <div className="mt-2 text-xs text-slate-600 font-mono bg-slate-50 p-3 rounded-xl w-full text-left border border-slate-200">
                 ERR_KEY_DESTROYED: Encryption key associated with this file object was invalidated.
               </div>
             </div>
@@ -136,7 +140,7 @@ export default function PdfViewerModal({ recordId, attachment, onClose }: Props)
             <iframe
               src={fileUrl}
               title={attachment.fileName}
-              className="w-full h-full rounded-xl border border-slate-800 bg-white"
+              className="w-full h-full rounded-xl border border-slate-200 bg-white"
             />
           )}
         </div>

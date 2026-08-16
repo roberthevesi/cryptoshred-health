@@ -29,31 +29,25 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col items-center justify-center px-4">
-      {/* Ambient glow */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute -top-40 -left-40 h-96 w-96 rounded-full bg-brand-600/20 blur-3xl" />
-        <div className="absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-violet-600/20 blur-3xl" />
-      </div>
-
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center px-4">
       <div className="relative w-full max-w-md animate-slide-up">
         {/* Logo */}
         <div className="mb-8 flex flex-col items-center gap-3">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-600/20 ring-1 ring-brand-500/40">
-            <ShieldCheck className="h-8 w-8 text-brand-400" />
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 ring-1 ring-blue-200">
+            <ShieldCheck className="h-8 w-8 text-blue-600" />
           </div>
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-white">CryptoShred Health</h1>
-            <p className="mt-1 text-sm text-slate-400">Secure Electronic Health Records</p>
+            <h1 className="text-2xl font-bold text-slate-900">CryptoShred Health</h1>
+            <p className="mt-1 text-sm text-slate-500">Secure Electronic Health Records</p>
           </div>
         </div>
 
         {/* Card */}
-        <div className="glass-card p-8">
-          <h2 className="mb-6 text-lg font-semibold text-white">Sign in to your account</h2>
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-card p-8">
+          <h2 className="mb-6 text-lg font-semibold text-slate-900">Sign in to your account</h2>
 
           {error && (
-            <div className="mb-5 flex items-center gap-3 rounded-xl bg-red-900/30 border border-red-700/50 px-4 py-3 text-sm text-red-400">
+            <div className="mb-5 flex items-center gap-3 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
               <AlertCircle className="h-4 w-4 shrink-0" />
               {error}
             </div>
@@ -63,7 +57,7 @@ export default function LoginPage() {
             <div>
               <label htmlFor="email" className="label">Email address</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
                   id="email"
                   type="email"
@@ -80,7 +74,7 @@ export default function LoginPage() {
             <div>
               <label htmlFor="password" className="label">Password</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
                   id="password"
                   type="password"
@@ -106,15 +100,15 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-slate-400">
+          <p className="mt-6 text-center text-sm text-slate-500">
             Don't have an account?{' '}
-            <Link to="/register" className="text-brand-400 hover:text-brand-300 font-medium transition-colors">
+            <Link to="/register" className="text-blue-600 hover:text-blue-500 font-medium transition-colors">
               Create one
             </Link>
           </p>
         </div>
 
-        <p className="mt-6 text-center text-xs text-slate-600">
+        <p className="mt-6 text-center text-xs text-slate-400">
           Protected by AES-256 Crypto-Shredding &amp; JWT Authentication
         </p>
       </div>

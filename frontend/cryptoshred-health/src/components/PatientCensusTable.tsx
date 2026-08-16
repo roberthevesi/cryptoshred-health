@@ -1,0 +1,334 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  Search,
+  UserPlus,
+  Stethoscope,
+  Building2,
+  ChevronRight,
+  ShieldCheck,
+  ShieldOff,
+  UserCog,
+  RefreshCw,
+  Phone,
+  Mail,
+} from 'lucide-react';
+import apiClient from '../lib/axios';
+import { useAuth } from '../contexts/AuthContext';
+import PatientFormModal from './PatientFormModal';
+import type { Patient, PatientRecord } from '../types';
+
+export default function PatientCensusTable() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedPatientForEdit, setSelectedPatientForEdit] = useState<Patient | null>(null);
+  const [showPatientModal, setShowPatientModal] = useState(false);
+
+  // 1. Fetch Patients from /api/patients
+  const {
+    data: patients = [],
+    isLoading: isPatientsLoading,
+    isError: isPatientsError,
+    refetch: refetchPatients,
+  } = useQuery<Patient[]>({
+    queryKey: ['patients'],
+    queryFn: () => apiClient.get<Patient[]>('/patients').then((r) => r.data),
+  });
+
+  // 2. Fetch Encounters to compute visit counts
+  const { data: records = [] } = useQuery<PatientRecord[]>({
+    queryKey: ['records'],
+    queryFn: () => apiClient.get<PatientRecord[]>('/records').then((r) => r.data),
+  });
+
+  const isDoctor = user?.role === 'DOCTOR';
+
+  const getAge = (dobString?: string) => {
+    if (!dobString) return null;
+    try {
+      const dob = new Date(dobString);
+      const diffMs = Date.now() - dob.getTime();
+      const ageDate = new Date(diffMs);
+      return Math.abs(ageDate.getUTCFullYear() - 1970);
+    } catch {
+      return null;
+    }
+  };
+
+  // Filter patients by search query
+  const filteredPatients = patients.filter((p) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    const fullName = `${p.firstName} ${p.lastName}`.toLowerCase();
+    const gpName = p.gp ? `${p.gp.firstName} ${p.gp.lastName}`.toLowerCase() : '';
+    const practice = p.gp?.practiceName?.toLowerCase() ?? '';
+    const nhs = p.nhsNumber?.toLowerCase() ?? '';
+    const id = p.patientId.toLowerCase();
+
+    return (
+      fullName.includes(q) ||
+      id.includes(q) ||
+      nhs.includes(q) ||
+      gpName.includes(q) ||
+      practice.includes(q)
+    );
+  });
+
+  if (isPatientsLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+        <p className="text-slate-500 text-sm font-mono">Loading patient directory...</p>
+      </div>
+    );
+  }
+
+  if (isPatientsError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
+        <ShieldOff className="h-10 w-10 text-red-500" />
+        <p className="text-slate-700 font-medium">Failed to load patient directory</p>
+        <button onClick={() => refetchPatients()} className="btn-ghost">
+          <RefreshCw className="h-4 w-4" /> Retry
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="space-y-4">
+        {/* Table Top Controls & Search Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              Primary Care Patient Registry
+              <span className="text-xs font-mono font-normal bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-0.5 rounded-full">
+                {patients.length} Registered Patients
+              </span>
+            </h2>
+            <p className="text-xs text-slate-500">
+              Select a patient to open their medical chart, view encounters, and record clinical visits.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Search Input */}
+            <div className="relative min-w-[240px]">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search by name, NHS #, GP..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-white border border-slate-300 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              />
+            </div>
+
+            {/* Register Patient Button (Doctors Only) */}
+            {isDoctor && (
+              <button
+                id="register-patient-census-btn"
+                onClick={() => {
+                  setSelectedPatientForEdit(null);
+                  setShowPatientModal(true);
+                }}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-sm transition shrink-0"
+              >
+                <UserPlus className="h-4 w-4" /> Register Patient (GP)
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Patients Table */}
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="border-b border-slate-200 bg-slate-50 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
+                <tr>
+                  <th className="py-3.5 pl-4 pr-2">Patient Details</th>
+                  <th className="py-3.5 px-3">Demographics</th>
+                  <th className="py-3.5 px-3">Assigned GP &amp; Surgery</th>
+                  <th className="py-3.5 px-3">Contact</th>
+                  <th className="py-3.5 px-3">Encounters</th>
+                  <th className="py-3.5 px-3">Status</th>
+                  <th className="py-3.5 pl-3 pr-4 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredPatients.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-12 text-center text-slate-500">
+                      {patients.length === 0
+                        ? 'No patients registered in the database yet. Click "Register Patient (GP)" above to add the first patient.'
+                        : 'No matching patients found in registry.'}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredPatients.map((patient) => {
+                    const age = getAge(patient.dateOfBirth);
+                    // Match historical encounters
+                    const patientEncounters = records.filter(
+                      (r) =>
+                        r.mrn === patient.patientId ||
+                        r.mrn === patient.nhsNumber ||
+                        r.patientName.toLowerCase() === `${patient.firstName} ${patient.lastName}`.toLowerCase()
+                    );
+
+                    return (
+                      <tr
+                        key={patient.id}
+                        onClick={() => navigate(`/patients/${patient.patientId}`)}
+                        className="hover:bg-blue-50/40 cursor-pointer transition-colors group"
+                      >
+                        {/* 1. Patient Details */}
+                        <td className="py-3.5 pl-4 pr-2">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 border border-blue-200 text-blue-700 font-bold text-sm group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                              {patient.firstName.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-slate-900 text-sm group-hover:text-blue-600 transition-colors">
+                                  {patient.firstName} {patient.lastName}
+                                </span>
+                                {patient.nhsNumber && (
+                                  <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                                    NHS {patient.nhsNumber}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[11px] text-slate-400 font-mono">
+                                ID: {patient.patientId}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* 2. Demographics */}
+                        <td className="py-3.5 px-3">
+                          <div className="space-y-0.5">
+                            <span className="text-slate-700 font-medium block">
+                              {patient.gender || 'Unknown'} {age ? `• ${age} yrs` : ''}
+                            </span>
+                            {patient.dateOfBirth && (
+                              <span className="text-[11px] text-slate-400 block">
+                                DOB: {patient.dateOfBirth}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* 3. Assigned GP */}
+                        <td className="py-3.5 px-3">
+                          {patient.gp ? (
+                            <div>
+                              <span className="font-medium text-slate-900 flex items-center gap-1">
+                                <Stethoscope className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                                Dr. {patient.gp.firstName} {patient.gp.lastName}
+                              </span>
+                              <span className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
+                                <Building2 className="h-3 w-3 text-slate-400" />
+                                {patient.gp.practiceName || `GMC: ${patient.gp.gmcNumber}`}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 italic text-xs">Unassigned</span>
+                          )}
+                        </td>
+
+                        {/* 4. Contact */}
+                        <td className="py-3.5 px-3">
+                          <div className="space-y-0.5 text-[11px]">
+                            {patient.phoneNumber && (
+                              <div className="text-slate-700 flex items-center gap-1">
+                                <Phone className="h-3 w-3 text-slate-400" />
+                                {patient.phoneNumber}
+                              </div>
+                            )}
+                            {patient.email && (
+                              <div className="text-slate-500 truncate max-w-[150px] flex items-center gap-1">
+                                <Mail className="h-3 w-3 text-slate-400" />
+                                {patient.email}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* 5. Encounters */}
+                        <td className="py-3.5 px-3">
+                          <span className="inline-flex items-center gap-1 font-semibold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md text-[11px]">
+                            {patientEncounters.length} visit(s)
+                          </span>
+                        </td>
+
+                        {/* 6. Status */}
+                        <td className="py-3.5 px-3">
+                          {patient.isActive !== false && patient.active !== false ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-semibold">
+                              <ShieldCheck className="h-3 w-3" /> Active
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-50 border border-red-200 text-red-700 text-[10px] font-semibold">
+                              <ShieldOff className="h-3 w-3" /> Inactive
+                            </span>
+                          )}
+                        </td>
+
+                        {/* 7. Action */}
+                        <td className="py-3.5 pl-3 pr-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              onClick={() => navigate(`/patients/${patient.patientId}`)}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-xs transition border border-blue-200"
+                            >
+                              Open Chart <ChevronRight className="h-3.5 w-3.5" />
+                            </button>
+
+                            {isDoctor && (
+                              <button
+                                onClick={() => {
+                                  setSelectedPatientForEdit(patient);
+                                  setShowPatientModal(true);
+                                }}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+                                title="Edit patient profile"
+                              >
+                                <UserCog className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* Patient Form Modal */}
+      {showPatientModal && (
+        <PatientFormModal
+          isOpen={showPatientModal}
+          patient={selectedPatientForEdit ?? undefined}
+          onClose={() => {
+            setShowPatientModal(false);
+            setSelectedPatientForEdit(null);
+          }}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ['patients'] });
+            queryClient.invalidateQueries({ queryKey: ['records'] });
+          }}
+        />
+      )}
+    </>
+  );
+}

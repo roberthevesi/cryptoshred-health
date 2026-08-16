@@ -21,9 +21,9 @@ export default {
           950: '#172554',
         },
         surface: {
-          DEFAULT: '#0f172a',
-          card:    '#1e293b',
-          hover:   '#334155',
+          DEFAULT: '#f8fafc',
+          card:    '#ffffff',
+          hover:   '#f1f5f9',
         },
         danger: {
           DEFAULT: '#ef4444',
@@ -37,13 +37,12 @@ export default {
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
       },
       boxShadow: {
-        glow: '0 0 20px rgba(59, 130, 246, 0.3)',
-        card: '0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2)',
+        card: '0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)',
+        'card-hover': '0 4px 12px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06)',
       },
       animation: {
         'fade-in':    'fadeIn 0.3s ease-out',
         'slide-up':   'slideUp 0.3s ease-out',
-        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       },
       keyframes: {
         fadeIn: {
@@ -54,9 +53,6 @@ export default {
           '0%':   { transform: 'translateY(10px)', opacity: '0' },
           '100%': { transform: 'translateY(0)',    opacity: '1' },
         },
-      },
-      backdropBlur: {
-        xs: '2px',
       },
     },
   },
