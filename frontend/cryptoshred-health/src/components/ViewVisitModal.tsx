@@ -21,22 +21,22 @@ import apiClient from '../lib/axios';
 import PatientBanner from './PatientBanner';
 import VitalsCard from './VitalsCard';
 import PdfViewerModal from './PdfViewerModal';
-import type { PatientRecord, PatientAttachment } from '../types';
+import type { PatientVisit, PatientAttachment } from '../types';
 
 interface Props {
-  recordId: string;
+  visitId: string;
   onClose: () => void;
 }
 
-type Tab = 'summary' | 'soap' | 'clinical' | 'admin' | 'documents' | 'security';
+type Tab = 'soap' | 'summary' | 'clinical' | 'admin' | 'documents' | 'security';
 
-export default function ViewRecordModal({ recordId, onClose }: Props) {
-  const [activeTab, setActiveTab] = useState<Tab>('summary');
+export default function ViewVisitModal({ visitId, onClose }: Props) {
+  const [activeTab, setActiveTab] = useState<Tab>('soap');
   const [viewPdfAttachment, setViewPdfAttachment] = useState<PatientAttachment | null>(null);
 
-  const { data: record, isLoading, isError } = useQuery<PatientRecord>({
-    queryKey: ['record', recordId],
-    queryFn: () => apiClient.get<PatientRecord>(`/records/${recordId}`).then((r) => r.data),
+  const { data: visit, isLoading, isError } = useQuery<PatientVisit>({
+    queryKey: ['visit', visitId],
+    queryFn: () => apiClient.get<PatientVisit>(`/visits/${visitId}`).then((r) => r.data),
   });
 
   if (isLoading) {
@@ -44,21 +44,21 @@ export default function ViewRecordModal({ recordId, onClose }: Props) {
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
         <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-2xl">
           <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mb-4" />
-          <p className="text-sm font-medium text-slate-700">Decrypting patient EHR record via Vault KMS...</p>
+          <p className="text-sm font-medium text-slate-700">Decrypting clinical visit via Vault KMS...</p>
         </div>
       </div>,
       document.body
     );
   }
 
-  if (isError || !record) {
+  if (isError || !visit) {
     return createPortal(
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
         <div className="w-full max-w-md rounded-2xl border border-red-200 bg-white p-6 text-center shadow-2xl">
           <ShieldAlert className="mx-auto h-12 w-12 text-red-500 mb-3" />
-          <h3 className="text-lg font-bold text-slate-900 mb-2">Record Decryption Failed</h3>
+          <h3 className="text-lg font-bold text-slate-900 mb-2">Visit Decryption Failed</h3>
           <p className="text-sm text-slate-500 mb-6">
-            Unable to load patient chart. The record may have been crypto-shredded or the Vault KMS key is inaccessible.
+            Unable to load visit chart. The visit may have been crypto-shredded or the Vault KMS key is inaccessible.
           </p>
           <button onClick={onClose} className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold">
             Close Chart
@@ -73,7 +73,7 @@ export default function ViewRecordModal({ recordId, onClose }: Props) {
     <>
       {createPortal(
         <div
-          id="view-record-modal-overlay"
+          id="view-visit-modal-overlay"
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 overflow-y-auto"
           onClick={(e) => e.target === e.currentTarget && onClose()}
         >
@@ -83,10 +83,10 @@ export default function ViewRecordModal({ recordId, onClose }: Props) {
               <div className="flex items-center gap-2">
                 <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="text-xs font-mono font-semibold uppercase tracking-wider text-slate-600">
-                  Electronic Health Record (EHR) Chart
+                  Clinical Visit Chart
                 </span>
                 <span className="text-xs font-mono px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700">
-                  {record.mrn || record.id.slice(0, 8)}
+                  {visit.mrn || visit.id.slice(0, 8)}
                 </span>
               </div>
               <button onClick={onClose} id="modal-close" className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition">
@@ -96,21 +96,11 @@ export default function ViewRecordModal({ recordId, onClose }: Props) {
 
             {/* Patient Header Banner */}
             <div className="p-6 pb-2 bg-white">
-              <PatientBanner record={record} showVitalsSummary={false} />
+              <PatientBanner record={visit} showVitalsSummary={false} />
             </div>
 
             {/* Navigation Tabs */}
             <div className="flex border-b border-slate-200 bg-slate-50 px-6 gap-2 overflow-x-auto text-xs font-medium py-2">
-              <button
-                onClick={() => setActiveTab('summary')}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
-                  activeTab === 'summary'
-                    ? 'bg-blue-600 text-white font-semibold shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
-              >
-                <Activity className="h-3.5 w-3.5" /> Clinical Summary &amp; Vitals
-              </button>
               <button
                 onClick={() => setActiveTab('soap')}
                 className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
@@ -119,7 +109,17 @@ export default function ViewRecordModal({ recordId, onClose }: Props) {
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
-                <FileText className="h-3.5 w-3.5" /> SOAP Clinical Notes
+                <FileText className="h-3.5 w-3.5" /> 1. SOAP Clinical Notes
+              </button>
+              <button
+                onClick={() => setActiveTab('summary')}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
+                  activeTab === 'summary'
+                    ? 'bg-blue-600 text-white font-semibold shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <Activity className="h-3.5 w-3.5" /> 2. Biometrics &amp; Vitals
               </button>
               <button
                 onClick={() => setActiveTab('clinical')}
@@ -129,7 +129,7 @@ export default function ViewRecordModal({ recordId, onClose }: Props) {
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
-                <Pill className="h-3.5 w-3.5" /> Meds, Allergies &amp; History
+                <Pill className="h-3.5 w-3.5" /> 3. Meds &amp; Allergies
               </button>
               <button
                 onClick={() => setActiveTab('admin')}
@@ -139,7 +139,7 @@ export default function ViewRecordModal({ recordId, onClose }: Props) {
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
-                <Building className="h-3.5 w-3.5" /> Admin &amp; Insurance
+                <Building className="h-3.5 w-3.5" /> 4. Admin &amp; Insurance
               </button>
               <button
                 onClick={() => setActiveTab('documents')}
@@ -149,7 +149,7 @@ export default function ViewRecordModal({ recordId, onClose }: Props) {
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
-                <File className="h-3.5 w-3.5" /> Documents ({record.attachments?.length ?? 0})
+                <File className="h-3.5 w-3.5" /> 5. Documents ({visit.attachments?.length ?? 0})
               </button>
               <button
                 onClick={() => setActiveTab('security')}
@@ -159,90 +159,42 @@ export default function ViewRecordModal({ recordId, onClose }: Props) {
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
-                <Key className="h-3.5 w-3.5" /> KMS Audit &amp; Proof
+                <Key className="h-3.5 w-3.5" /> 6. KMS Audit &amp; Proof
               </button>
             </div>
 
             {/* Modal Body */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-white">
-              {/* TAB 1: Clinical Summary & Vitals */}
-              {activeTab === 'summary' && (
-                <div className="space-y-5 animate-fade-in">
-                  <div>
-                    <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-                      <Activity className="h-3.5 w-3.5 text-blue-600" /> Current Biometric Telemetry
-                    </h3>
-                    <VitalsCard record={record} />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Chief Complaint & Diagnosis */}
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
-                      <h4 className="text-xs font-semibold text-blue-700 uppercase tracking-wider flex items-center gap-1.5">
-                        <FileText className="h-3.5 w-3.5" /> Encounter Overview
-                      </h4>
+              {/* TAB 1: SOAP Notes */}
+              {activeTab === 'soap' && (
+                <div className="space-y-4 animate-fade-in">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                    <h4 className="text-xs font-semibold text-blue-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <FileText className="h-3.5 w-3.5" /> Visit Overview
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <span className="text-[11px] font-medium text-slate-500 block">Chief Complaint</span>
                         <p className="text-sm font-semibold text-slate-900 mt-0.5">
-                          {record.chiefComplaint || 'Routine medical encounter'}
+                          {visit.chiefComplaint || 'Routine clinical visit'}
                         </p>
                       </div>
                       <div>
                         <span className="text-[11px] font-medium text-slate-500 block">Primary Diagnosis / ICD-10</span>
                         <p className="text-sm font-semibold text-blue-700 mt-0.5">
-                          {record.diagnosis || 'No primary diagnosis recorded'}
-                        </p>
-                      </div>
-                      {record.followUpDate && (
-                        <div>
-                          <span className="text-[11px] font-medium text-slate-500 block">Scheduled Follow-up</span>
-                          <p className="text-xs font-medium text-emerald-700 mt-0.5 flex items-center gap-1">
-                            <Calendar className="h-3.5 w-3.5" /> {record.followUpDate}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Attending Care Team */}
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
-                      <h4 className="text-xs font-semibold text-blue-700 uppercase tracking-wider flex items-center gap-1.5">
-                        <Building className="h-3.5 w-3.5" /> Care Team &amp; Facility
-                      </h4>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <span className="text-[11px] font-medium text-slate-500 block">Attending Doctor</span>
-                          <p className="text-sm font-semibold text-slate-900 mt-0.5">
-                            {record.attendingDoctor || 'Dr. Alistair Finch, MD'}
-                          </p>
-                        </div>
-                        <div>
-                          <span className="text-[11px] font-medium text-slate-500 block">Department</span>
-                          <p className="text-sm font-semibold text-slate-700 mt-0.5">
-                            {record.department || 'General Practice'}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="border-t border-slate-200 pt-3">
-                        <span className="text-[11px] font-medium text-slate-500 block">Primary Insurance</span>
-                        <p className="text-xs font-medium text-slate-700 mt-0.5">
-                          {record.insuranceProvider || 'Direct Clinical Billing'} {record.insurancePolicyNumber ? `• Policy: ${record.insurancePolicyNumber}` : ''}
+                          {visit.diagnosis || 'No primary diagnosis recorded'}
                         </p>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
 
-              {/* TAB 2: SOAP Notes */}
-              {activeTab === 'soap' && (
-                <div className="space-y-4 animate-fade-in">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
                       <span className="text-xs font-bold text-blue-700 uppercase tracking-wider block">
                         [S] Subjective History
                       </span>
                       <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
-                        {record.soapSubjective || record.medicalNotes || 'No subjective narrative recorded.'}
+                        {visit.soapSubjective || visit.medicalNotes || 'No subjective narrative recorded.'}
                       </p>
                     </div>
 
@@ -251,7 +203,7 @@ export default function ViewRecordModal({ recordId, onClose }: Props) {
                         [O] Objective Examination
                       </span>
                       <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
-                        {record.soapObjective || 'Physical examination and objective vitals recorded in biometric chart.'}
+                        {visit.soapObjective || 'Physical examination and objective vitals recorded in biometric chart.'}
                       </p>
                     </div>
 
@@ -260,7 +212,7 @@ export default function ViewRecordModal({ recordId, onClose }: Props) {
                         [A] Clinical Assessment
                       </span>
                       <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
-                        {record.soapAssessment || record.diagnosis || 'Clinical evaluation consistent with primary presentation.'}
+                        {visit.soapAssessment || visit.diagnosis || 'Clinical evaluation consistent with primary presentation.'}
                       </p>
                     </div>
 
@@ -269,21 +221,61 @@ export default function ViewRecordModal({ recordId, onClose }: Props) {
                         [P] Treatment &amp; Management Plan
                       </span>
                       <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
-                        {record.soapPlan || 'Continue active prescription regimen and monitor vitals.'}
+                        {visit.soapPlan || 'Continue active prescription regimen and monitor vitals.'}
                       </p>
                     </div>
                   </div>
 
-                  {record.medicalNotes && (
+                  {visit.medicalNotes && (
                     <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
                       <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block flex items-center gap-1.5">
                         <Lock className="h-3.5 w-3.5 text-blue-600" /> Confidential Clinical Annotations
                       </span>
                       <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
-                        {record.medicalNotes}
+                        {visit.medicalNotes}
                       </p>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* TAB 2: Biometrics & Vitals */}
+              {activeTab === 'summary' && (
+                <div className="space-y-5 animate-fade-in">
+                  <div>
+                    <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                      <Activity className="h-3.5 w-3.5 text-blue-600" /> Current Biometric Telemetry
+                    </h3>
+                    <VitalsCard record={visit} />
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                    <h4 className="text-xs font-semibold text-blue-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <Building className="h-3.5 w-3.5" /> Care Team &amp; Facility
+                    </h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <span className="text-[11px] font-medium text-slate-500 block">Attending Clinician</span>
+                        <p className="text-sm font-semibold text-slate-900 mt-0.5">
+                          {visit.attendingDoctor || 'Dr. Alistair Finch, MD'}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-[11px] font-medium text-slate-500 block">Department</span>
+                        <p className="text-sm font-semibold text-slate-700 mt-0.5">
+                          {visit.department || 'General Practice'}
+                        </p>
+                      </div>
+                    </div>
+                    {visit.followUpDate && (
+                      <div className="border-t border-slate-200 pt-3">
+                        <span className="text-[11px] font-medium text-slate-500 block">Scheduled Follow-up</span>
+                        <p className="text-xs font-medium text-emerald-700 mt-0.5 flex items-center gap-1">
+                          <Calendar className="h-3.5 w-3.5" /> {visit.followUpDate}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -295,7 +287,7 @@ export default function ViewRecordModal({ recordId, onClose }: Props) {
                       <AlertTriangle className="h-3.5 w-3.5" /> Documented Allergies &amp; Adverse Reactions
                     </h4>
                     <p className="text-sm font-medium text-slate-900">
-                      {record.allergies || 'No Known Drug Allergies (NKDA)'}
+                      {visit.allergies || 'No Known Drug Allergies (NKDA)'}
                     </p>
                   </div>
 
@@ -304,7 +296,7 @@ export default function ViewRecordModal({ recordId, onClose }: Props) {
                       <Pill className="h-3.5 w-3.5" /> Active Prescriptions &amp; Dosages
                     </h4>
                     <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed font-mono">
-                      {record.prescriptions || 'No active outpatient prescriptions recorded.'}
+                      {visit.prescriptions || 'No active outpatient prescriptions recorded.'}
                     </p>
                   </div>
 
@@ -314,7 +306,7 @@ export default function ViewRecordModal({ recordId, onClose }: Props) {
                         Chronic Conditions
                       </span>
                       <p className="text-xs text-slate-700 leading-relaxed">
-                        {record.chronicConditions || 'None documented.'}
+                        {visit.chronicConditions || 'None documented.'}
                       </p>
                     </div>
 
@@ -323,18 +315,18 @@ export default function ViewRecordModal({ recordId, onClose }: Props) {
                         Immunizations &amp; Vaccines
                       </span>
                       <p className="text-xs text-slate-700 leading-relaxed">
-                        {record.immunizationStatus || 'Standard immunization schedule.'}
+                        {visit.immunizationStatus || 'Standard immunization schedule.'}
                       </p>
                     </div>
                   </div>
 
-                  {record.lifestyleFactors && (
+                  {visit.lifestyleFactors && (
                     <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
                       <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">
                         Lifestyle &amp; Social History
                       </span>
                       <p className="text-xs text-slate-700 leading-relaxed">
-                        {record.lifestyleFactors}
+                        {visit.lifestyleFactors}
                       </p>
                     </div>
                   )}
@@ -352,15 +344,15 @@ export default function ViewRecordModal({ recordId, onClose }: Props) {
                       <div className="space-y-2 text-xs">
                         <div>
                           <span className="text-slate-500 block">Phone:</span>
-                          <span className="text-slate-800 font-medium">{record.phone || 'Not provided'}</span>
+                          <span className="text-slate-800 font-medium">{visit.phone || 'Not provided'}</span>
                         </div>
                         <div>
                           <span className="text-slate-500 block">Email:</span>
-                          <span className="text-slate-800 font-medium">{record.email || record.ownerEmail}</span>
+                          <span className="text-slate-800 font-medium">{visit.email || visit.ownerEmail}</span>
                         </div>
                         <div>
                           <span className="text-slate-500 block">Residential Address:</span>
-                          <span className="text-slate-800 font-medium">{record.address || 'Not provided'}</span>
+                          <span className="text-slate-800 font-medium">{visit.address || 'Not provided'}</span>
                         </div>
                       </div>
                     </div>
@@ -372,15 +364,15 @@ export default function ViewRecordModal({ recordId, onClose }: Props) {
                       <div className="space-y-2 text-xs">
                         <div>
                           <span className="text-slate-500 block">Name:</span>
-                          <span className="text-slate-800 font-medium">{record.emergencyContactName || 'Not recorded'}</span>
+                          <span className="text-slate-800 font-medium">{visit.emergencyContactName || 'Not recorded'}</span>
                         </div>
                         <div>
                           <span className="text-slate-500 block">Relationship:</span>
-                          <span className="text-slate-800 font-medium">{record.emergencyContactRelationship || '—'}</span>
+                          <span className="text-slate-800 font-medium">{visit.emergencyContactRelationship || '—'}</span>
                         </div>
                         <div>
                           <span className="text-slate-500 block">Emergency Phone:</span>
-                          <span className="text-slate-800 font-medium">{record.emergencyContactPhone || '—'}</span>
+                          <span className="text-slate-800 font-medium">{visit.emergencyContactPhone || '—'}</span>
                         </div>
                       </div>
                     </div>
@@ -393,15 +385,15 @@ export default function ViewRecordModal({ recordId, onClose }: Props) {
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                       <div>
                         <span className="text-slate-500 block">Provider:</span>
-                        <span className="text-slate-800 font-medium">{record.insuranceProvider || 'None'}</span>
+                        <span className="text-slate-800 font-medium">{visit.insuranceProvider || 'None'}</span>
                       </div>
                       <div>
                         <span className="text-slate-500 block">Policy / Member ID:</span>
-                        <span className="font-mono text-slate-800 font-medium">{record.insurancePolicyNumber || '—'}</span>
+                        <span className="font-mono text-slate-800 font-medium">{visit.insurancePolicyNumber || '—'}</span>
                       </div>
                       <div>
                         <span className="text-slate-500 block">Group Number:</span>
-                        <span className="font-mono text-slate-800 font-medium">{record.insuranceGroupNumber || '—'}</span>
+                        <span className="font-mono text-slate-800 font-medium">{visit.insuranceGroupNumber || '—'}</span>
                       </div>
                     </div>
                   </div>
@@ -416,18 +408,18 @@ export default function ViewRecordModal({ recordId, onClose }: Props) {
                       Attached Diagnostic Reports &amp; Imaging
                     </h4>
                     <span className="text-xs text-slate-500">
-                      {record.attachments?.length ?? 0} Encrypted Document(s)
+                      {visit.attachments?.length ?? 0} Encrypted Document(s)
                     </span>
                   </div>
 
-                  {(!record.attachments || record.attachments.length === 0) ? (
+                  {(!visit.attachments || visit.attachments.length === 0) ? (
                     <div className="rounded-xl border border-slate-200 bg-slate-50 p-8 text-center">
                       <File className="mx-auto h-8 w-8 text-slate-400 mb-2" />
-                      <p className="text-xs text-slate-500 font-medium">No diagnostic documents attached to this encounter chart.</p>
+                      <p className="text-xs text-slate-500 font-medium">No diagnostic documents attached to this visit chart.</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {record.attachments.map((att) => (
+                      {visit.attachments.map((att) => (
                         <div
                           key={att.id}
                           className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50 hover:border-slate-300 transition"
@@ -468,8 +460,8 @@ export default function ViewRecordModal({ recordId, onClose }: Props) {
                     </h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                       <div>
-                        <span className="text-slate-500 block">Record UUID:</span>
-                        <span className="font-mono text-slate-700">{record.id}</span>
+                        <span className="text-slate-500 block">Visit UUID:</span>
+                        <span className="font-mono text-slate-700">{visit.id}</span>
                       </div>
                       <div>
                         <span className="text-slate-500 block">Encryption Standard:</span>
@@ -481,8 +473,8 @@ export default function ViewRecordModal({ recordId, onClose }: Props) {
                       </div>
                       <div>
                         <span className="text-slate-500 block">Shredding Status:</span>
-                        <span className={`font-semibold ${record.shredded ? 'text-red-700' : 'text-emerald-700'}`}>
-                          {record.shredded ? 'DESTROYED (Irreversible Crypto-Shred)' : 'ACTIVE & VERIFIED'}
+                        <span className={`font-semibold ${visit.shredded ? 'text-red-700' : 'text-emerald-700'}`}>
+                          {visit.shredded ? 'DESTROYED (Irreversible Crypto-Shred)' : 'ACTIVE & VERIFIED'}
                         </span>
                       </div>
                     </div>
@@ -493,7 +485,7 @@ export default function ViewRecordModal({ recordId, onClose }: Props) {
 
             {/* Modal Footer */}
             <div className="flex items-center justify-between px-6 py-3 border-t border-slate-200 bg-slate-50/90 text-xs text-slate-500">
-              <span>Created: {new Date(record.createdAt).toLocaleString()}</span>
+              <span>Recorded: {new Date(visit.createdAt).toLocaleString()}</span>
               <button
                 onClick={onClose}
                 className="px-4 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-medium transition shadow-sm"
@@ -509,7 +501,7 @@ export default function ViewRecordModal({ recordId, onClose }: Props) {
       {/* PDF Modal if active */}
       {viewPdfAttachment && (
         <PdfViewerModal
-          recordId={record.id}
+          recordId={visit.id}
           attachment={viewPdfAttachment}
           onClose={() => setViewPdfAttachment(null)}
         />

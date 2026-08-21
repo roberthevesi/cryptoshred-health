@@ -26,18 +26,19 @@ import {
   UserCog,
   FileCheck2,
   LogOut,
+  Lock,
 } from 'lucide-react';
 import apiClient from '../lib/axios';
 import { useAuth } from '../contexts/AuthContext';
-import CreateRecordModal from '../components/CreateRecordModal';
-import ViewRecordModal from '../components/ViewRecordModal';
+import RecordVisitModal from '../components/RecordVisitModal';
+import ViewVisitModal from '../components/ViewVisitModal';
 import PatientFormModal from '../components/PatientFormModal';
 import VitalsCard from '../components/VitalsCard';
 import DeletionProofCard from '../components/DeletionProofCard';
 import VerifyProofModal from '../components/VerifyProofModal';
-import type { Patient, PatientRecord, DeletionProof } from '../types';
+import type { Patient, PatientVisit, DeletionProof } from '../types';
 
-type DetailTab = 'encounters' | 'clinical' | 'demographics' | 'compliance';
+type DetailTab = 'visits' | 'clinical' | 'demographics' | 'compliance';
 
 const ROLE_BADGE: Record<string, string> = {
   DOCTOR: 'badge-role-doctor',
@@ -51,13 +52,14 @@ export default function PatientDetailPage() {
   const { user, logout } = useAuth();
   const queryClient = useQueryClient();
 
-  const [activeTab, setActiveTab] = useState<DetailTab>('encounters');
-  const [showEncounterModal, setShowEncounterModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<DetailTab>('visits');
+  const [showVisitModal, setShowVisitModal] = useState(false);
   const [showEditPatientModal, setShowEditPatientModal] = useState(false);
-  const [selectedRecordForEdit, setSelectedRecordForEdit] = useState<PatientRecord | null>(null);
-  const [selectedRecordForView, setSelectedRecordForView] = useState<string | null>(null);
+  const [selectedVisitForEdit, setSelectedVisitForEdit] = useState<PatientVisit | null>(null);
+  const [selectedVisitForView, setSelectedVisitForView] = useState<string | null>(null);
   const [deletionProof, setDeletionProof] = useState<DeletionProof | null>(null);
   const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
+  const [erasureError, setErasureError] = useState('');
 
   // 1. Fetch Patient Master Profile
   const {
@@ -70,35 +72,67 @@ export default function PatientDetailPage() {
     enabled: !!patientId,
   });
 
-  // 2. Fetch All Encounters / Patient Records
-  const { data: allRecords = [], isLoading: isRecordsLoading } = useQuery<PatientRecord[]>({
-    queryKey: ['records'],
-    queryFn: () => apiClient.get<PatientRecord[]>('/records').then((r) => r.data),
+  // 2. Fetch All Clinical Visits
+  const { data: allVisits = [], isLoading: isVisitsLoading } = useQuery<PatientVisit[]>({
+    queryKey: ['visits'],
+    queryFn: () => apiClient.get<PatientVisit[]>('/visits').then((r) => r.data),
   });
 
-  // Filter encounters specific to this patient
+  // Filter visits specific to this patient
   const patientFullName = patient ? `${patient.firstName} ${patient.lastName}`.trim().toLowerCase() : '';
-  const patientEncounters = allRecords.filter((r) => {
+  const patientVisits = allVisits.filter((v) => {
     if (!patient) return false;
-    if (r.mrn && (r.mrn === patient.patientId || r.mrn === patient.nhsNumber)) return true;
-    if (r.patientName && r.patientName.toLowerCase() === patientFullName) return true;
+    if (v.patientId && v.patientId === patient.patientId) return true;
+    if (v.mrn && (v.mrn === patient.patientId || v.mrn === patient.nhsNumber)) return true;
+    if (v.patientName && v.patientName.toLowerCase() === patientFullName && patientFullName !== '[redacted] [redacted]') return true;
     return false;
   });
 
-  // Delete an encounter mutation
-  const deleteRecordMutation = useMutation({
-    mutationFn: (id: string) => apiClient.delete(`/records/${id}`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['records'] }),
+  // Delete a visit mutation
+  const deleteVisitMutation = useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/visits/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['visits'] });
+      queryClient.invalidateQueries({ queryKey: ['records'] });
+    },
   });
 
-  // Crypto-shred mutation
-  const erasureMutation = useMutation({
-    mutationFn: (recordId: string) =>
-      apiClient.delete<DeletionProof>(`/erasure/${recordId}/forget`).then((r) => r.data),
+  // Full Patient Crypto-Shred Mutation (Auditor Only)
+  const patientErasureMutation = useMutation({
+    mutationFn: (pid: string) =>
+      apiClient.delete<DeletionProof>(`/erasure/patients/${pid}/forget`).then((r) => r.data),
     onSuccess: (proof) => {
       setDeletionProof(proof);
+      setErasureError('');
+      queryClient.invalidateQueries({ queryKey: ['visits'] });
       queryClient.invalidateQueries({ queryKey: ['records'] });
       queryClient.invalidateQueries({ queryKey: ['patient', patientId] });
+      queryClient.invalidateQueries({ queryKey: ['patients'] });
+    },
+    onError: (err: unknown) => {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        'Patient crypto-shredding failed. Auditor authorization required.';
+      setErasureError(msg);
+    },
+  });
+
+  // Single Visit Crypto-shred mutation (Auditor Only)
+  const visitErasureMutation = useMutation({
+    mutationFn: (visitId: string) =>
+      apiClient.delete<DeletionProof>(`/erasure/visits/${visitId}/forget`).then((r) => r.data),
+    onSuccess: (proof) => {
+      setDeletionProof(proof);
+      setErasureError('');
+      queryClient.invalidateQueries({ queryKey: ['visits'] });
+      queryClient.invalidateQueries({ queryKey: ['records'] });
+      queryClient.invalidateQueries({ queryKey: ['patient', patientId] });
+    },
+    onError: (err: unknown) => {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        'Visit crypto-shredding failed. Auditor authorization required.';
+      setErasureError(msg);
     },
   });
 
@@ -121,13 +155,15 @@ export default function PatientDetailPage() {
 
   const age = getAge(patient?.dateOfBirth);
   const isDoctor = user?.role === 'DOCTOR';
-  const latestEncounter = patientEncounters.find((e) => !e.shredded);
+  const isAuditor = user?.role === 'AUDITOR';
+  const isShredded = patient?.shredded || patient?.isActive === false || patient?.active === false;
+  const latestVisit = patientVisits.find((v) => !v.shredded);
 
-  if (isPatientLoading || isRecordsLoading) {
+  if (isPatientLoading || isVisitsLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-3">
         <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-        <p className="text-sm font-medium text-slate-600">Loading patient chart &amp; encounters...</p>
+        <p className="text-sm font-medium text-slate-600">Loading patient clinical chart &amp; visits...</p>
       </div>
     );
   }
@@ -154,7 +190,7 @@ export default function PatientDetailPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* 1. Global App Header (Title, User, Role, Sign Out) */}
+      {/* 1. Global App Header */}
       <nav className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3.5">
           <div className="flex items-center gap-3">
@@ -171,7 +207,7 @@ export default function PatientDetailPage() {
 
           <div className="hidden md:flex items-center gap-2 text-xs text-slate-500">
             <Activity className="h-3.5 w-3.5 text-emerald-500" />
-            EHR Core &amp; Vault KMS Key Store Online
+            EHR Core &amp; Vault KMS Transit Engine Online
           </div>
 
           <div className="flex items-center gap-3">
@@ -214,7 +250,7 @@ export default function PatientDetailPage() {
           </div>
 
           <div className="flex items-center gap-2.5">
-            {isDoctor && (
+            {isDoctor && !isShredded && (
               <button
                 onClick={() => setShowEditPatientModal(true)}
                 className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium transition shadow-sm"
@@ -232,7 +268,9 @@ export default function PatientDetailPage() {
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             {/* Left: Avatar & Identity */}
             <div className="flex items-start gap-4">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white font-bold text-2xl shadow-sm border border-blue-500">
+              <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl text-white font-bold text-2xl shadow-sm border ${
+                isShredded ? 'bg-red-600 border-red-500' : 'bg-blue-600 border-blue-500'
+              }`}>
                 {patient.firstName.charAt(0).toUpperCase()}
               </div>
 
@@ -246,13 +284,13 @@ export default function PatientDetailPage() {
                       NHS: {patient.nhsNumber}
                     </span>
                   )}
-                  {patient.isActive !== false && patient.active !== false ? (
+                  {!isShredded ? (
                     <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700">
-                      <ShieldCheck className="h-3.5 w-3.5" /> Active Patient
+                      <ShieldCheck className="h-3.5 w-3.5" /> Active Protected Patient
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-md bg-red-50 border border-red-200 text-red-700">
-                      <ShieldOff className="h-3.5 w-3.5" /> Deactivated / Shredded
+                      <ShieldOff className="h-3.5 w-3.5" /> Crypto-Shredded (GDPR Art. 17)
                     </span>
                   )}
                 </div>
@@ -316,7 +354,7 @@ export default function PatientDetailPage() {
               ) : (
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs text-slate-500 italic">No GP assigned yet</span>
-                  {isDoctor && (
+                  {isDoctor && !isShredded && (
                     <button
                       onClick={() => setShowEditPatientModal(true)}
                       className="text-xs text-blue-600 hover:text-blue-700 font-semibold"
@@ -333,15 +371,15 @@ export default function PatientDetailPage() {
         {/* Tab Navigation */}
         <div className="flex gap-1 rounded-xl bg-slate-100 p-1 w-fit border border-slate-200 text-xs font-medium">
           <button
-            onClick={() => setActiveTab('encounters')}
+            onClick={() => setActiveTab('visits')}
             className={`flex items-center gap-2 rounded-lg px-4 py-2 transition-all ${
-              activeTab === 'encounters'
+              activeTab === 'visits'
                 ? 'bg-white text-slate-900 font-semibold shadow-sm'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <Clock className="h-3.5 w-3.5 text-blue-600" />
-            Visits &amp; Encounters ({patientEncounters.length})
+            Visits &amp; Encounters ({patientVisits.length})
           </button>
           <button
             onClick={() => setActiveTab('clinical')}
@@ -378,22 +416,22 @@ export default function PatientDetailPage() {
           </button>
         </div>
 
-        {/* TAB 1: Encounters & Visits */}
-        {activeTab === 'encounters' && (
+        {/* TAB 1: Visits & Encounters */}
+        {activeTab === 'visits' && (
           <div className="bg-white border border-slate-200 rounded-2xl shadow-card p-6 animate-fade-in space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-base font-bold text-slate-900">Encounter History &amp; Consultations</h2>
+                <h2 className="text-base font-bold text-slate-900">Clinical Visits &amp; Consultations</h2>
                 <p className="text-xs text-slate-500">
-                  Chronological record of clinic visits, diagnoses, and encrypted attachments
+                  Chronological record of patient visits, diagnoses, SOAP charts, biometrics, and encrypted attachments
                 </p>
               </div>
-              {isDoctor && (
+              {isDoctor && !isShredded && (
                 <button
                   id="record-new-visit-btn"
                   onClick={() => {
-                    setSelectedRecordForEdit(null);
-                    setShowEncounterModal(true);
+                    setSelectedVisitForEdit(null);
+                    setShowVisitModal(true);
                   }}
                   className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-sm transition"
                 >
@@ -402,18 +440,18 @@ export default function PatientDetailPage() {
               )}
             </div>
 
-            {patientEncounters.length === 0 ? (
+            {patientVisits.length === 0 ? (
               <div className="rounded-xl border border-dashed border-slate-300 p-12 text-center bg-slate-50">
                 <FileText className="mx-auto h-8 w-8 text-slate-400 mb-2" />
                 <h3 className="text-sm font-semibold text-slate-800">No clinical visits recorded yet</h3>
                 <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                  Click "Record New Visit" to document today's medical consultation, vitals, and SOAP notes.
+                  Click "Record New Visit" to document today's medical consultation, vital signs, and SOAP notes.
                 </p>
-                {isDoctor && (
+                {isDoctor && !isShredded && (
                   <button
                     onClick={() => {
-                      setSelectedRecordForEdit(null);
-                      setShowEncounterModal(true);
+                      setSelectedVisitForEdit(null);
+                      setShowVisitModal(true);
                     }}
                     className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-sm transition"
                   >
@@ -435,66 +473,66 @@ export default function PatientDetailPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {patientEncounters.map((record) => (
+                    {patientVisits.map((visit) => (
                       <tr
-                        key={record.id}
+                        key={visit.id}
                         className={`hover:bg-slate-50 transition-colors ${
-                          record.shredded ? 'opacity-60 bg-red-50/30' : ''
+                          visit.shredded || isShredded ? 'opacity-60 bg-red-50/30' : ''
                         }`}
                       >
                         {/* Visit Date */}
                         <td className="py-3.5 pl-4 pr-2">
                           <span className="font-semibold text-slate-900 block">
-                            {new Date(record.createdAt).toLocaleDateString(undefined, {
+                            {new Date(visit.createdAt).toLocaleDateString(undefined, {
                               year: 'numeric',
                               month: 'short',
                               day: 'numeric',
                             })}
                           </span>
                           <span className="text-[11px] text-slate-400">
-                            {new Date(record.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {new Date(visit.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </td>
 
                         {/* Attending Clinician */}
                         <td className="py-3.5 px-3">
                           <span className="font-medium text-slate-900 block">
-                            {record.attendingDoctor || (patient.gp ? `Dr. ${patient.gp.firstName} ${patient.gp.lastName}` : 'Dr. Alistair Finch, MD')}
+                            {visit.attendingDoctor || (patient.gp ? `Dr. ${patient.gp.firstName} ${patient.gp.lastName}` : 'Dr. Alistair Finch, MD')}
                           </span>
                           <span className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
                             <Building className="h-3 w-3 text-slate-400" />
-                            {record.department || patient.gp?.practiceName || 'General Practice'}
+                            {visit.department || patient.gp?.practiceName || 'General Practice'}
                           </span>
                         </td>
 
                         {/* Diagnosis */}
                         <td className="py-3.5 px-3 max-w-[240px]">
                           <p className="font-medium text-slate-900 truncate">
-                            {record.diagnosis || 'General Clinical Review'}
+                            {visit.diagnosis || 'General Clinical Review'}
                           </p>
-                          {record.chiefComplaint && (
+                          {visit.chiefComplaint && (
                             <p className="text-[11px] text-slate-500 truncate mt-0.5">
-                              {record.chiefComplaint}
+                              {visit.chiefComplaint}
                             </p>
                           )}
                         </td>
 
                         {/* Vitals */}
                         <td className="py-3.5 px-3">
-                          {record.shredded ? (
+                          {visit.shredded || isShredded ? (
                             <span className="text-slate-400 font-mono text-[11px]">[SHREDDED]</span>
                           ) : (
                             <div className="space-y-0.5">
-                              {record.bloodPressure && (
+                              {visit.bloodPressure && (
                                 <div className="text-[11px]">
                                   <span className="text-slate-400">BP:</span>{' '}
-                                  <span className="font-mono font-semibold text-slate-900">{record.bloodPressure}</span>
+                                  <span className="font-mono font-semibold text-slate-900">{visit.bloodPressure}</span>
                                 </div>
                               )}
-                              {record.heartRate && (
+                              {visit.heartRate && (
                                 <div className="text-[11px]">
                                   <span className="text-slate-400">HR:</span>{' '}
-                                  <span className="font-mono text-rose-600 font-semibold">{record.heartRate} bpm</span>
+                                  <span className="font-mono text-rose-600 font-semibold">{visit.heartRate} bpm</span>
                                 </div>
                               )}
                             </div>
@@ -503,18 +541,18 @@ export default function PatientDetailPage() {
 
                         {/* Security */}
                         <td className="py-3.5 px-3">
-                          {record.shredded ? (
+                          {visit.shredded || isShredded ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-50 border border-red-200 text-red-700 text-[10px] font-semibold">
                               <ShieldOff className="h-3 w-3" /> Shredded
                             </span>
                           ) : (
                             <div className="space-y-1">
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-semibold">
-                                <ShieldCheck className="h-3 w-3" /> AES-256
+                                <ShieldCheck className="h-3 w-3" /> AES-256 Envelope
                               </span>
-                              {record.attachments && record.attachments.length > 0 && (
+                              {visit.attachments && visit.attachments.length > 0 && (
                                 <span className="text-[10px] text-slate-500 block">
-                                  {record.attachments.length} PDF(s)
+                                  {visit.attachments.length} Encrypted Doc(s)
                                 </span>
                               )}
                             </div>
@@ -525,17 +563,17 @@ export default function PatientDetailPage() {
                         <td className="py-3.5 pl-3 pr-4 text-right">
                           <div className="flex items-center justify-end gap-1.5">
                             <button
-                              onClick={() => setSelectedRecordForView(record.id)}
+                              onClick={() => setSelectedVisitForView(visit.id)}
                               className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs transition border border-slate-200"
-                              title="Open encounter chart"
+                              title="Open visit chart"
                             >
                               <Eye className="h-3.5 w-3.5" /> Chart
                             </button>
-                            {isDoctor && !record.shredded && (
+                            {isDoctor && !visit.shredded && !isShredded && (
                               <button
                                 onClick={() => {
-                                  setSelectedRecordForEdit(record);
-                                  setShowEncounterModal(true);
+                                  setSelectedVisitForEdit(visit);
+                                  setShowVisitModal(true);
                                 }}
                                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
                                 title="Edit visit notes"
@@ -543,15 +581,15 @@ export default function PatientDetailPage() {
                                 <Pencil className="h-3.5 w-3.5" />
                               </button>
                             )}
-                            {isDoctor && (
+                            {isDoctor && !isShredded && (
                               <button
                                 onClick={() => {
-                                  if (confirm('Delete this encounter record?')) {
-                                    deleteRecordMutation.mutate(record.id);
+                                  if (confirm('Delete this clinical visit?')) {
+                                    deleteVisitMutation.mutate(visit.id);
                                   }
                                 }}
                                 className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-slate-100 transition"
-                                title="Delete encounter"
+                                title="Delete visit"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
@@ -570,16 +608,16 @@ export default function PatientDetailPage() {
         {/* TAB 2: Biometric Telemetry & Summary */}
         {activeTab === 'clinical' && (
           <div className="space-y-6 animate-fade-in">
-            {latestEncounter ? (
+            {latestVisit && !isShredded ? (
               <div className="bg-white border border-slate-200 rounded-2xl shadow-card p-6 space-y-4">
                 <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                  <Activity className="h-3.5 w-3.5 text-blue-600" /> Most Recent Biometrics (Recorded on {new Date(latestEncounter.createdAt).toLocaleDateString()})
+                  <Activity className="h-3.5 w-3.5 text-blue-600" /> Most Recent Biometrics (Recorded on {new Date(latestVisit.createdAt).toLocaleDateString()})
                 </h3>
-                <VitalsCard record={latestEncounter} />
+                <VitalsCard record={latestVisit} />
               </div>
             ) : (
               <div className="bg-white border border-slate-200 rounded-2xl p-6 text-center text-slate-500 text-sm">
-                No biometric vitals recorded yet.
+                {isShredded ? 'Telemetry records have been crypto-shredded.' : 'No biometric vitals recorded yet.'}
               </div>
             )}
 
@@ -590,7 +628,7 @@ export default function PatientDetailPage() {
                   <AlertTriangle className="h-3.5 w-3.5" /> Known Allergies &amp; Adverse Reactions
                 </h4>
                 <p className="text-sm font-medium text-slate-900">
-                  {latestEncounter?.allergies || 'No Known Drug Allergies (NKDA) recorded on chart.'}
+                  {isShredded ? '[SHREDDED]' : (latestVisit?.allergies || 'No Known Drug Allergies (NKDA) recorded on chart.')}
                 </p>
               </div>
 
@@ -600,7 +638,7 @@ export default function PatientDetailPage() {
                   <Pill className="h-3.5 w-3.5" /> Active Medications &amp; Prescriptions
                 </h4>
                 <p className="text-xs text-slate-700 font-mono whitespace-pre-wrap">
-                  {latestEncounter?.prescriptions || 'No active outpatient prescriptions recorded.'}
+                  {isShredded ? '[SHREDDED]' : (latestVisit?.prescriptions || 'No active outpatient prescriptions recorded.')}
                 </p>
               </div>
             </div>
@@ -612,7 +650,7 @@ export default function PatientDetailPage() {
           <div className="bg-white border border-slate-200 rounded-2xl shadow-card p-6 animate-fade-in space-y-6">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-slate-900">Master Patient Registry Details</h3>
-              {isDoctor && (
+              {isDoctor && !isShredded && (
                 <button
                   onClick={() => setShowEditPatientModal(true)}
                   className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-medium transition shadow-sm"
@@ -625,7 +663,7 @@ export default function PatientDetailPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
               <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <h4 className="font-semibold text-blue-700 uppercase tracking-wider text-[11px]">
-                  Demographics &amp; Identity
+                  Demographics &amp; Identity (Envelope Encrypted)
                 </h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -657,7 +695,7 @@ export default function PatientDetailPage() {
 
               <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <h4 className="font-semibold text-blue-700 uppercase tracking-wider text-[11px]">
-                  Contact &amp; Residence
+                  Contact &amp; Residence (Envelope Encrypted)
                 </h4>
                 <div className="space-y-3">
                   <div>
@@ -686,50 +724,113 @@ export default function PatientDetailPage() {
               <div>
                 <h3 className="font-semibold text-amber-900">GDPR Article 17 — Patient Right to be Forgotten</h3>
                 <p className="mt-1 text-sm text-amber-700">
-                  Executing crypto-shredding on this patient permanently zeros-out the AES-256 decryption keys and redacts all PII in the database.
-                  A mathematically signed cryptographic proof will be minted as a compliance certificate.
+                  Executing crypto-shredding irreversibly destroys the HashiCorp Vault KMS Transit keys protecting this patient's demographic PII and clinical visit ciphertext.
+                  A mathematically signed RSA deletion certificate with Merkle tree inclusion proof will be minted for compliance records.
                 </p>
               </div>
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-card p-6 space-y-4">
-              <h3 className="text-base font-bold text-slate-900">Patient Data Destruction Controls</h3>
-              <p className="text-xs text-slate-500">
-                Select an encounter or trigger full patient anonymisation:
-              </p>
+            {erasureError && (
+              <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                {erasureError}
+              </div>
+            )}
 
-              <div className="space-y-3">
-                {patientEncounters.map((record) => (
-                  <div
-                    key={record.id}
-                    className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50"
-                  >
-                    <div>
-                      <span className="text-xs font-semibold text-slate-900 block">
-                        Encounter: {new Date(record.createdAt).toLocaleDateString()} — {record.diagnosis || 'Clinical Chart'}
-                      </span>
-                      <span className="text-[11px] text-slate-500 font-mono">
-                        UUID: {record.id} • {record.shredded ? 'Already Shredded' : 'Active Encrypted Data'}
-                      </span>
-                    </div>
+            {/* Whole-Patient Destruction Card */}
+            <div className="bg-white border border-red-200 rounded-2xl shadow-card p-6 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <ShieldAlert className="h-5 w-5 text-red-600" />
+                    Full Patient Cryptographic Erasure
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Permanently destroys the master patient demographic key and all {patientVisits.length} linked visit keys across all storage layers.
+                  </p>
+                </div>
 
-                    {!record.shredded && (
-                      <button
-                        onClick={() => {
-                          if (confirm(`Permanently crypto-shred encounter record ${record.id}? This is irreversible.`)) {
-                            erasureMutation.mutate(record.id);
-                          }
-                        }}
-                        disabled={erasureMutation.isPending}
-                        className="btn-danger text-xs py-1.5 px-3"
-                      >
-                        <ShieldAlert className="h-3.5 w-3.5" /> Crypto-Shred Encounter
-                      </button>
-                    )}
+                {isAuditor ? (
+                  !isShredded ? (
+                    <button
+                      onClick={() => {
+                        if (confirm(`Are you certain you want to crypto-shred patient ${patient.patientId} (${patient.firstName} ${patient.lastName})? This will permanently destroy all encryption keys across Postgres, Kafka, Redis, and WORM backups.`)) {
+                          patientErasureMutation.mutate(patient.patientId);
+                        }
+                      }}
+                      disabled={patientErasureMutation.isPending}
+                      className="btn-danger shrink-0"
+                    >
+                      {patientErasureMutation.isPending ? (
+                        <div className="flex items-center gap-2">
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                          <span>Shredding All Patient Keys...</span>
+                        </div>
+                      ) : (
+                        <>
+                          <ShieldAlert className="h-4 w-4" /> Shred Entire Patient Profile
+                        </>
+                      )}
+                    </button>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-100 text-red-800 text-xs font-bold border border-red-300">
+                      <ShieldOff className="h-4 w-4" /> Patient Already Crypto-Shredded
+                    </span>
+                  )
+                ) : (
+                  <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-600 text-xs font-medium">
+                    <Lock className="h-3.5 w-3.5 text-slate-400" />
+                    <span>Auditor Role Required to Execute Erasure</span>
                   </div>
-                ))}
+                )}
               </div>
             </div>
+
+            {/* Visit Level Destruction Controls */}
+            {patientVisits.length > 0 && (
+              <div className="bg-white border border-slate-200 rounded-2xl shadow-card p-6 space-y-4">
+                <h3 className="text-sm font-bold text-slate-900">Individual Visit Key Destruction Controls</h3>
+                <p className="text-xs text-slate-500">
+                  Selectively shred specific clinical visits if required for targeted Right-to-be-Forgotten requests:
+                </p>
+
+                <div className="space-y-3">
+                  {patientVisits.map((visit) => (
+                    <div
+                      key={visit.id}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50 gap-3"
+                    >
+                      <div>
+                        <span className="text-xs font-semibold text-slate-900 block">
+                          Visit: {new Date(visit.createdAt).toLocaleDateString()} — {visit.diagnosis || 'Clinical Chart'}
+                        </span>
+                        <span className="text-[11px] text-slate-500 font-mono">
+                          UUID: {visit.id} • {visit.shredded || isShredded ? 'Shredded' : 'Active Encrypted Data'}
+                        </span>
+                      </div>
+
+                      {!visit.shredded && !isShredded && (
+                        isAuditor ? (
+                          <button
+                            onClick={() => {
+                              if (confirm(`Permanently crypto-shred visit ${visit.id}? This is irreversible.`)) {
+                                visitErasureMutation.mutate(visit.id);
+                              }
+                            }}
+                            disabled={visitErasureMutation.isPending}
+                            className="btn-danger text-xs py-1.5 px-3 shrink-0"
+                          >
+                            <ShieldAlert className="h-3.5 w-3.5" /> Crypto-Shred Visit
+                          </button>
+                        ) : (
+                          <span className="text-[11px] text-slate-400 italic">Auditor clearance required</span>
+                        )
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {deletionProof && <DeletionProofCard proof={deletionProof} />}
           </div>
@@ -737,13 +838,13 @@ export default function PatientDetailPage() {
       </main>
 
       {/* Modals */}
-      {showEncounterModal && (
-        <CreateRecordModal
+      {showVisitModal && (
+        <RecordVisitModal
           defaultPatient={patient}
-          editRecord={selectedRecordForEdit}
+          editVisit={selectedVisitForEdit}
           onClose={() => {
-            setShowEncounterModal(false);
-            setSelectedRecordForEdit(null);
+            setShowVisitModal(false);
+            setSelectedVisitForEdit(null);
           }}
         />
       )}
@@ -760,10 +861,10 @@ export default function PatientDetailPage() {
         />
       )}
 
-      {selectedRecordForView && (
-        <ViewRecordModal
-          recordId={selectedRecordForView}
-          onClose={() => setSelectedRecordForView(null)}
+      {selectedVisitForView && (
+        <ViewVisitModal
+          visitId={selectedVisitForView}
+          onClose={() => setSelectedVisitForView(null)}
         />
       )}
 

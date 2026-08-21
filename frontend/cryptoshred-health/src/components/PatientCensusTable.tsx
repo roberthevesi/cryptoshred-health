@@ -17,7 +17,7 @@ import {
 import apiClient from '../lib/axios';
 import { useAuth } from '../contexts/AuthContext';
 import PatientFormModal from './PatientFormModal';
-import type { Patient, PatientRecord } from '../types';
+import type { Patient, PatientVisit } from '../types';
 
 export default function PatientCensusTable() {
   const { user } = useAuth();
@@ -39,10 +39,10 @@ export default function PatientCensusTable() {
     queryFn: () => apiClient.get<Patient[]>('/patients').then((r) => r.data),
   });
 
-  // 2. Fetch Encounters to compute visit counts
-  const { data: records = [] } = useQuery<PatientRecord[]>({
-    queryKey: ['records'],
-    queryFn: () => apiClient.get<PatientRecord[]>('/records').then((r) => r.data),
+  // 2. Fetch Visits to compute visit counts
+  const { data: visits = [] } = useQuery<PatientVisit[]>({
+    queryKey: ['visits'],
+    queryFn: () => apiClient.get<PatientVisit[]>('/visits').then((r) => r.data),
   });
 
   const isDoctor = user?.role === 'DOCTOR';
@@ -106,13 +106,13 @@ export default function PatientCensusTable() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              Primary Care Patient Registry
+              Primary Care Patient Census
               <span className="text-xs font-mono font-normal bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-0.5 rounded-full">
                 {patients.length} Registered Patients
               </span>
             </h2>
             <p className="text-xs text-slate-500">
-              Select a patient to open their medical chart, view encounters, and record clinical visits.
+              Click any patient to open their comprehensive clinical chart file and manage their medical visits.
             </p>
           </div>
 
@@ -151,13 +151,13 @@ export default function PatientCensusTable() {
             <table className="w-full text-left text-xs">
               <thead className="border-b border-slate-200 bg-slate-50 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
                 <tr>
-                  <th className="py-3.5 pl-4 pr-2">Patient Details</th>
+                  <th className="py-3.5 pl-4 pr-2">Patient Name &amp; ID</th>
                   <th className="py-3.5 px-3">Demographics</th>
-                  <th className="py-3.5 px-3">Assigned GP &amp; Surgery</th>
+                  <th className="py-3.5 px-3">Assigned GP Surgery</th>
                   <th className="py-3.5 px-3">Contact</th>
-                  <th className="py-3.5 px-3">Encounters</th>
+                  <th className="py-3.5 px-3">Visits Count</th>
                   <th className="py-3.5 px-3">Status</th>
-                  <th className="py-3.5 pl-3 pr-4 text-right">Action</th>
+                  <th className="py-3.5 pl-3 pr-4 text-right">Patient File</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -172,13 +172,14 @@ export default function PatientCensusTable() {
                 ) : (
                   filteredPatients.map((patient) => {
                     const age = getAge(patient.dateOfBirth);
-                    // Match historical encounters
-                    const patientEncounters = records.filter(
-                      (r) =>
-                        r.mrn === patient.patientId ||
-                        r.mrn === patient.nhsNumber ||
-                        r.patientName.toLowerCase() === `${patient.firstName} ${patient.lastName}`.toLowerCase()
-                    );
+                    // Match historical visits
+                    const patientVisitsCount = visits.filter(
+                      (v) =>
+                        v.patientId === patient.patientId ||
+                        v.mrn === patient.patientId ||
+                        v.mrn === patient.nhsNumber ||
+                        v.patientName.toLowerCase() === `${patient.firstName} ${patient.lastName}`.toLowerCase()
+                    ).length;
 
                     return (
                       <tr
@@ -260,22 +261,22 @@ export default function PatientCensusTable() {
                           </div>
                         </td>
 
-                        {/* 5. Encounters */}
+                        {/* 5. Visits Count */}
                         <td className="py-3.5 px-3">
                           <span className="inline-flex items-center gap-1 font-semibold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md text-[11px]">
-                            {patientEncounters.length} visit(s)
+                            {patientVisitsCount} visit(s)
                           </span>
                         </td>
 
                         {/* 6. Status */}
                         <td className="py-3.5 px-3">
-                          {patient.isActive !== false && patient.active !== false ? (
+                          {patient.isActive !== false && patient.active !== false && !patient.shredded ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-semibold">
-                              <ShieldCheck className="h-3 w-3" /> Active
+                              <ShieldCheck className="h-3 w-3" /> Protected
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-50 border border-red-200 text-red-700 text-[10px] font-semibold">
-                              <ShieldOff className="h-3 w-3" /> Inactive
+                              <ShieldOff className="h-3 w-3" /> Shredded
                             </span>
                           )}
                         </td>
@@ -285,19 +286,19 @@ export default function PatientCensusTable() {
                           <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
                             <button
                               onClick={() => navigate(`/patients/${patient.patientId}`)}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-xs transition border border-blue-200"
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-xs transition border border-blue-200 shadow-sm"
                             >
-                              Open Chart <ChevronRight className="h-3.5 w-3.5" />
+                              Open File <ChevronRight className="h-3.5 w-3.5" />
                             </button>
 
-                            {isDoctor && (
+                            {isDoctor && !patient.shredded && (
                               <button
                                 onClick={() => {
                                   setSelectedPatientForEdit(patient);
                                   setShowPatientModal(true);
                                 }}
                                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
-                                title="Edit patient profile"
+                                title="Edit patient demographics"
                               >
                                 <UserCog className="h-3.5 w-3.5" />
                               </button>
@@ -325,7 +326,7 @@ export default function PatientCensusTable() {
           }}
           onSuccess={() => {
             queryClient.invalidateQueries({ queryKey: ['patients'] });
-            queryClient.invalidateQueries({ queryKey: ['records'] });
+            queryClient.invalidateQueries({ queryKey: ['visits'] });
           }}
         />
       )}
