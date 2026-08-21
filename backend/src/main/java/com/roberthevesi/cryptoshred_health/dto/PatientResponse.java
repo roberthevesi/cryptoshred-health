@@ -30,6 +30,8 @@ public class PatientResponse {
     @JsonProperty("isActive")
     private boolean isActive;
 
+    private boolean shredded;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

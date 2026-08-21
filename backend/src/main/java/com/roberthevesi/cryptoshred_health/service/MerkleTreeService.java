@@ -1,7 +1,12 @@
 package com.roberthevesi.cryptoshred_health.service;
 
+import com.roberthevesi.cryptoshred_health.model.MerkleNode;
+import com.roberthevesi.cryptoshred_health.repository.MerkleNodeRepository;
+import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -9,20 +14,47 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * MerkleTreeService — Maintains a binary Merkle Tree over deletion audit hashes
- * to provide non-repudiation and inclusion proofs for crypto-shredding events.
+ * backed by persistent PostgreSQL storage to guarantee non-repudiation and inclusion proofs
+ * survive server restarts.
  */
 @Service
+@RequiredArgsConstructor
 @Slf4j
 public class MerkleTreeService {
 
+    private final MerkleNodeRepository merkleNodeRepository;
     private final List<String> leaves = new ArrayList<>();
 
+    @PostConstruct
+    public synchronized void init() {
+        try {
+            List<MerkleNode> persistedNodes = merkleNodeRepository.findAllByOrderByLeafIndexAsc();
+            leaves.clear();
+            for (MerkleNode node : persistedNodes) {
+                leaves.add(node.getLeafHash());
+            }
+            log.info("Initialized MerkleTree from database. Loaded {} persisted leaves. Current root: {}",
+                    leaves.size(), getMerkleRoot());
+        } catch (Exception e) {
+            log.warn("Failed to load Merkle leaves from database during startup: {}", e.getMessage());
+        }
+    }
+
+    @Transactional
     public synchronized void addLeaf(String leafHash) {
+        int nextIndex = leaves.size();
         leaves.add(leafHash);
-        log.info("MerkleTree added leaf. Total leaves: {}, New Root: {}", leaves.size(), getMerkleRoot());
+        try {
+            merkleNodeRepository.save(new MerkleNode(nextIndex, leafHash));
+        } catch (Exception e) {
+            log.warn("Failed to persist Merkle leaf to database: {}", e.getMessage());
+        }
+        log.info("MerkleTree added leaf at index {}. Total leaves: {}, New Root: {}",
+                nextIndex, leaves.size(), getMerkleRoot());
     }
 
     public synchronized String getMerkleRoot() {
@@ -48,7 +80,7 @@ public class MerkleTreeService {
 
             List<String> nextLevel = new ArrayList<>();
             int pairIndex = (index % 2 == 0) ? index + 1 : index - 1;
-            
+
             if (pairIndex < currentLevel.size()) {
                 proofPath.add(currentLevel.get(pairIndex));
             }
@@ -67,14 +99,12 @@ public class MerkleTreeService {
     public boolean verifyInclusion(String leafHash, List<String> proofPath, String expectedRoot) {
         String currentHash = leafHash;
         for (String sibling : proofPath) {
-            // Lexicographical ordering or positional pairing for deterministic root
             if (currentHash.compareTo(sibling) <= 0) {
                 currentHash = sha256(currentHash + sibling);
             } else {
                 currentHash = sha256(sibling + currentHash);
             }
         }
-        // Also check straightforward positional hash if ordering mismatch
         if (!currentHash.equalsIgnoreCase(expectedRoot)) {
             currentHash = leafHash;
             for (String sibling : proofPath) {

@@ -49,6 +49,7 @@ pnpm-debug.log*
 
 # ── Database & Backup Dumps ────────────────────────────────────────────────
 **/backups/*.json
+**/backups/keys/
 !**/backups/.gitkeep
 pgdata/
 vaultdata/
@@ -57,5 +58,3 @@ vaultdata/
 # ── Gemini / Agent Metadata ────────────────────────────────────────────────
 .gemini/
 .knowledge/
-
-
