@@ -23,7 +23,7 @@ public class WormBackupController {
     @PreAuthorize("hasAnyRole('AUDITOR', 'DOCTOR')")
     public ResponseEntity<WormSnapshotDto> exportSnapshot() {
         WormSnapshotDto snapshot = wormBackupExporterService.exportSnapshot();
-        snapshot.setRecords(null); // Omit full data payload from export trigger response
+        snapshot.setVisits(null); // Omit full data payload from export trigger response
         return ResponseEntity.ok(snapshot);
     }
 
@@ -35,7 +35,7 @@ public class WormBackupController {
         return ResponseEntity.ok(snapshots);
     }
 
-    /** Fetches the full WORM backup snapshot payload (including record entries) for a specific snapshot file. */
+    /** Fetches the full WORM backup snapshot payload (including visit entries) for a specific snapshot file. */
     @GetMapping("/snapshots/{fileName}")
     @PreAuthorize("hasAnyRole('AUDITOR', 'DOCTOR')")
     public ResponseEntity<WormSnapshotDto> getSnapshotByFileName(@PathVariable String fileName) {
@@ -43,17 +43,21 @@ public class WormBackupController {
         return ResponseEntity.ok(snapshot);
     }
 
-
-    /** Verifies post-shred zero-purge decryption failure on an immutable WORM snapshot record. */
+    /** Verifies post-shred zero-purge decryption failure on an immutable WORM snapshot visit. */
     @PostMapping("/verify-shred")
     @PreAuthorize("hasRole('AUDITOR')")
     public ResponseEntity<Map<String, String>> verifyPostShredDecryption(
             @RequestParam String fileName,
-            @RequestParam UUID recordId) {
-        String result = wormBackupExporterService.verifyPostShredDecryptionFailure(fileName, recordId);
+            @RequestParam(required = false) UUID visitId,
+            @RequestParam(required = false) UUID recordId) {
+        UUID targetId = visitId != null ? visitId : recordId;
+        if (targetId == null) {
+            throw new IllegalArgumentException("visitId or recordId is required");
+        }
+        String result = wormBackupExporterService.verifyPostShredDecryptionFailure(fileName, targetId);
         return ResponseEntity.ok(Map.of(
                 "fileName", fileName,
-                "recordId", recordId.toString(),
+                "visitId", targetId.toString(),
                 "result", result
         ));
     }

@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/records/{recordId}/attachments")
+@RequestMapping({"/api/visits/{visitId}/attachments", "/api/records/{visitId}/attachments"})
 @RequiredArgsConstructor
 public class AttachmentController {
 
@@ -28,25 +28,25 @@ public class AttachmentController {
     @PostMapping
     @PreAuthorize("hasRole('DOCTOR')")
     public ResponseEntity<AttachmentResponse> uploadAttachment(
-            @PathVariable UUID recordId,
+            @PathVariable UUID visitId,
             @RequestParam("file") MultipartFile file,
             @AuthenticationPrincipal UserDetails currentUser) throws IOException {
 
-        AttachmentResponse response = attachmentService.uploadAttachment(recordId, file, currentUser.getUsername());
+        AttachmentResponse response = attachmentService.uploadAttachment(visitId, file, currentUser.getUsername());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping
     public ResponseEntity<List<AttachmentResponse>> getAttachments(
-            @PathVariable UUID recordId,
+            @PathVariable UUID visitId,
             @AuthenticationPrincipal UserDetails currentUser) {
 
-        return ResponseEntity.ok(attachmentService.getAttachmentsForRecord(recordId, currentUser.getUsername()));
+        return ResponseEntity.ok(attachmentService.getAttachmentsForVisit(visitId, currentUser.getUsername()));
     }
 
     @GetMapping("/{attachmentId}")
     public ResponseEntity<byte[]> downloadAttachment(
-            @PathVariable UUID recordId,
+            @PathVariable UUID visitId,
             @PathVariable UUID attachmentId,
             @AuthenticationPrincipal UserDetails currentUser) {
 

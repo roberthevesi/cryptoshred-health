@@ -1,11 +1,12 @@
 package com.roberthevesi.cryptoshred_health.service;
 
-import com.roberthevesi.cryptoshred_health.dto.PatientRecordResponse;
+import com.roberthevesi.cryptoshred_health.dto.PatientVisitResponse;
 import com.roberthevesi.cryptoshred_health.model.EncryptionKey;
-import com.roberthevesi.cryptoshred_health.model.PatientRecord;
+import com.roberthevesi.cryptoshred_health.model.PatientVisit;
 import com.roberthevesi.cryptoshred_health.model.Role;
 import com.roberthevesi.cryptoshred_health.model.User;
-import com.roberthevesi.cryptoshred_health.repository.PatientRecordRepository;
+import com.roberthevesi.cryptoshred_health.repository.PatientRepository;
+import com.roberthevesi.cryptoshred_health.repository.PatientVisitRepository;
 import com.roberthevesi.cryptoshred_health.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,32 +22,35 @@ import static org.mockito.Mockito.*;
 
 class RedisCryptoShreddingTest {
 
-    private PatientRecordRepository patientRecordRepository;
+    private PatientVisitRepository patientVisitRepository;
+    private PatientRepository patientRepository;
     private UserRepository userRepository;
     private VaultKmsService vaultKmsService;
     private EnvelopeEncryptionService envelopeEncryptionService;
     private EventLogPublisher eventLogPublisher;
-    private PatientRecordCacheService patientRecordCacheService;
-    private PatientRecordService patientRecordService;
+    private PatientVisitCacheService patientVisitCacheService;
+    private PatientVisitService patientVisitService;
 
     private User testDoctor;
 
     @BeforeEach
     void setUp() {
-        patientRecordRepository = Mockito.mock(PatientRecordRepository.class);
+        patientVisitRepository = Mockito.mock(PatientVisitRepository.class);
+        patientRepository = Mockito.mock(PatientRepository.class);
         userRepository = Mockito.mock(UserRepository.class);
         vaultKmsService = Mockito.mock(VaultKmsService.class);
         envelopeEncryptionService = new EnvelopeEncryptionService();
         eventLogPublisher = Mockito.mock(EventLogPublisher.class);
-        patientRecordCacheService = Mockito.mock(PatientRecordCacheService.class);
+        patientVisitCacheService = Mockito.mock(PatientVisitCacheService.class);
 
-        patientRecordService = new PatientRecordService(
-                patientRecordRepository,
+        patientVisitService = new PatientVisitService(
+                patientVisitRepository,
+                patientRepository,
                 userRepository,
                 vaultKmsService,
                 envelopeEncryptionService,
                 eventLogPublisher,
-                patientRecordCacheService
+                patientVisitCacheService
         );
 
         testDoctor = new User();
@@ -60,71 +64,71 @@ class RedisCryptoShreddingTest {
     @Test
     void testRedisCacheHitWithValidVaultKekSucceeds() {
         // Arrange
-        UUID recordId = UUID.randomUUID();
-        String vaultKeyName = "patient_kek_active123";
+        UUID visitId = UUID.randomUUID();
+        String vaultKeyName = "visit_kek_active123";
         String wrappedDek = "wrapped_dek_base64";
 
-        PatientRecord record = new PatientRecord();
-        record.setId(recordId);
-        record.setPatientName("John Doe");
-        record.setOwner(testDoctor);
+        PatientVisit visit = new PatientVisit();
+        visit.setId(visitId);
+        visit.setPatientName("John Doe");
+        visit.setOwner(testDoctor);
         EncryptionKey key = new EncryptionKey("keyId", vaultKeyName, wrappedDek, "iv_base64");
-        record.setEncryptionKey(key);
+        visit.setEncryptionKey(key);
 
-        PatientRecordResponse cachedResponse = PatientRecordResponse.builder()
-                .id(recordId)
+        PatientVisitResponse cachedResponse = PatientVisitResponse.builder()
+                .id(visitId)
                 .patientName("John Doe")
                 .medicalNotes("Top Secret Diagnosis")
                 .encryptedDataBlob("encrypted_blob_base64")
                 .shredded(false)
                 .build();
 
-        when(patientRecordRepository.findById(recordId)).thenReturn(Optional.of(record));
-        when(patientRecordCacheService.get(recordId)).thenReturn(cachedResponse);
+        when(patientVisitRepository.findById(visitId)).thenReturn(Optional.of(visit));
+        when(patientVisitCacheService.get(visitId)).thenReturn(cachedResponse);
         when(vaultKmsService.unwrapDek(vaultKeyName, wrappedDek)).thenReturn(new byte[32]);
 
         // Act
-        PatientRecordResponse response = patientRecordService.findById(recordId, "doctor@hospital.org");
+        PatientVisitResponse response = patientVisitService.findById(visitId, "doctor@hospital.org");
 
         // Assert
         assertNotNull(response);
         assertFalse(response.isShredded());
         assertEquals("Top Secret Diagnosis", response.getMedicalNotes());
-        verify(patientRecordCacheService, times(1)).get(recordId);
+        verify(patientVisitCacheService, times(1)).get(visitId);
         verify(vaultKmsService, times(1)).unwrapDek(vaultKeyName, wrappedDek);
     }
 
     @Test
     void testStaleRedisCacheHitTriggersZeroPurgeCryptographicInvalidationWhenVaultKekDestroyed() {
-        // Arrange — Simulate a stale record left in Redis memory post-deletion
-        UUID recordId = UUID.randomUUID();
-        String vaultKeyName = "patient_kek_shredded999";
+        // Arrange — Simulate a stale visit left in Redis memory post-deletion
+        UUID visitId = UUID.randomUUID();
+        String vaultKeyName = "visit_kek_shredded999";
         String wrappedDek = "wrapped_dek_base64";
 
-        PatientRecord record = new PatientRecord();
-        record.setId(recordId);
-        record.setPatientName("Jane Doe");
-        record.setOwner(testDoctor);
+        PatientVisit visit = new PatientVisit();
+        visit.setId(visitId);
+        visit.setPatientName("Jane Doe");
+        visit.setOwner(testDoctor);
         EncryptionKey key = new EncryptionKey("keyId", vaultKeyName, wrappedDek, "iv_base64");
-        record.setEncryptionKey(key);
+        visit.setEncryptionKey(key);
 
-        PatientRecordResponse staleCachedResponse = PatientRecordResponse.builder()
-                .id(recordId)
+        PatientVisitResponse staleCachedResponse = PatientVisitResponse.builder()
+                .id(visitId)
                 .patientName("Jane Doe")
                 .medicalNotes("Confidential Patient Notes")
                 .encryptedDataBlob("encrypted_blob_base64")
                 .shredded(false)
                 .build();
 
-        when(patientRecordRepository.findById(recordId)).thenReturn(Optional.of(record));
-        when(patientRecordCacheService.get(recordId)).thenReturn(staleCachedResponse);
+        when(patientVisitRepository.findById(visitId)).thenReturn(Optional.of(visit));
+        when(patientVisitCacheService.get(visitId)).thenReturn(staleCachedResponse);
 
         // Simulate HashiCorp Vault throwing exception because KEK was destroyed in KMS
         when(vaultKmsService.unwrapDek(eq(vaultKeyName), any()))
                 .thenThrow(new RuntimeException("Vault key invalid or destroyed: " + vaultKeyName));
 
         // Act
-        PatientRecordResponse response = patientRecordService.findById(recordId, "doctor@hospital.org");
+        PatientVisitResponse response = patientVisitService.findById(visitId, "doctor@hospital.org");
 
         // Assert — Even though stale response was in Redis RAM, reading it yields [SHREDDED]
         assertNotNull(response);
@@ -134,6 +138,6 @@ class RedisCryptoShreddingTest {
         assertNull(response.getEncryptedDataBlob());
 
         // Verify key was proactively evicted from Redis as a result
-        verify(patientRecordCacheService, times(1)).evict(recordId);
+        verify(patientVisitCacheService, times(1)).evict(visitId);
     }
 }

@@ -2,11 +2,10 @@ package com.roberthevesi.cryptoshred_health.service;
 
 import com.roberthevesi.cryptoshred_health.dto.ProofVerificationResponseDto;
 import com.roberthevesi.cryptoshred_health.dto.VerifiableDeletionProofDto;
+import com.roberthevesi.cryptoshred_health.repository.MerkleNodeRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.Mockito;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -19,35 +18,38 @@ class ProofVerificationTest {
 
     private ProofSigningService proofSigningService;
     private MerkleTreeService merkleTreeService;
+    private MerkleNodeRepository merkleNodeRepository;
 
     @BeforeEach
     void setUp() {
         proofSigningService = new ProofSigningService();
         proofSigningService.init();
-        merkleTreeService = new MerkleTreeService();
+
+        merkleNodeRepository = Mockito.mock(MerkleNodeRepository.class);
+        merkleTreeService = new MerkleTreeService(merkleNodeRepository);
     }
 
     @Test
     void testSignAndVerifyProofArtifact() {
-        UUID recordId = UUID.randomUUID();
+        UUID visitId = UUID.randomUUID();
         LocalDateTime now = LocalDateTime.now();
-        String auditTrail = "ACTION=CRYPTO_SHRED|RECORD_ID=" + recordId + "|REQUESTED_BY=auditor_test|TIMESTAMP=" + now;
+        String auditTrail = "ACTION=CRYPTO_SHRED_VISIT|VISIT_ID=" + visitId + "|REQUESTED_BY=auditor_test|STORAGE_LAYERS=POSTGRES_DB,KAFKA_EVENT_LOG,REDIS_CACHE,WORM_BACKUP|TIMESTAMP=" + now;
         String sha256Hash = MerkleTreeService.sha256(auditTrail);
 
         merkleTreeService.addLeaf(sha256Hash);
         String merkleRoot = merkleTreeService.getMerkleRoot();
         List<String> merklePath = merkleTreeService.getInclusionProof(sha256Hash);
 
-        String canonicalPayload = "RECORD_ID=" + recordId + "|TIMESTAMP=" + now + "|HASH=" + sha256Hash + "|MERKLE_ROOT=" + merkleRoot;
+        String canonicalPayload = "IDENTIFIER=" + visitId + "|TIMESTAMP=" + now + "|HASH=" + sha256Hash + "|MERKLE_ROOT=" + merkleRoot;
         String signature = proofSigningService.sign(canonicalPayload);
 
         VerifiableDeletionProofDto proof = VerifiableDeletionProofDto.builder()
                 .proofVersion("1.0")
-                .patientRecordId(recordId)
-                .vaultKeyName("vault-key-" + recordId)
+                .visitId(visitId)
+                .vaultKeyName("vault-key-" + visitId)
                 .requestedBy("auditor_test")
                 .timestamp(now)
-                .status("DELETED")
+                .status("VISIT_DELETED")
                 .coveredStorageLayers(List.of("POSTGRES_DB", "KAFKA_EVENT_LOG", "REDIS_CACHE", "WORM_BACKUP"))
                 .layerStatus(Map.of("POSTGRES_DB", "TEXT_NULLIFIED"))
                 .auditTrail(auditTrail)
@@ -58,7 +60,7 @@ class ProofVerificationTest {
                 .digitalSignature(signature)
                 .build();
 
-        ErasureService erasureService = new ErasureService(null, null, null, null, null, proofSigningService, merkleTreeService);
+        ErasureService erasureService = new ErasureService(null, null, null, null, null, null, proofSigningService, merkleTreeService);
 
         ProofVerificationResponseDto response = erasureService.verifyProofArtifact(proof);
 
@@ -70,26 +72,26 @@ class ProofVerificationTest {
 
     @Test
     void testTamperedPayloadFailsVerification() {
-        UUID recordId = UUID.randomUUID();
+        UUID visitId = UUID.randomUUID();
         LocalDateTime now = LocalDateTime.now();
-        String auditTrail = "ACTION=CRYPTO_SHRED|RECORD_ID=" + recordId + "|REQUESTED_BY=auditor_test|TIMESTAMP=" + now;
+        String auditTrail = "ACTION=CRYPTO_SHRED_VISIT|VISIT_ID=" + visitId + "|REQUESTED_BY=auditor_test|STORAGE_LAYERS=POSTGRES_DB,KAFKA_EVENT_LOG,REDIS_CACHE,WORM_BACKUP|TIMESTAMP=" + now;
         String sha256Hash = MerkleTreeService.sha256(auditTrail);
 
         merkleTreeService.addLeaf(sha256Hash);
         String merkleRoot = merkleTreeService.getMerkleRoot();
         List<String> merklePath = merkleTreeService.getInclusionProof(sha256Hash);
 
-        String canonicalPayload = "RECORD_ID=" + recordId + "|TIMESTAMP=" + now + "|HASH=" + sha256Hash + "|MERKLE_ROOT=" + merkleRoot;
+        String canonicalPayload = "IDENTIFIER=" + visitId + "|TIMESTAMP=" + now + "|HASH=" + sha256Hash + "|MERKLE_ROOT=" + merkleRoot;
         String signature = proofSigningService.sign(canonicalPayload);
 
         // Tamper with auditTrail
         VerifiableDeletionProofDto tamperedProof = VerifiableDeletionProofDto.builder()
                 .proofVersion("1.0")
-                .patientRecordId(recordId)
-                .vaultKeyName("vault-key-" + recordId)
+                .visitId(visitId)
+                .vaultKeyName("vault-key-" + visitId)
                 .requestedBy("auditor_test")
                 .timestamp(now)
-                .status("DELETED")
+                .status("VISIT_DELETED")
                 .auditTrail(auditTrail + " [TAMPERED]")
                 .auditTrailHash(sha256Hash)
                 .merkleRoot(merkleRoot)
@@ -98,7 +100,7 @@ class ProofVerificationTest {
                 .digitalSignature(signature)
                 .build();
 
-        ErasureService erasureService = new ErasureService(null, null, null, null, null, proofSigningService, merkleTreeService);
+        ErasureService erasureService = new ErasureService(null, null, null, null, null, null, proofSigningService, merkleTreeService);
 
         ProofVerificationResponseDto response = erasureService.verifyProofArtifact(tamperedProof);
 
