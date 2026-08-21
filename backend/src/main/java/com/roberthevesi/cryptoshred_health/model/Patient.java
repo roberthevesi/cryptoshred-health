@@ -1,5 +1,6 @@
 package com.roberthevesi.cryptoshred_health.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -9,6 +10,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -22,37 +25,59 @@ public class Patient {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(unique = true, nullable = false, length = 50)
+    @Column(nullable = false, unique = true)
     private String patientId;
 
-    @Column(nullable = false, length = 100)
+    @Column(nullable = false)
     private String firstName;
 
-    @Column(nullable = false, length = 100)
+    @Column(nullable = false)
     private String lastName;
 
+    @Column
     private LocalDate dateOfBirth;
 
-    @Column(length = 20)
+    @Column
     private String gender;
 
-    @Column(length = 255)
+    @Column
     private String email;
 
-    @Column(length = 20)
+    @Column
     private String phoneNumber;
 
-    @Column(length = 500)
+    @Column(columnDefinition = "TEXT")
     private String address;
 
-    @Column(unique = true, length = 20)
+    @Column
     private String nhsNumber;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "gp_id")
     private GP gp;
 
+    @Column(nullable = false)
     private boolean isActive = true;
+
+    /** Base64-encoded AES-256-GCM encrypted demographic PII payload. */
+    @Column(columnDefinition = "TEXT")
+    @JsonIgnore
+    private String encryptedDataBlob;
+
+    /** Cryptographic shredding status. */
+    @Column(nullable = false)
+    private boolean shredded = false;
+
+    /** Dedicated Vault Transit KEK for patient demographics. */
+    @ManyToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "encryption_key_id")
+    @JsonIgnore
+    private EncryptionKey encryptionKey;
+
+    /** All clinical visits for this patient. */
+    @OneToMany(mappedBy = "patient", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
+    private List<PatientVisit> visits = new ArrayList<>();
 
     @CreationTimestamp
     @Column(updatable = false)

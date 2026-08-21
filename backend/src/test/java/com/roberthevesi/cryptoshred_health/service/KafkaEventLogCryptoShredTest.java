@@ -1,7 +1,7 @@
 package com.roberthevesi.cryptoshred_health.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.roberthevesi.cryptoshred_health.dto.PatientRecordEventDto;
+import com.roberthevesi.cryptoshred_health.dto.PatientVisitEventDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -35,20 +35,20 @@ class KafkaEventLogCryptoShredTest {
         EnvelopeEncryptionService.EncryptedPayload encryptedPayload =
                 envelopeEncryptionService.encrypt(originalNotes.getBytes(StandardCharsets.UTF_8), dek);
 
-        String vaultKeyName = "patient_kek_test123";
+        String vaultKeyName = "visit_kek_test123";
         String wrappedDek = "wrapped_dek_base64_sample";
 
         when(vaultKmsService.unwrapDek(vaultKeyName, wrappedDek)).thenReturn(dek);
 
-        PatientRecordEventDto event = PatientRecordEventDto.builder()
+        PatientVisitEventDto event = PatientVisitEventDto.builder()
                 .eventId(UUID.randomUUID())
-                .patientRecordId(UUID.randomUUID())
-                .eventType("RECORD_CREATED")
+                .visitId(UUID.randomUUID())
+                .patientId("PAT-10001")
+                .eventType("VISIT_CREATED")
                 .vaultKeyName(vaultKeyName)
                 .wrappedDek(wrappedDek)
                 .iv(encryptedPayload.ivBase64())
                 .encryptedDataBlob(encryptedPayload.ciphertextBase64())
-                .patientName("John Doe")
                 .timestamp(LocalDateTime.now())
                 .build();
 
@@ -67,22 +67,22 @@ class KafkaEventLogCryptoShredTest {
         EnvelopeEncryptionService.EncryptedPayload encryptedPayload =
                 envelopeEncryptionService.encrypt(originalNotes.getBytes(StandardCharsets.UTF_8), dek);
 
-        String vaultKeyName = "patient_kek_shredded999";
+        String vaultKeyName = "visit_kek_shredded999";
         String wrappedDek = "wrapped_dek_base64_sample";
 
         // Simulate Vault returning error because key was deleted
         when(vaultKmsService.unwrapDek(anyString(), anyString()))
                 .thenThrow(new RuntimeException("Vault key invalid or destroyed"));
 
-        PatientRecordEventDto event = PatientRecordEventDto.builder()
+        PatientVisitEventDto event = PatientVisitEventDto.builder()
                 .eventId(UUID.randomUUID())
-                .patientRecordId(UUID.randomUUID())
-                .eventType("RECORD_CREATED")
+                .visitId(UUID.randomUUID())
+                .patientId("PAT-99999")
+                .eventType("VISIT_CREATED")
                 .vaultKeyName(vaultKeyName)
                 .wrappedDek(wrappedDek)
                 .iv(encryptedPayload.ivBase64())
                 .encryptedDataBlob(encryptedPayload.ciphertextBase64())
-                .patientName("Jane Smith")
                 .timestamp(LocalDateTime.now())
                 .build();
 

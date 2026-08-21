@@ -21,7 +21,9 @@ import java.util.UUID;
 public class VerifiableDeletionProofDto {
 
     private String proofVersion;
-    private UUID patientRecordId;
+    private UUID visitId;
+    private UUID patientRecordId; // legacy alias for backward compatibility
+    private String patientId;
     private String vaultKeyName;
     private String requestedBy;
     private LocalDateTime timestamp;

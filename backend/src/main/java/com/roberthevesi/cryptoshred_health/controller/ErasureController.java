@@ -23,20 +23,32 @@ public class ErasureController {
     private final ProofSigningService proofSigningService;
 
     /**
-     * Triggers the Right-to-be-Forgotten workflow for the specified patient record.
+     * Complete Patient Right-to-be-Forgotten:
+     * Destroys the patient's master demographic Vault KEK, shreds all linked clinical visits and attachments.
      * Restricted to users with the AUDITOR role.
-     *
-     * @param patientRecordId the UUID of the record to be crypto-shredded
-     * @param currentUser     the authenticated auditor
-     * @return a signed {@link VerifiableDeletionProofDto} for compliance records
      */
-    @DeleteMapping("/{patientRecordId}/forget")
+    @DeleteMapping("/patients/{patientId}/forget")
     @PreAuthorize("hasRole('AUDITOR')")
     public ResponseEntity<VerifiableDeletionProofDto> forgetPatient(
-            @PathVariable UUID patientRecordId,
+            @PathVariable String patientId,
             @AuthenticationPrincipal UserDetails currentUser) {
         VerifiableDeletionProofDto proof =
-                erasureService.forgetPatient(patientRecordId, currentUser.getUsername());
+                erasureService.forgetPatient(patientId, currentUser.getUsername());
+        return ResponseEntity.ok(proof);
+    }
+
+    /**
+     * Individual Visit Right-to-be-Forgotten:
+     * Destroys the visit's Vault KEK, nullifies clinical payload and attachments.
+     * Restricted to users with the AUDITOR role.
+     */
+    @DeleteMapping({"/visits/{visitId}/forget", "/records/{visitId}/forget", "/{visitId}/forget"})
+    @PreAuthorize("hasRole('AUDITOR')")
+    public ResponseEntity<VerifiableDeletionProofDto> forgetVisit(
+            @PathVariable UUID visitId,
+            @AuthenticationPrincipal UserDetails currentUser) {
+        VerifiableDeletionProofDto proof =
+                erasureService.forgetVisit(visitId, currentUser.getUsername());
         return ResponseEntity.ok(proof);
     }
 

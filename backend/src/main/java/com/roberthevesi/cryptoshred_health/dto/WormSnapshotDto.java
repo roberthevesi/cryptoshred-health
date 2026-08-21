@@ -25,8 +25,9 @@ public class WormSnapshotDto {
     private String fileName;
     private LocalDateTime timestamp;
     private int totalRecords;
+    private int totalVisits;
     private String sha256Fingerprint;
     private boolean readOnly;
     private long sizeBytes;
-    private List<WormRecordEntryDto> records;
+    private List<WormVisitEntryDto> visits;
 }

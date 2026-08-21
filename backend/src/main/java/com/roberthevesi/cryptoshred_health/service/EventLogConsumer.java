@@ -2,7 +2,7 @@ package com.roberthevesi.cryptoshred_health.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.roberthevesi.cryptoshred_health.config.KafkaTopicConfig;
-import com.roberthevesi.cryptoshred_health.dto.PatientRecordEventDto;
+import com.roberthevesi.cryptoshred_health.dto.PatientVisitEventDto;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,15 +24,15 @@ public class EventLogConsumer {
     private final EnvelopeEncryptionService envelopeEncryptionService;
 
     @Getter
-    private final List<PatientRecordEventDto> capturedEvents = Collections.synchronizedList(new ArrayList<>());
+    private final List<PatientVisitEventDto> capturedEvents = Collections.synchronizedList(new ArrayList<>());
 
     @KafkaListener(topics = KafkaTopicConfig.TOPIC_PATIENT_EVENTS, groupId = "cryptoshred-audit-group")
     public void consumeEvent(String message) {
         try {
-            PatientRecordEventDto event = objectMapper.readValue(message, PatientRecordEventDto.class);
+            PatientVisitEventDto event = objectMapper.readValue(message, PatientVisitEventDto.class);
             capturedEvents.add(event);
-            log.info("Kafka Consumer received event [{}] for patient record {}",
-                    event.getEventType(), event.getPatientRecordId());
+            log.info("Kafka Consumer received event [{}] for patient visit {}",
+                    event.getEventType(), event.getVisitId());
         } catch (Exception e) {
             log.error("Failed to parse incoming Kafka event log message: {}", e.getMessage());
         }
@@ -40,13 +40,8 @@ public class EventLogConsumer {
 
     /**
      * Demonstrates attempting decryption of a Kafka event log payload.
-     * <p>
-     * If the patient's Vault KEK is intact, this returns the decrypted plaintext.
-     * If the patient's KEK was destroyed via Crypto-Shredding, Vault key unwrap fails,
-     * throwing an IllegalStateException and proving the immutable Kafka log payload
-     * is permanently un-decryptable ciphertext.
      */
-    public String attemptDecryptEventPayload(PatientRecordEventDto event) {
+    public String attemptDecryptEventPayload(PatientVisitEventDto event) {
         if (event.getVaultKeyName() == null || event.getWrappedDek() == null || event.getEncryptedDataBlob() == null) {
             throw new IllegalArgumentException("Event does not contain envelope encryption payload metadata");
         }

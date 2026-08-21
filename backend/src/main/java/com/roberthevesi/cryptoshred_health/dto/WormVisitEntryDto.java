@@ -9,19 +9,17 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * WormRecordEntryDto — represents a single patient record entry
+ * WormVisitEntryDto — represents a single pseudonymized patient visit entry
  * captured inside an immutable WORM backup snapshot file.
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class WormRecordEntryDto {
-    private UUID recordId;
-    private String patientName;
+public class WormVisitEntryDto {
+    private UUID visitId;
+    private String patientId;
     private String mrn;
-    private String dateOfBirth;
-    private String gender;
     private String vaultKeyName;
     private String wrappedDek;
     private String iv;

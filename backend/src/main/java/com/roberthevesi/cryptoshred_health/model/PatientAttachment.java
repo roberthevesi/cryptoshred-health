@@ -30,18 +30,22 @@ public class PatientAttachment {
     @Column(nullable = false)
     private long fileSize;
 
-    /** Base64-encoded encrypted binary blob. Nullified upon crypto-shredding. */
+    /** Base64-encoded AES-256-GCM encrypted binary blob. Nullified upon crypto-shredding. */
     @Column(columnDefinition = "TEXT")
     @JsonIgnore
     private String encryptedDataBlob;
+
+    /** AES-GCM Initialization Vector for this attachment. */
+    @Column
+    private String iv;
 
     @Column(nullable = false)
     private boolean shredded = false;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "patient_record_id", nullable = false)
+    @JoinColumn(name = "patient_visit_id", nullable = false)
     @JsonIgnore
-    private PatientRecord patientRecord;
+    private PatientVisit patientVisit;
 
     @CreationTimestamp
     @Column(updatable = false)
