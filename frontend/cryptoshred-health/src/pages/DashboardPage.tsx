@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ShieldCheck,
-  ClipboardList,
   ShieldAlert,
   LogOut,
   ChevronDown,
@@ -14,14 +13,13 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import PatientCensusTable from '../components/PatientCensusTable';
-import PatientRecordTable from '../components/PatientRecordTable';
 import DeletionProofCard from '../components/DeletionProofCard';
 import VerifyProofModal from '../components/VerifyProofModal';
 import GpManagementPanel from '../components/GpManagementPanel';
 import apiClient from '../lib/axios';
-import type { DeletionProof, PatientRecord, Patient } from '../types';
+import type { DeletionProof, PatientVisit, Patient } from '../types';
 
-type Tab = 'patients' | 'records' | 'gp-directory' | 'compliance';
+type Tab = 'patients' | 'gp-directory' | 'compliance';
 
 const ROLE_BADGE: Record<string, string> = {
   DOCTOR: 'badge-role-doctor',
@@ -35,36 +33,60 @@ export default function DashboardPage() {
   const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState<Tab>('patients');
-  const [selectedRecordId, setSelectedRecordId] = useState('');
+  const [selectedPatientId, setSelectedPatientId] = useState('');
+  const [selectedVisitId, setSelectedVisitId] = useState('');
   const [deletionProof, setDeletionProof] = useState<DeletionProof | null>(null);
   const [eraseError, setEraseError] = useState('');
   const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
 
-  // Fetch Patients count
+  // Fetch Patients
   const { data: patients = [] } = useQuery<Patient[]>({
     queryKey: ['patients'],
     queryFn: () => apiClient.get<Patient[]>('/patients').then((r) => r.data),
   });
 
-  // Fetch Clinical Encounters
-  const { data: allRecords = [] } = useQuery<PatientRecord[]>({
-    queryKey: ['records'],
-    queryFn: () => apiClient.get<PatientRecord[]>('/records').then((r) => r.data),
+  // Fetch Clinical Visits
+  const { data: allVisits = [] } = useQuery<PatientVisit[]>({
+    queryKey: ['visits'],
+    queryFn: () => apiClient.get<PatientVisit[]>('/visits').then((r) => r.data),
   });
 
-  const erasureMutation = useMutation({
-    mutationFn: (recordId: string) =>
-      apiClient.delete<DeletionProof>(`/erasure/${recordId}/forget`).then((r) => r.data),
+  // Patient-level erasure mutation
+  const patientErasureMutation = useMutation({
+    mutationFn: (patientId: string) =>
+      apiClient.delete<DeletionProof>(`/erasure/patients/${patientId}/forget`).then((r) => r.data),
     onSuccess: (proof) => {
       setDeletionProof(proof);
       setEraseError('');
+      setSelectedPatientId('');
+      queryClient.invalidateQueries({ queryKey: ['visits'] });
       queryClient.invalidateQueries({ queryKey: ['records'] });
       queryClient.invalidateQueries({ queryKey: ['patients'] });
     },
     onError: (err: unknown) => {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        'Erasure failed. Please try again.';
+        'Patient erasure failed. Please verify auditor permissions.';
+      setEraseError(msg);
+    },
+  });
+
+  // Visit-level erasure mutation
+  const visitErasureMutation = useMutation({
+    mutationFn: (visitId: string) =>
+      apiClient.delete<DeletionProof>(`/erasure/visits/${visitId}/forget`).then((r) => r.data),
+    onSuccess: (proof) => {
+      setDeletionProof(proof);
+      setEraseError('');
+      setSelectedVisitId('');
+      queryClient.invalidateQueries({ queryKey: ['visits'] });
+      queryClient.invalidateQueries({ queryKey: ['records'] });
+      queryClient.invalidateQueries({ queryKey: ['patients'] });
+    },
+    onError: (err: unknown) => {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        'Visit erasure failed. Please try again.';
       setEraseError(msg);
     },
   });
@@ -74,14 +96,23 @@ export default function DashboardPage() {
     navigate('/login');
   };
 
-  const handleForgetMe = () => {
-    if (!selectedRecordId) return;
-    if (!confirm('This action is IRREVERSIBLE. The patient data and all attached PDFs will be permanently crypto-shredded. Proceed?')) return;
+  const handleForgetPatient = () => {
+    if (!selectedPatientId) return;
+    if (!confirm(`Are you certain you want to crypto-shred Patient ${selectedPatientId}? All demographics and clinical visit keys will be permanently destroyed across all storage layers.`)) return;
     setDeletionProof(null);
-    erasureMutation.mutate(selectedRecordId);
+    patientErasureMutation.mutate(selectedPatientId);
   };
 
-  const activeRecords = allRecords.filter((r) => !r.shredded);
+  const handleForgetVisit = () => {
+    if (!selectedVisitId) return;
+    if (!confirm('This action is IRREVERSIBLE. The clinical visit and all attached files will be permanently crypto-shredded. Proceed?')) return;
+    setDeletionProof(null);
+    visitErasureMutation.mutate(selectedVisitId);
+  };
+
+  const activePatients = patients.filter((p) => p.isActive !== false && !p.shredded);
+  const activeVisits = allVisits.filter((v) => !v.shredded);
+  const isPending = patientErasureMutation.isPending || visitErasureMutation.isPending;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -123,110 +154,85 @@ export default function DashboardPage() {
         </div>
       </nav>
 
-      {/* Main content */}
-      <main className="mx-auto max-w-7xl px-6 py-8">
-        <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-              {user?.role === 'AUDITOR'
-                ? 'Compliance & Audit Console'
-                : user?.role === 'DOCTOR'
-                ? 'Primary Care Clinical Census'
-                : 'My Health Records'}
-            </h1>
-            <p className="mt-1 text-slate-500 text-xs sm:text-sm">
-              Enterprise Electronic Health Record System with Vault KMS Crypto-Shredding
-            </p>
-          </div>
+      {/* Hero Stats */}
+      <div className="border-b border-slate-200 bg-white py-6">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">Clinical Dashboard &amp; Patient Census</h1>
+              <p className="text-xs text-slate-500 mt-1">
+                Zero-Knowledge EHR with Cryptographic Right-to-be-Forgotten (GDPR Article 17 Compliance)
+              </p>
+            </div>
 
-          {/* Quick System Metric Badges */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-            <div className="rounded-xl bg-white border border-slate-200 px-3.5 py-2">
-              <span className="text-[10px] uppercase font-semibold text-slate-500 block">Registered Patients</span>
-              <span className="font-mono text-base font-bold text-slate-900">{patients.length}</span>
-            </div>
-            <div className="rounded-xl bg-white border-l-4 border-l-emerald-500 border border-slate-200 px-3.5 py-2">
-              <span className="text-[10px] uppercase font-semibold text-emerald-600 block">Active Encounters</span>
-              <span className="font-mono text-base font-bold text-emerald-700">{activeRecords.length}</span>
-            </div>
-            <div className="rounded-xl bg-white border-l-4 border-l-blue-500 border border-slate-200 px-3.5 py-2">
-              <span className="text-[10px] uppercase font-semibold text-blue-600 block">Encrypted PDFs</span>
-              <span className="font-mono text-base font-bold text-blue-700">
-                {allRecords.reduce((acc, r) => acc + (r.attachments?.length || 0), 0)}
-              </span>
-            </div>
-            <div className="rounded-xl bg-white border-l-4 border-l-red-500 border border-slate-200 px-3.5 py-2">
-              <span className="text-[10px] uppercase font-semibold text-red-600 block">Crypto-Shredded</span>
-              <span className="font-mono text-base font-bold text-red-700">
-                {allRecords.filter((r) => r.shredded).length}
-              </span>
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-center">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                  Registered Patients
+                </span>
+                <span className="text-lg font-bold text-slate-900">{patients.length}</span>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-center">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                  Total Visits
+                </span>
+                <span className="text-lg font-bold text-blue-600">{allVisits.length}</span>
+              </div>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Tab bar */}
-        <div className="mb-6 flex flex-wrap gap-1 rounded-xl bg-slate-100 p-1 w-fit border border-slate-200 text-xs font-medium">
+      <main className="mx-auto max-w-7xl px-6 py-6 space-y-6">
+        {/* Navigation Tabs */}
+        <div className="flex gap-1 rounded-xl bg-slate-100 p-1 w-fit border border-slate-200 text-xs font-medium">
           <button
-            id="tab-patients"
             onClick={() => setActiveTab('patients')}
-            className={`flex items-center gap-2 rounded-lg px-4 py-2.5 transition-all duration-200 ${
-              activeTab === 'patients' ? 'bg-white text-slate-900 font-semibold shadow-sm' : 'text-slate-600 hover:text-slate-900'
+            className={`flex items-center gap-2 rounded-lg px-4 py-2 transition-all ${
+              activeTab === 'patients'
+                ? 'bg-white text-slate-900 font-semibold shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <Users className="h-4 w-4 text-blue-600" />
-            Patient Census &amp; Directory
-          </button>
-          <button
-            id="tab-records"
-            onClick={() => setActiveTab('records')}
-            className={`flex items-center gap-2 rounded-lg px-4 py-2.5 transition-all duration-200 ${
-              activeTab === 'records' ? 'bg-white text-slate-900 font-semibold shadow-sm' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <ClipboardList className="h-4 w-4 text-indigo-600" />
-            All Clinical Encounters
+            <Users className="h-3.5 w-3.5 text-blue-600" />
+            Patient Census Explorer ({patients.length})
           </button>
           {(user?.role === 'DOCTOR' || user?.role === 'AUDITOR') && (
             <button
-              id="tab-gp-directory"
               onClick={() => setActiveTab('gp-directory')}
-              className={`flex items-center gap-2 rounded-lg px-4 py-2.5 transition-all duration-200 ${
-                activeTab === 'gp-directory' ? 'bg-white text-slate-900 font-semibold shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              className={`flex items-center gap-2 rounded-lg px-4 py-2 transition-all ${
+                activeTab === 'gp-directory'
+                  ? 'bg-white text-slate-900 font-semibold shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <Stethoscope className="h-4 w-4 text-blue-600" />
-              GP Directory
+              <Stethoscope className="h-3.5 w-3.5 text-emerald-600" />
+              General Practitioner Directory
             </button>
           )}
           {user?.role === 'AUDITOR' && (
             <button
-              id="tab-compliance"
               onClick={() => setActiveTab('compliance')}
-              className={`flex items-center gap-2 rounded-lg px-4 py-2.5 transition-all duration-200 ${
-                activeTab === 'compliance' ? 'bg-white text-red-700 font-semibold shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              className={`flex items-center gap-2 rounded-lg px-4 py-2 transition-all ${
+                activeTab === 'compliance'
+                  ? 'bg-white text-red-700 font-semibold shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <ShieldAlert className="h-4 w-4 text-red-600" />
-              Privacy &amp; Compliance
+              <ShieldAlert className="h-3.5 w-3.5 text-red-600" />
+              GDPR Crypto-Shredding Engine
             </button>
           )}
         </div>
 
-        {/* Patients Tab (Primary Patient-First view) */}
+        {/* Patients Census Tab */}
         {activeTab === 'patients' && (
           <div className="bg-white border border-slate-200 rounded-2xl shadow-card p-6 animate-fade-in">
             <PatientCensusTable />
           </div>
         )}
 
-        {/* Records tab */}
-        {activeTab === 'records' && (
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-card p-6 animate-fade-in">
-            <PatientRecordTable />
-          </div>
-        )}
-
-        {/* GP Directory tab */}
+        {/* GP Directory Tab */}
         {activeTab === 'gp-directory' && (user?.role === 'DOCTOR' || user?.role === 'AUDITOR') && (
           <div className="bg-white border border-slate-200 rounded-2xl shadow-card p-6 animate-fade-in">
             <GpManagementPanel />
@@ -239,67 +245,126 @@ export default function DashboardPage() {
             <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 flex items-start gap-4">
               <ShieldAlert className="h-6 w-6 text-amber-600 shrink-0 mt-0.5" />
               <div>
-                <h3 className="font-semibold text-amber-900">Right to be Forgotten — Crypto-Shredding Engine</h3>
+                <h3 className="font-semibold text-amber-900">Right to be Forgotten — Verifiable Crypto-Shredding Engine</h3>
                 <p className="mt-1 text-sm text-amber-700">
-                  Executing data erasure will permanently zero-out the AES encryption key and nullify all stored PDF attachment payloads for the selected patient record.
-                  The result is mathematically irrecoverable ciphertext, fulfilling GDPR Article 17 obligations.
+                  Executing data erasure irreversibly destroys the HashiCorp Vault KMS Transit keys protecting patient demographics and clinical visit payloads.
+                  Ciphertexts across Postgres, Kafka event log, Redis cache, and immutable WORM backup files become permanently un-decryptable.
                 </p>
               </div>
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-card p-6">
-              <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                <ShieldAlert className="h-5 w-5 text-red-600" />
-                Trigger Data &amp; PDF Erasure
-              </h2>
+            {eraseError && (
+              <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                {eraseError}
+              </div>
+            )}
 
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="record-select" className="label">
-                    Select Patient Record to Shred
-                  </label>
-                  <div className="relative">
-                    <select
-                      id="record-select"
-                      value={selectedRecordId}
-                      onChange={(e) => setSelectedRecordId(e.target.value)}
-                      className="input-field appearance-none pr-10 text-sm"
-                    >
-                      <option value="">— Choose an active record —</option>
-                      {activeRecords.map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {r.patientName} ({r.mrn || 'NO-MRN'}) — {r.diagnosis || 'General Examination'} [
-                          {r.attachments?.length || 0} PDF(s)]
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  </div>
-                </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Option A: Whole-Patient Destruction */}
+              <div className="bg-white border border-red-200 rounded-2xl shadow-card p-6 space-y-4">
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <ShieldAlert className="h-5 w-5 text-red-600" />
+                  Full Patient Cryptographic Erasure
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Select a patient to destroy their demographic Transit key and all associated clinical visits.
+                </p>
 
-                {eraseError && (
-                  <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-                    {eraseError}
-                  </div>
-                )}
-
-                <button
-                  id="forget-me-btn"
-                  onClick={handleForgetMe}
-                  disabled={!selectedRecordId || erasureMutation.isPending}
-                  className="btn-danger"
-                >
-                  {erasureMutation.isPending ? (
-                    <div className="flex items-center gap-2">
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                      <span>Shredding Key &amp; Files...</span>
+                <div className="space-y-3">
+                  <div>
+                    <label htmlFor="patient-select" className="label text-xs">
+                      Select Patient Profile
+                    </label>
+                    <div className="relative">
+                      <select
+                        id="patient-select"
+                        value={selectedPatientId}
+                        onChange={(e) => setSelectedPatientId(e.target.value)}
+                        className="input-field appearance-none pr-10 text-xs"
+                      >
+                        <option value="">— Choose an active patient —</option>
+                        {activePatients.map((p) => (
+                          <option key={p.id} value={p.patientId}>
+                            {p.firstName} {p.lastName} ({p.patientId}) — NHS: {p.nhsNumber || '—'}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                     </div>
-                  ) : (
-                    <>
-                      <ShieldAlert className="h-4 w-4" /> Execute Right to be Forgotten
-                    </>
-                  )}
-                </button>
+                  </div>
+
+                  <button
+                    id="forget-patient-btn"
+                    onClick={handleForgetPatient}
+                    disabled={!selectedPatientId || isPending}
+                    className="btn-danger w-full text-xs py-2.5"
+                  >
+                    {patientErasureMutation.isPending ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        <span>Shredding All Patient Keys...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <ShieldAlert className="h-4 w-4" /> Shred Entire Patient Profile
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Option B: Visit-Level Destruction */}
+              <div className="bg-white border border-slate-200 rounded-2xl shadow-card p-6 space-y-4">
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <ShieldAlert className="h-5 w-5 text-slate-600" />
+                  Single Visit Key Destruction
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Select a specific clinical visit to shred its dedicated Transit key and file attachments.
+                </p>
+
+                <div className="space-y-3">
+                  <div>
+                    <label htmlFor="visit-select" className="label text-xs">
+                      Select Clinical Visit Chart
+                    </label>
+                    <div className="relative">
+                      <select
+                        id="visit-select"
+                        value={selectedVisitId}
+                        onChange={(e) => setSelectedVisitId(e.target.value)}
+                        className="input-field appearance-none pr-10 text-xs"
+                      >
+                        <option value="">— Choose an active visit —</option>
+                        {activeVisits.map((v) => (
+                          <option key={v.id} value={v.id}>
+                            {v.patientName} ({v.mrn || 'NO-MRN'}) — {v.diagnosis || 'Clinical Visit'} [
+                            {v.attachments?.length || 0} File(s)]
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    </div>
+                  </div>
+
+                  <button
+                    id="forget-visit-btn"
+                    onClick={handleForgetVisit}
+                    disabled={!selectedVisitId || isPending}
+                    className="btn-danger w-full text-xs py-2.5"
+                  >
+                    {visitErasureMutation.isPending ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        <span>Shredding Visit Key...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <ShieldAlert className="h-4 w-4" /> Shred Selected Clinical Visit
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
 

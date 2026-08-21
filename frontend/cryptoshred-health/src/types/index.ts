@@ -21,8 +21,9 @@ export interface PatientAttachment {
   createdAt: string;
 }
 
-export interface PatientRecord {
+export interface PatientVisit {
   id: string;
+  patientId?: string;
   patientName: string;
   mrn?: string;
   dateOfBirth?: string;
@@ -69,7 +70,9 @@ export interface PatientRecord {
   updatedAt: string;
 }
 
-export interface PatientRecordRequest {
+export type PatientRecord = PatientVisit;
+
+export interface PatientVisitRequest {
   patientName: string;
   mrn?: string;
   dateOfBirth?: string;
@@ -111,10 +114,14 @@ export interface PatientRecordRequest {
   encryptedDataBlob?: string;
 }
 
+export type PatientRecordRequest = PatientVisitRequest;
+
 export interface DeletionProof {
   proofVersion?: string;
   timestamp: string;
-  patientRecordId: string;
+  visitId?: string;
+  patientRecordId?: string;
+  patientId?: string;
   vaultKeyName?: string;
   requestedBy: string;
   sha256Hash?: string;
@@ -172,6 +179,7 @@ export interface Patient {
   gp?: GP;
   isActive?: boolean;
   active?: boolean;
+  shredded?: boolean;
   createdAt: string;
   updatedAt: string;
 }
