@@ -21,8 +21,16 @@ import java.util.UUID;
 public class EncryptionKey {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
+
+    @PrePersist
+    public void ensureId() {
+        if (this.id == null) {
+            this.id = UUID.randomUUID();
+        }
+    }
+
 
     /** Logical identifier for the key, referenced by PatientRecord. */
     @Column(unique = true, nullable = false)
