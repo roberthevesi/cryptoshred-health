@@ -37,78 +37,94 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        if (userRepository.count() > 0) {
-            log.info("Database already seeded. Skipping initial data generation.");
-            return;
+        // 1. Create Default Users if missing
+        User doctor = userRepository.findByEmail("doctor@hospital.com").orElse(null);
+        if (doctor == null) {
+            doctor = createUser("doctor@hospital.com", "Password123!", Role.DOCTOR);
+            log.info("Created default demo doctor account: doctor@hospital.com");
+        }
+        if (userRepository.findByEmail("auditor@health.gov").isEmpty()) {
+            createUser("auditor@health.gov", "Password123!", Role.AUDITOR);
+            log.info("Created default demo auditor account: auditor@health.gov");
+        }
+        if (userRepository.findByEmail("patient@health.org").isEmpty()) {
+            createUser("patient@health.org", "Password123!", Role.PATIENT);
+            log.info("Created default demo patient account: patient@health.org");
         }
 
-        log.info("Seeding initial EHR demo accounts, GPs, Patients, and Visits with Vault Transit keys...");
+        // 2. Create Sample GP Surgery Practices if missing
+        GpResponse savedGp1;
+        GpResponse savedGp2;
+        var existingGps = gpService.findAll();
+        if (existingGps.isEmpty()) {
+            GpRequest gp1 = new GpRequest();
+            gp1.setFirstName("Alistair");
+            gp1.setLastName("Finch");
+            gp1.setEmail("dr.finch@stmarys-surgery.nhs.uk");
+            gp1.setPhoneNumber("+44 20 7946 0192");
+            gp1.setGmcNumber("GMC-7412984");
+            gp1.setSpecialisation("General Practice & Family Medicine");
+            gp1.setPracticeName("St Mary's Health Centre, London");
+            savedGp1 = gpService.create(gp1);
 
-        // 1. Create Default Users
-        User doctor = createUser("doctor@hospital.com", "Password123!", Role.DOCTOR);
-        createUser("auditor@health.gov", "Password123!", Role.AUDITOR);
-        createUser("patient@health.org", "Password123!", Role.PATIENT);
+            GpRequest gp2 = new GpRequest();
+            gp2.setFirstName("Clara");
+            gp2.setLastName("Oswald");
+            gp2.setEmail("dr.oswald@bakerst-medical.nhs.uk");
+            gp2.setPhoneNumber("+44 20 7946 0833");
+            gp2.setGmcNumber("GMC-6391024");
+            gp2.setSpecialisation("Cardiology & Internal Medicine");
+            gp2.setPracticeName("Baker Street Medical Practice, London");
+            savedGp2 = gpService.create(gp2);
+            log.info("Created default GP practice directories: Dr. Finch and Dr. Oswald");
+        } else {
+            savedGp1 = existingGps.get(0);
+            savedGp2 = existingGps.size() > 1 ? existingGps.get(1) : existingGps.get(0);
+        }
 
-        // 2. Create Sample GP Surgery Practices
-        GpRequest gp1 = new GpRequest();
-        gp1.setFirstName("Alistair");
-        gp1.setLastName("Finch");
-        gp1.setEmail("dr.finch@stmarys-surgery.nhs.uk");
-        gp1.setPhoneNumber("+44 20 7946 0192");
-        gp1.setGmcNumber("GMC-7412984");
-        gp1.setSpecialisation("General Practice & Family Medicine");
-        gp1.setPracticeName("St Mary's Health Centre, London");
-        GpResponse savedGp1 = gpService.create(gp1);
+        // 3. Create Sample Master Patients & Visits if missing
+        if (patientService.findAll().isEmpty()) {
+            log.info("Seeding initial EHR demo Patients and Visits with nested Vault Transit keys (patients/{patientUuid})...");
 
-        GpRequest gp2 = new GpRequest();
-        gp2.setFirstName("Clara");
-        gp2.setLastName("Oswald");
-        gp2.setEmail("dr.oswald@bakerst-medical.nhs.uk");
-        gp2.setPhoneNumber("+44 20 7946 0833");
-        gp2.setGmcNumber("GMC-6391024");
-        gp2.setSpecialisation("Cardiology & Internal Medicine");
-        gp2.setPracticeName("Baker Street Medical Practice, London");
-        GpResponse savedGp2 = gpService.create(gp2);
+            PatientRequest p1 = new PatientRequest();
+            p1.setPatientId("PAT-10001");
+            p1.setFirstName("Eleanor");
+            p1.setLastName("Vance");
+            p1.setDateOfBirth("1985-04-12");
+            p1.setGender("Female");
+            p1.setEmail("eleanor.vance@example.com");
+            p1.setPhoneNumber("+44 7700 900142");
+            p1.setAddress("42 Hill House Lane, London NW1 4NP");
+            p1.setNhsNumber("943 476 5919");
+            p1.setGpId(savedGp1.getId());
+            PatientResponse patient1 = patientService.create(p1);
 
-        // 3. Create Sample Master Patients (Envelope Encrypted Demographics)
-        PatientRequest p1 = new PatientRequest();
-        p1.setPatientId("PAT-10001");
-        p1.setFirstName("Eleanor");
-        p1.setLastName("Vance");
-        p1.setDateOfBirth("1985-04-12");
-        p1.setGender("Female");
-        p1.setEmail("eleanor.vance@example.com");
-        p1.setPhoneNumber("+44 7700 900142");
-        p1.setAddress("42 Hill House Lane, London NW1 4NP");
-        p1.setNhsNumber("943 476 5919");
-        p1.setGpId(savedGp1.getId());
-        PatientResponse patient1 = patientService.create(p1);
+            PatientRequest p2 = new PatientRequest();
+            p2.setPatientId("PAT-10002");
+            p2.setFirstName("Marcus");
+            p2.setLastName("Thorne");
+            p2.setDateOfBirth("1992-09-25");
+            p2.setGender("Male");
+            p2.setEmail("marcus.thorne@example.com");
+            p2.setPhoneNumber("+44 7700 900881");
+            p2.setAddress("17 Kensington Church Walk, London W8 4NB");
+            p2.setNhsNumber("485 910 2384");
+            p2.setGpId(savedGp1.getId());
+            PatientResponse patient2 = patientService.create(p2);
 
-        PatientRequest p2 = new PatientRequest();
-        p2.setPatientId("PAT-10002");
-        p2.setFirstName("Marcus");
-        p2.setLastName("Thorne");
-        p2.setDateOfBirth("1992-09-25");
-        p2.setGender("Male");
-        p2.setEmail("marcus.thorne@example.com");
-        p2.setPhoneNumber("+44 7700 900881");
-        p2.setAddress("17 Kensington Church Walk, London W8 4NB");
-        p2.setNhsNumber("485 910 2384");
-        p2.setGpId(savedGp1.getId());
-        PatientResponse patient2 = patientService.create(p2);
+            PatientRequest p3 = new PatientRequest();
+            p3.setPatientId("PAT-10003");
+            p3.setFirstName("Sarah");
+            p3.setLastName("Jenkins");
+            p3.setDateOfBirth("1978-11-03");
+            p3.setGender("Female");
+            p3.setEmail("sarah.jenkins@example.com");
+            p3.setPhoneNumber("+44 7700 900319");
+            p3.setAddress("88 Bloomsbury Way, London WC1A 2SE");
+            p3.setNhsNumber("712 849 3015");
+            p3.setGpId(savedGp2.getId());
+            PatientResponse patient3 = patientService.create(p3);
 
-        PatientRequest p3 = new PatientRequest();
-        p3.setPatientId("PAT-10003");
-        p3.setFirstName("Sarah");
-        p3.setLastName("Jenkins");
-        p3.setDateOfBirth("1978-11-03");
-        p3.setGender("Female");
-        p3.setEmail("sarah.jenkins@example.com");
-        p3.setPhoneNumber("+44 7700 900319");
-        p3.setAddress("88 Bloomsbury Way, London WC1A 2SE");
-        p3.setNhsNumber("712 849 3015");
-        p3.setGpId(savedGp2.getId());
-        PatientResponse patient3 = patientService.create(p3);
 
         // 4. Create Sample Clinical Visits with full SOAP notes & attachments
         try {
@@ -202,13 +218,15 @@ public class DataInitializer implements CommandLineRunner {
 
             byte[] pdfBytes3 = generateSamplePdfContent("SARAH JENKINS", "PAT-10003", "12-Lead Electrocardiogram (ECG) - Result: Normal Sinus Rhythm");
             attachmentService.uploadAttachment(visit3.getId(), new InMemoryMultipartFile("Cardiology_ECG_Summary.pdf", "application/pdf", pdfBytes3), doctor.getEmail());
-
         } catch (Exception e) {
             log.error("Failed to seed sample patient visits: {}", e.getMessage(), e);
         }
 
         log.info("Seeding completed successfully! Demo accounts: doctor@hospital.com, auditor@health.gov, patient@health.org (Password123!)");
     }
+}
+
+
 
     private User createUser(String email, String password, Role role) {
         User user = new User();
