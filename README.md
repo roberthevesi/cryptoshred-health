@@ -7,8 +7,9 @@
 ## 🌟 Key Architecture & Features
 
 - **Clinical Primary Care EHR Workflow**: Patient Census directory linking to dedicated patient workspaces (`/patients/:patientId`) with encounter timelines, SOAP consultation notes, telemetry, and PDF attachments.
-- **Envelope Encryption with HashiCorp Vault KMS**: Every patient identity and clinical encounter generates a dedicated 256-bit AES Data Encryption Key (DEK), wrapped via nested Vault Transit Key Encryption Keys (`patients/{patientUuid}` and `patients/{patientUuid}/visits/{visitUuid}`).
+- **Envelope Encryption with HashiCorp Vault KMS**: Every patient identity and clinical encounter generates a dedicated 256-bit AES Data Encryption Key (DEK), wrapped via patient-scoped Vault Transit Key Encryption Keys (`patient_{patientUuid}` and `patient_{patientUuid}_visit_{visitUuid}`).
 - **Cryptographic Key Rotation**: Built-in zero-plaintext DEK re-wrapping (`POST /api/keys/rotate`) under newly rotated Vault KEK versions without decrypting or exposing underlying clinical records.
+
 
 - **Cryptographic Right-to-be-Forgotten (GDPR Article 17)**: Instant, permanent erasure by destroying the Vault Transit KEK, rendering ciphertext cryptographically irrecoverable, and minting digital deletion proof certificates.
 - **GP Directory & Management**: Practitioner registry with GMC license tracking and searchable assignment dropdowns.

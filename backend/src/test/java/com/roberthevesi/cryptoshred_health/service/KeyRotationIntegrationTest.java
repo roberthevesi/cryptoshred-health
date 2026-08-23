@@ -68,7 +68,7 @@ class KeyRotationIntegrationTest {
         // 2. Prepare EncryptionKey entity at version 1
         String patientUuid = "d3b07384-d113-4673-9080-87a41ec62762";
         String keyId = patientUuid;
-        String vaultKeyName = "patients/" + patientUuid;
+        String vaultKeyName = "patient_" + patientUuid;
         String initialWrappedDek = "vault:v1:InitialWrappedBase64Ciphertext";
 
         EncryptionKey key = new EncryptionKey(keyId, vaultKeyName, initialWrappedDek, encrypted.ivBase64());
@@ -122,7 +122,7 @@ class KeyRotationIntegrationTest {
     @DisplayName("Should skip crypto-shredded keys and prevent re-encryption of invalidated keys")
     void testShreddedKeysAreSkippedDuringRotation() {
         String keyId = "key-shredded-999";
-        String vaultKeyName = "patients/shredded-patient-uuid/visits/shredded-visit-uuid";
+        String vaultKeyName = "patient_shredded-patient-uuid_visit_shredded-visit-uuid";
 
         EncryptionKey shreddedKey = new EncryptionKey(keyId, vaultKeyName, null, null);
         shreddedKey.setInvalidated(true);
@@ -153,8 +153,9 @@ class KeyRotationIntegrationTest {
         UUID patientUuid = UUID.randomUUID();
         UUID visitUuid = UUID.randomUUID();
 
-        String patientVaultKey = "patients/" + patientUuid;
-        String visitVaultKey = "patients/" + patientUuid + "/visits/" + visitUuid;
+        String patientVaultKey = "patient_" + patientUuid;
+        String visitVaultKey = "patient_" + patientUuid + "_visit_" + visitUuid;
+
 
         EncryptionKey demographicKey = new EncryptionKey(patientUuid.toString(), patientVaultKey, "vault:v1:demo", "iv1");
         demographicKey.setKeyVersion(1);

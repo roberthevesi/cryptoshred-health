@@ -54,8 +54,9 @@ public class PatientVisitService {
                 ? linkedPatient.getId().toString()
                 : "unlinked";
         String keyId = visitUuid.toString();
-        String vaultKeyName = "patients/" + patientUuidStr + "/visits/" + visitUuid;
+        String vaultKeyName = "patient_" + patientUuidStr + "_visit_" + visitUuid;
         byte[] dek = envelopeEncryptionService.generateDek();
+
 
         // 3. Wrap DEK via Vault KEK
         String wrappedDek = vaultKmsService.wrapDek(vaultKeyName, dek);

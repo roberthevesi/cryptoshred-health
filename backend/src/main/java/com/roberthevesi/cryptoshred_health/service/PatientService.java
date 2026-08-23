@@ -87,9 +87,10 @@ public class PatientService {
         UUID patientUuid = UUID.randomUUID();
         patient.setId(patientUuid);
         String keyId = patientUuid.toString();
-        String vaultKeyName = "patients/" + patientUuid;
+        String vaultKeyName = "patient_" + patientUuid;
         byte[] dek = envelopeEncryptionService.generateDek();
         String wrappedDek = vaultKmsService.wrapDek(vaultKeyName, dek);
+
 
 
         // 2. Build demographic PII JSON payload and envelope encrypt
