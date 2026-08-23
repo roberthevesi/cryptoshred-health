@@ -49,6 +49,11 @@ public class EncryptionKey {
 
     private LocalDateTime invalidatedAt;
 
+    private LocalDateTime rotatedAt;
+
+    @Column(nullable = false)
+    private int keyVersion = 1;
+
     public EncryptionKey(String keyId, String keyValue) {
         this.keyId = keyId;
         this.keyValue = keyValue;
@@ -61,4 +66,5 @@ public class EncryptionKey {
         this.iv = iv;
     }
 }
+
 
