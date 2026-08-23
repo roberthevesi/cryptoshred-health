@@ -76,4 +76,38 @@ public class VaultKmsService {
             throw new IllegalStateException("Failed to destroy KMS key in Vault: " + keyName, e);
         }
     }
+
+    /**
+     * Rotates the named Vault Transit KEK to a new cryptographic key version (e.g. v1 -> v2).
+     */
+    public void rotateKey(String keyName) {
+        try {
+            ensureKeyExists(keyName);
+            vaultOperations.opsForTransit().rotate(keyName);
+            log.info("Vault Transit KEK {} rotated to new version", keyName);
+        } catch (Exception e) {
+            log.error("Failed to rotate Vault key {}", keyName, e);
+            throw new IllegalStateException("Failed to rotate KMS key in Vault: " + keyName, e);
+        }
+    }
+
+    /**
+     * Cryptographically re-wraps an existing wrapped DEK under the latest KEK version.
+     * The DEK is never decrypted or exposed outside HashiCorp Vault.
+     */
+    public String rewrapDek(String keyName, String wrappedDek) {
+        try {
+            String rewrapped = vaultOperations.opsForTransit().rewrap(keyName, wrappedDek);
+            if (rewrapped == null || rewrapped.isBlank()) {
+                throw new IllegalStateException("Vault returned null or blank rewrapped ciphertext for key: " + keyName);
+            }
+            log.info("Vault Transit DEK successfully rewrapped under latest KEK version for key: {}", keyName);
+            return rewrapped;
+        } catch (Exception e) {
+            log.error("Failed to rewrap DEK for key {}: {}", keyName, e.getMessage());
+            throw new IllegalStateException("Vault Transit DEK rewrap failed for key: " + keyName, e);
+        }
+    }
 }
+
+
