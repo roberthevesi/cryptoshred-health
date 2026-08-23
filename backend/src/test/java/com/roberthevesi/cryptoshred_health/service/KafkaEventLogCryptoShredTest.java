@@ -35,7 +35,7 @@ class KafkaEventLogCryptoShredTest {
         EnvelopeEncryptionService.EncryptedPayload encryptedPayload =
                 envelopeEncryptionService.encrypt(originalNotes.getBytes(StandardCharsets.UTF_8), dek);
 
-        String vaultKeyName = "visit_kek_test123";
+        String vaultKeyName = "patients/d3b07384-d113-4673-9080-87a41ec62762/visits/878a6e3b-5b44-4fc2-99ce-97894ee40a2d";
         String wrappedDek = "wrapped_dek_base64_sample";
 
         when(vaultKmsService.unwrapDek(vaultKeyName, wrappedDek)).thenReturn(dek);
@@ -67,8 +67,9 @@ class KafkaEventLogCryptoShredTest {
         EnvelopeEncryptionService.EncryptedPayload encryptedPayload =
                 envelopeEncryptionService.encrypt(originalNotes.getBytes(StandardCharsets.UTF_8), dek);
 
-        String vaultKeyName = "visit_kek_shredded999";
+        String vaultKeyName = "patients/shredded-patient/visits/shredded-visit";
         String wrappedDek = "wrapped_dek_base64_sample";
+
 
         // Simulate Vault returning error because key was deleted
         when(vaultKmsService.unwrapDek(anyString(), anyString()))

@@ -83,11 +83,14 @@ public class PatientService {
         }
         patient.setPatientId(patientId);
 
-        // 1. Generate Vault Transit KEK & DEK for Patient Demographics
-        String keyId = UUID.randomUUID().toString();
-        String vaultKeyName = "patient_kek_" + patientId.toLowerCase().replace("-", "_");
+        // 1. Generate Vault Transit KEK & DEK for Patient Profile
+        UUID patientUuid = UUID.randomUUID();
+        patient.setId(patientUuid);
+        String keyId = patientUuid.toString();
+        String vaultKeyName = "patients/" + patientUuid;
         byte[] dek = envelopeEncryptionService.generateDek();
         String wrappedDek = vaultKmsService.wrapDek(vaultKeyName, dek);
+
 
         // 2. Build demographic PII JSON payload and envelope encrypt
         Map<String, Object> piiPayload = new HashMap<>();

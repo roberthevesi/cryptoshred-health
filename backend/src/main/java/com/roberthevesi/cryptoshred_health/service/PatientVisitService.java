@@ -49,12 +49,17 @@ public class PatientVisitService {
         }
 
         // 2. Generate unique Vault KEK reference name & DEK
-        String keyId = UUID.randomUUID().toString();
-        String vaultKeyName = "visit_kek_" + keyId.replace("-", "");
+        UUID visitUuid = UUID.randomUUID();
+        String patientUuidStr = (linkedPatient != null && linkedPatient.getId() != null)
+                ? linkedPatient.getId().toString()
+                : "unlinked";
+        String keyId = visitUuid.toString();
+        String vaultKeyName = "patients/" + patientUuidStr + "/visits/" + visitUuid;
         byte[] dek = envelopeEncryptionService.generateDek();
 
         // 3. Wrap DEK via Vault KEK
         String wrappedDek = vaultKmsService.wrapDek(vaultKeyName, dek);
+
 
         // 4. Build comprehensive clinical payload to encrypt under AES-256-GCM
         Map<String, Object> clinicalPayload = new HashMap<>();
@@ -105,7 +110,9 @@ public class PatientVisitService {
         EncryptionKey encryptionKey = new EncryptionKey(keyId, vaultKeyName, wrappedDek, ivBase64);
 
         PatientVisit visit = new PatientVisit();
+        visit.setId(visitUuid);
         visit.setPatient(linkedPatient);
+
         visit.setPatientName(request.getPatientName());
         visit.setMrn(request.getMrn() != null && !request.getMrn().isBlank()
                 ? request.getMrn()

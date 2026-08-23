@@ -66,8 +66,9 @@ class KeyRotationIntegrationTest {
                 envelopeEncryptionService.encrypt(plaintextJson.getBytes(StandardCharsets.UTF_8), rawDek);
 
         // 2. Prepare EncryptionKey entity at version 1
-        String keyId = "key-patient-101";
-        String vaultKeyName = "patient_kek_pat_101";
+        String patientUuid = "d3b07384-d113-4673-9080-87a41ec62762";
+        String keyId = patientUuid;
+        String vaultKeyName = "patients/" + patientUuid;
         String initialWrappedDek = "vault:v1:InitialWrappedBase64Ciphertext";
 
         EncryptionKey key = new EncryptionKey(keyId, vaultKeyName, initialWrappedDek, encrypted.ivBase64());
@@ -121,7 +122,7 @@ class KeyRotationIntegrationTest {
     @DisplayName("Should skip crypto-shredded keys and prevent re-encryption of invalidated keys")
     void testShreddedKeysAreSkippedDuringRotation() {
         String keyId = "key-shredded-999";
-        String vaultKeyName = "visit_kek_shredded999";
+        String vaultKeyName = "patients/shredded-patient-uuid/visits/shredded-visit-uuid";
 
         EncryptionKey shreddedKey = new EncryptionKey(keyId, vaultKeyName, null, null);
         shreddedKey.setInvalidated(true);
@@ -149,19 +150,25 @@ class KeyRotationIntegrationTest {
     @DisplayName("Should rotate only the targeted patient's demographic and visit keys in PATIENT scope")
     void testPatientScopedKeyRotation() {
         String patientId = "PAT-88888";
+        UUID patientUuid = UUID.randomUUID();
+        UUID visitUuid = UUID.randomUUID();
 
-        EncryptionKey demographicKey = new EncryptionKey("key-demo-888", "patient_kek_pat_88888", "vault:v1:demo", "iv1");
+        String patientVaultKey = "patients/" + patientUuid;
+        String visitVaultKey = "patients/" + patientUuid + "/visits/" + visitUuid;
+
+        EncryptionKey demographicKey = new EncryptionKey(patientUuid.toString(), patientVaultKey, "vault:v1:demo", "iv1");
         demographicKey.setKeyVersion(1);
 
-        EncryptionKey visitKey = new EncryptionKey("key-visit-888", "visit_kek_vis_88888", "vault:v1:visit", "iv2");
+        EncryptionKey visitKey = new EncryptionKey(visitUuid.toString(), visitVaultKey, "vault:v1:visit", "iv2");
         visitKey.setKeyVersion(1);
 
         Patient patient = new Patient();
+        patient.setId(patientUuid);
         patient.setPatientId(patientId);
         patient.setEncryptionKey(demographicKey);
 
         PatientVisit visit = new PatientVisit();
-        visit.setId(UUID.randomUUID());
+        visit.setId(visitUuid);
         visit.setPatient(patient);
         visit.setEncryptionKey(visitKey);
 
@@ -169,8 +176,8 @@ class KeyRotationIntegrationTest {
         when(patientVisitRepository.findByPatientIdentifier(patientId)).thenReturn(List.of(visit));
         when(encryptionKeyRepository.save(any(EncryptionKey.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        when(vaultKmsService.rewrapDek(eq("patient_kek_pat_88888"), anyString())).thenReturn("vault:v2:demo_rewrapped");
-        when(vaultKmsService.rewrapDek(eq("visit_kek_vis_88888"), anyString())).thenReturn("vault:v2:visit_rewrapped");
+        when(vaultKmsService.rewrapDek(eq(patientVaultKey), anyString())).thenReturn("vault:v2:demo_rewrapped");
+        when(vaultKmsService.rewrapDek(eq(visitVaultKey), anyString())).thenReturn("vault:v2:visit_rewrapped");
 
         KeyRotationRequestDto request = KeyRotationRequestDto.builder()
                 .scope("PATIENT")
@@ -192,8 +199,9 @@ class KeyRotationIntegrationTest {
         assertEquals(2, visitKey.getKeyVersion());
         assertEquals("vault:v2:visit_rewrapped", visitKey.getWrappedDek());
 
-        verify(vaultKmsService, times(1)).rotateKey("patient_kek_pat_88888");
-        verify(vaultKmsService, times(1)).rotateKey("visit_kek_vis_88888");
+        verify(vaultKmsService, times(1)).rotateKey(patientVaultKey);
+        verify(vaultKmsService, times(1)).rotateKey(visitVaultKey);
+
     }
 
     @Test
