@@ -73,8 +73,9 @@ class PatientDemographicEncryptionTest {
         assertTrue(response.isActive());
         assertFalse(response.isShredded());
 
-        verify(vaultKmsService, times(1)).wrapDek(startsWith("patients/"), any());
+        verify(vaultKmsService, times(1)).wrapDek(startsWith("patient_"), any());
         verify(patientRepository, times(1)).save(any(Patient.class));
+
 
     }
 

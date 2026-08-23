@@ -65,7 +65,7 @@ class RedisCryptoShreddingTest {
     void testRedisCacheHitWithValidVaultKekSucceeds() {
         // Arrange
         UUID visitId = UUID.randomUUID();
-        String vaultKeyName = "patients/d3b07384-d113-4673-9080-87a41ec62762/visits/" + visitId;
+        String vaultKeyName = "patient_d3b07384-d113-4673-9080-87a41ec62762_visit_" + visitId;
         String wrappedDek = "wrapped_dek_base64";
 
         PatientVisit visit = new PatientVisit();
@@ -102,8 +102,9 @@ class RedisCryptoShreddingTest {
     void testStaleRedisCacheHitTriggersZeroPurgeCryptographicInvalidationWhenVaultKekDestroyed() {
         // Arrange — Simulate a stale visit left in Redis memory post-deletion
         UUID visitId = UUID.randomUUID();
-        String vaultKeyName = "patients/shredded-patient-uuid/visits/" + visitId;
+        String vaultKeyName = "patient_shredded-patient-uuid_visit_" + visitId;
         String wrappedDek = "wrapped_dek_base64";
+
 
 
         PatientVisit visit = new PatientVisit();
