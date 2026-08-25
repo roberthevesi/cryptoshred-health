@@ -27,6 +27,9 @@ export default function DeletionProofCard({ proof }: Props) {
   const handleDownload = () => {
     const jsonString = JSON.stringify(proof, null, 2);
     const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
     const isVisit = proof.status === 'VISIT_DELETED' || (!proof.status?.includes('PATIENT') && !!proof.visitId);
     const identifier = isVisit
       ? (proof.visitId || proof.patientRecordId || 'visit')
