@@ -85,7 +85,7 @@ public class MerkleTreeService {
             }
 
             for (int i = 0; i < currentLevel.size(); i += 2) {
-                nextLevel.add(sha256(currentLevel.get(i) + currentLevel.get(i + 1)));
+                nextLevel.add(hashPair(currentLevel.get(i), currentLevel.get(i + 1)));
             }
 
             index /= 2;
@@ -96,13 +96,13 @@ public class MerkleTreeService {
     }
 
     public boolean verifyInclusion(String leafHash, List<String> proofPath, String expectedRoot) {
+        if (leafHash == null || expectedRoot == null) return false;
+        if (proofPath == null || proofPath.isEmpty()) {
+            return leafHash.equalsIgnoreCase(expectedRoot);
+        }
         String currentHash = leafHash;
         for (String sibling : proofPath) {
-            if (currentHash.compareTo(sibling) <= 0) {
-                currentHash = sha256(currentHash + sibling);
-            } else {
-                currentHash = sha256(sibling + currentHash);
-            }
+            currentHash = hashPair(currentHash, sibling);
         }
         return currentHash.equalsIgnoreCase(expectedRoot);
     }
@@ -119,10 +119,18 @@ public class MerkleTreeService {
 
         List<String> nextLevel = new ArrayList<>();
         for (int i = 0; i < currentLevel.size(); i += 2) {
-            nextLevel.add(sha256(currentLevel.get(i) + currentLevel.get(i + 1)));
+            nextLevel.add(hashPair(currentLevel.get(i), currentLevel.get(i + 1)));
         }
 
         return computeRoot(nextLevel);
+    }
+
+    private static String hashPair(String a, String b) {
+        if (a.compareTo(b) <= 0) {
+            return sha256(a + b);
+        } else {
+            return sha256(b + a);
+        }
     }
 
     private static String sha256(String input) {
