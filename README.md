@@ -68,9 +68,13 @@ npm run dev
 
 ## 🔒 Verification & Testing
 ```bash
-# Backend test suite
+# Backend test suite (19 integration tests)
 cd backend
-mvn test
+./mvnw test
+
+# Run JMH Empirical Benchmarking Suite (Chapter 5 Evidence)
+cd backend
+./run-benchmarks.sh
 
 # Frontend type check and production bundle
 cd frontend/cryptoshred-health
