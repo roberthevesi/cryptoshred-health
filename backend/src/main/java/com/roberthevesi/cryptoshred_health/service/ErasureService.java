@@ -274,9 +274,14 @@ public class ErasureService {
         boolean payloadIntegrityValid = expectedHash.equalsIgnoreCase(proof.getAuditTrailHash());
 
         // 2. Check RSA Digital Signature
-        String identifier = proof.getPatientId() != null
-                ? proof.getPatientId()
-                : (proof.getVisitId() != null ? proof.getVisitId().toString() : (proof.getPatientRecordId() != null ? proof.getPatientRecordId().toString() : ""));
+        // For visit deletion proofs, the identifier signed is the visit UUID.
+        // For full patient deletion proofs, the identifier signed is the patient ID string.
+        String identifier;
+        if ("VISIT_DELETED".equalsIgnoreCase(proof.getStatus()) || (proof.getVisitId() != null && !"PATIENT_DELETED".equalsIgnoreCase(proof.getStatus()))) {
+            identifier = proof.getVisitId() != null ? proof.getVisitId().toString() : (proof.getPatientRecordId() != null ? proof.getPatientRecordId().toString() : proof.getPatientId());
+        } else {
+            identifier = proof.getPatientId() != null ? proof.getPatientId() : (proof.getVisitId() != null ? proof.getVisitId().toString() : (proof.getPatientRecordId() != null ? proof.getPatientRecordId().toString() : ""));
+        }
 
         String canonicalPayload = buildCanonicalSignPayload(identifier, proof.getTimestamp(), proof.getAuditTrailHash(), proof.getMerkleRoot());
         boolean signatureValid = proofSigningService.verify(canonicalPayload, proof.getDigitalSignature());

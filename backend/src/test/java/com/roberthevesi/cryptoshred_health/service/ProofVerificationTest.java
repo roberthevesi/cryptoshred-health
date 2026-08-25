@@ -124,4 +124,88 @@ class ProofVerificationTest {
         assertFalse(response.isValid());
         assertFalse(response.isPayloadIntegrityValid());
     }
+
+    @Test
+    void testSignAndVerifyVisitProofWithPatientIdPopulated() {
+        UUID visitId = UUID.randomUUID();
+        String patientId = "PAT-10001";
+        LocalDateTime now = LocalDateTime.now();
+        String auditTrail = "ACTION=CRYPTO_SHRED_VISIT|VISIT_ID=" + visitId + "|REQUESTED_BY=auditor@health.gov|STORAGE_LAYERS=POSTGRES_DB,KAFKA_EVENT_LOG,REDIS_CACHE,WORM_BACKUP|TIMESTAMP=" + now;
+        String sha256Hash = sha256(auditTrail);
+
+        merkleTreeService.addLeaf(sha256Hash);
+        String merkleRoot = merkleTreeService.getMerkleRoot();
+        List<String> merklePath = merkleTreeService.getInclusionProof(sha256Hash);
+
+        String canonicalPayload = "IDENTIFIER=" + visitId + "|TIMESTAMP=" + now + "|HASH=" + sha256Hash + "|MERKLE_ROOT=" + merkleRoot;
+        String signature = proofSigningService.sign(canonicalPayload);
+
+        VerifiableDeletionProofDto proof = VerifiableDeletionProofDto.builder()
+                .proofVersion("1.0")
+                .visitId(visitId)
+                .patientId(patientId) // patientId is populated alongside visitId
+                .vaultKeyName("patient_key_visit_" + visitId)
+                .requestedBy("auditor@health.gov")
+                .timestamp(now)
+                .status("VISIT_DELETED")
+                .coveredStorageLayers(List.of("POSTGRES_DB", "KAFKA_EVENT_LOG", "REDIS_CACHE", "WORM_BACKUP"))
+                .layerStatus(Map.of("POSTGRES_DB", "TEXT_NULLIFIED"))
+                .auditTrail(auditTrail)
+                .auditTrailHash(sha256Hash)
+                .merkleRoot(merkleRoot)
+                .merklePath(merklePath)
+                .signatureAlgorithm("SHA256withRSA")
+                .digitalSignature(signature)
+                .build();
+
+        ErasureService erasureService = new ErasureService(null, null, null, null, null, null, proofSigningService, merkleTreeService);
+
+        ProofVerificationResponseDto response = erasureService.verifyProofArtifact(proof);
+
+        assertTrue(response.isValid());
+        assertTrue(response.isSignatureValid());
+        assertTrue(response.isPayloadIntegrityValid());
+        assertTrue(response.isMerkleInclusionValid());
+    }
+
+    @Test
+    void testSignAndVerifyPatientProof() {
+        String patientId = "PAT-10001";
+        LocalDateTime now = LocalDateTime.now();
+        String auditTrail = "ACTION=CRYPTO_SHRED_PATIENT|PATIENT_ID=" + patientId + "|VISITS_COUNT=3|REQUESTED_BY=auditor@health.gov|STORAGE_LAYERS=POSTGRES_DB,KAFKA_EVENT_LOG,REDIS_CACHE,WORM_BACKUP|TIMESTAMP=" + now;
+        String sha256Hash = sha256(auditTrail);
+
+        merkleTreeService.addLeaf(sha256Hash);
+        String merkleRoot = merkleTreeService.getMerkleRoot();
+        List<String> merklePath = merkleTreeService.getInclusionProof(sha256Hash);
+
+        String canonicalPayload = "IDENTIFIER=" + patientId + "|TIMESTAMP=" + now + "|HASH=" + sha256Hash + "|MERKLE_ROOT=" + merkleRoot;
+        String signature = proofSigningService.sign(canonicalPayload);
+
+        VerifiableDeletionProofDto proof = VerifiableDeletionProofDto.builder()
+                .proofVersion("1.0")
+                .patientId(patientId)
+                .vaultKeyName("patient_" + patientId)
+                .requestedBy("auditor@health.gov")
+                .timestamp(now)
+                .status("PATIENT_DELETED")
+                .coveredStorageLayers(List.of("POSTGRES_DB", "KAFKA_EVENT_LOG", "REDIS_CACHE", "WORM_BACKUP"))
+                .layerStatus(Map.of("POSTGRES_DB", "DEMOGRAPHICS_AND_VISITS_NULLIFIED"))
+                .auditTrail(auditTrail)
+                .auditTrailHash(sha256Hash)
+                .merkleRoot(merkleRoot)
+                .merklePath(merklePath)
+                .signatureAlgorithm("SHA256withRSA")
+                .digitalSignature(signature)
+                .build();
+
+        ErasureService erasureService = new ErasureService(null, null, null, null, null, null, proofSigningService, merkleTreeService);
+
+        ProofVerificationResponseDto response = erasureService.verifyProofArtifact(proof);
+
+        assertTrue(response.isValid());
+        assertTrue(response.isSignatureValid());
+        assertTrue(response.isPayloadIntegrityValid());
+        assertTrue(response.isMerkleInclusionValid());
+    }
 }
