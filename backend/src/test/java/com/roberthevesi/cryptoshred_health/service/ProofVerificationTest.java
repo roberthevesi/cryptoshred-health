@@ -7,6 +7,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +22,20 @@ class ProofVerificationTest {
     private ProofSigningService proofSigningService;
     private MerkleTreeService merkleTreeService;
     private MerkleNodeRepository merkleNodeRepository;
+
+    private static String sha256(String input) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hash) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 unavailable", e);
+        }
+    }
 
     @BeforeEach
     void setUp() {
@@ -34,7 +51,7 @@ class ProofVerificationTest {
         UUID visitId = UUID.randomUUID();
         LocalDateTime now = LocalDateTime.now();
         String auditTrail = "ACTION=CRYPTO_SHRED_VISIT|VISIT_ID=" + visitId + "|REQUESTED_BY=auditor_test|STORAGE_LAYERS=POSTGRES_DB,KAFKA_EVENT_LOG,REDIS_CACHE,WORM_BACKUP|TIMESTAMP=" + now;
-        String sha256Hash = MerkleTreeService.sha256(auditTrail);
+        String sha256Hash = sha256(auditTrail);
 
         merkleTreeService.addLeaf(sha256Hash);
         String merkleRoot = merkleTreeService.getMerkleRoot();
@@ -75,7 +92,7 @@ class ProofVerificationTest {
         UUID visitId = UUID.randomUUID();
         LocalDateTime now = LocalDateTime.now();
         String auditTrail = "ACTION=CRYPTO_SHRED_VISIT|VISIT_ID=" + visitId + "|REQUESTED_BY=auditor_test|STORAGE_LAYERS=POSTGRES_DB,KAFKA_EVENT_LOG,REDIS_CACHE,WORM_BACKUP|TIMESTAMP=" + now;
-        String sha256Hash = MerkleTreeService.sha256(auditTrail);
+        String sha256Hash = sha256(auditTrail);
 
         merkleTreeService.addLeaf(sha256Hash);
         String merkleRoot = merkleTreeService.getMerkleRoot();

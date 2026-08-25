@@ -14,7 +14,6 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * MerkleTreeService — Maintains a binary Merkle Tree over deletion audit hashes
@@ -47,9 +46,9 @@ public class MerkleTreeService {
     @Transactional
     public synchronized void addLeaf(String leafHash) {
         int nextIndex = leaves.size();
-        leaves.add(leafHash);
         try {
             merkleNodeRepository.save(new MerkleNode(nextIndex, leafHash));
+            leaves.add(leafHash); // Only add to memory after successful DB persist
         } catch (Exception e) {
             log.warn("Failed to persist Merkle leaf to database: {}", e.getMessage());
         }
@@ -105,12 +104,6 @@ public class MerkleTreeService {
                 currentHash = sha256(sibling + currentHash);
             }
         }
-        if (!currentHash.equalsIgnoreCase(expectedRoot)) {
-            currentHash = leafHash;
-            for (String sibling : proofPath) {
-                currentHash = sha256(currentHash + sibling);
-            }
-        }
         return currentHash.equalsIgnoreCase(expectedRoot);
     }
 
@@ -132,7 +125,7 @@ public class MerkleTreeService {
         return computeRoot(nextLevel);
     }
 
-    public static String sha256(String input) {
+    private static String sha256(String input) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));

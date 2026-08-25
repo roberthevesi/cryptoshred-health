@@ -2,7 +2,7 @@ package com.roberthevesi.cryptoshred_health.config;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
+import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -37,7 +37,10 @@ public class RedisConfig {
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
         objectMapper.activateDefaultTyping(
-                LaissezFaireSubTypeValidator.instance,
+                BasicPolymorphicTypeValidator.builder()
+                        .allowIfSubType("com.roberthevesi.cryptoshred_health")
+                        .allowIfSubType("java.util")
+                        .build(),
                 ObjectMapper.DefaultTyping.NON_FINAL,
                 JsonTypeInfo.As.PROPERTY);
 

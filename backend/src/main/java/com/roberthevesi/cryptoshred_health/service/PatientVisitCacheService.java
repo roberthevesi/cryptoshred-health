@@ -5,6 +5,7 @@ import com.roberthevesi.cryptoshred_health.dto.PatientVisitResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -16,7 +17,8 @@ import java.util.UUID;
 public class PatientVisitCacheService {
 
     private static final String CACHE_PREFIX = "patient_visit:";
-    private static final Duration TTL = Duration.ofMinutes(15);
+    @Value("${app.redis.time-to-live-ms:900000}")
+    private long ttlMs;
 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
@@ -25,7 +27,7 @@ public class PatientVisitCacheService {
         if (visitId == null || response == null) return;
         try {
             String json = objectMapper.writeValueAsString(response);
-            redisTemplate.opsForValue().set(CACHE_PREFIX + visitId, json, TTL);
+            redisTemplate.opsForValue().set(CACHE_PREFIX + visitId, json, Duration.ofMillis(ttlMs));
             log.debug("Cached patient visit in Redis: {}", visitId);
         } catch (Exception e) {
             log.warn("Failed to cache patient visit {} in Redis: {}", visitId, e.getMessage());

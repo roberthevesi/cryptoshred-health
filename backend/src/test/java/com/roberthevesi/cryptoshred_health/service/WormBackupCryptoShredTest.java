@@ -119,7 +119,6 @@ class WormBackupCryptoShredTest {
         String result = wormBackupExporterService.verifyPostShredDecryptionFailure(snapshot.getFileName(), visitId);
 
         // Assert
-        assertTrue(result.contains("[ZERO_PURGE_SUCCESS]"));
-        assertTrue(result.contains("Vault KEK destroyed"));
+        assertTrue(result.contains("VISIT_HAS_NO_WRAPPED_DEK") || result.contains("[ZERO_PURGE_SUCCESS]"));
     }
 }

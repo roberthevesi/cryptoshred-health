@@ -24,13 +24,16 @@ public class EventLogConsumer {
     private final EnvelopeEncryptionService envelopeEncryptionService;
 
     @Getter
-    private final List<PatientVisitEventDto> capturedEvents = Collections.synchronizedList(new ArrayList<>());
+    private final java.util.concurrent.LinkedBlockingDeque<PatientVisitEventDto> capturedEvents = new java.util.concurrent.LinkedBlockingDeque<>(1000);
 
     @KafkaListener(topics = KafkaTopicConfig.TOPIC_PATIENT_EVENTS, groupId = "cryptoshred-audit-group")
     public void consumeEvent(String message) {
         try {
             PatientVisitEventDto event = objectMapper.readValue(message, PatientVisitEventDto.class);
-            capturedEvents.add(event);
+            if (!capturedEvents.offerLast(event)) {
+            capturedEvents.pollFirst();
+            capturedEvents.offerLast(event);
+        }
             log.info("Kafka Consumer received event [{}] for patient visit {}",
                     event.getEventType(), event.getVisitId());
         } catch (Exception e) {

@@ -2,6 +2,7 @@ package com.roberthevesi.cryptoshred_health.security;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.config.Customizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -40,6 +41,13 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .headers(headers -> headers
+                        .frameOptions(frame -> frame.deny())
+                        .contentTypeOptions(Customizer.withDefaults())
+                        .httpStrictTransportSecurity(hsts -> hsts
+                                .includeSubDomains(true)
+                                .maxAgeInSeconds(31536000))
+                )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**", "/error").permitAll()
                         .requestMatchers(
@@ -49,10 +57,10 @@ public class SecurityConfig {
                                 "/api/erasure/public-key",
                                 "/api/erasure/verify-proof"
                         ).permitAll()
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated()
                 )
-
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }

@@ -9,6 +9,9 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
+import java.util.Set;
+
 import java.nio.file.Paths;
 import java.security.*;
 import java.security.spec.PKCS8EncodedKeySpec;
@@ -56,6 +59,13 @@ public class ProofSigningService {
                 this.keyPair = keyGen.generateKeyPair();
 
                 Files.write(privateKeyPath, this.keyPair.getPrivate().getEncoded());
+                try {
+                    Set<PosixFilePermission> perms = Set.of(
+                            PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
+                    Files.setPosixFilePermissions(privateKeyPath, perms);
+                } catch (UnsupportedOperationException ignored) {
+                    log.warn("Cannot set POSIX permissions on private key file. Ensure filesystem-level protection is applied.");
+                }
                 Files.write(publicKeyPath, this.keyPair.getPublic().getEncoded());
                 log.info("Generated and persisted new RSA 2048-bit KeyPair to {}", keyDir);
             }

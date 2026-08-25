@@ -1,14 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { ShieldCheck, Mail, Lock, UserCircle, AlertCircle } from 'lucide-react';
-import type { Role } from '../types';
-
-const ROLES: { value: Role; label: string; description: string }[] = [
-  { value: 'DOCTOR',  label: 'Doctor',  description: 'Create and manage patient records' },
-  { value: 'PATIENT', label: 'Patient', description: 'View your own health records' },
-  { value: 'AUDITOR', label: 'Auditor', description: 'Compliance and right-to-be-forgotten' },
-];
+import { ShieldCheck, Mail, Lock, AlertCircle } from 'lucide-react';
 
 export default function RegisterPage() {
   const { register } = useAuth();
@@ -16,7 +9,6 @@ export default function RegisterPage() {
 
   const [email,     setEmail]     = useState('');
   const [password,  setPassword]  = useState('');
-  const [role,      setRole]      = useState<Role>('DOCTOR');
   const [error,     setError]     = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -25,7 +17,7 @@ export default function RegisterPage() {
     setError('');
     setIsLoading(true);
     try {
-      await register(email, password, role);
+      await register(email, password);
       navigate('/dashboard');
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })
@@ -70,7 +62,7 @@ export default function RegisterPage() {
                   required
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  placeholder="you@hospital.com"
+                  placeholder="you@example.com"
                   className="input-field pl-10"
                 />
               </div>
@@ -90,41 +82,6 @@ export default function RegisterPage() {
                   placeholder="••••••••"
                   className="input-field pl-10"
                 />
-              </div>
-            </div>
-
-            {/* Role selector */}
-            <div>
-              <label className="label">
-                <UserCircle className="inline h-4 w-4 mb-0.5 mr-1" />
-                Select Role
-              </label>
-              <div className="grid grid-cols-1 gap-3">
-                {ROLES.map(r => (
-                  <label
-                    key={r.value}
-                    htmlFor={`role-${r.value}`}
-                    className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-all duration-200 ${
-                      role === r.value
-                        ? 'border-blue-500 bg-blue-50/60 ring-1 ring-blue-500'
-                        : 'border-slate-200 hover:border-slate-300 bg-white'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      id={`role-${r.value}`}
-                      name="role"
-                      value={r.value}
-                      checked={role === r.value}
-                      onChange={() => setRole(r.value)}
-                      className="mt-1 accent-blue-600"
-                    />
-                    <div>
-                      <p className="font-semibold text-slate-900 text-sm">{r.label}</p>
-                      <p className="text-xs text-slate-500 mt-0.5">{r.description}</p>
-                    </div>
-                  </label>
-                ))}
               </div>
             </div>
 

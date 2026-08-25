@@ -51,6 +51,10 @@ public class DataInitializer implements CommandLineRunner {
             createUser("patient@health.org", "Password123!", Role.PATIENT);
             log.info("Created default demo patient account: patient@health.org");
         }
+        if (userRepository.findByEmail("admin@cryptoshred.health").isEmpty()) {
+            createUser("admin@cryptoshred.health", "Password123!", Role.ADMIN);
+            log.info("Created default admin account: admin@cryptoshred.health");
+        }
 
         // 2. Create Sample GP Surgery Practices if missing
         GpResponse savedGp1;
@@ -221,12 +225,10 @@ public class DataInitializer implements CommandLineRunner {
         } catch (Exception e) {
             log.error("Failed to seed sample patient visits: {}", e.getMessage(), e);
         }
+        }
 
-        log.info("Seeding completed successfully! Demo accounts: doctor@hospital.com, auditor@health.gov, patient@health.org (Password123!)");
+        log.info("Seeding completed successfully! Demo accounts: doctor@hospital.com, auditor@health.gov, patient@health.org, admin@cryptoshred.health");
     }
-}
-
-
 
     private User createUser(String email, String password, Role role) {
         User user = new User();

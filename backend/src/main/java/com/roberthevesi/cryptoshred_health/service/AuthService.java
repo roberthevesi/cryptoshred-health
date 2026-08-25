@@ -3,6 +3,7 @@ package com.roberthevesi.cryptoshred_health.service;
 import com.roberthevesi.cryptoshred_health.dto.AuthResponse;
 import com.roberthevesi.cryptoshred_health.dto.LoginRequest;
 import com.roberthevesi.cryptoshred_health.dto.RegisterRequest;
+import com.roberthevesi.cryptoshred_health.model.Role;
 import com.roberthevesi.cryptoshred_health.model.User;
 import com.roberthevesi.cryptoshred_health.repository.UserRepository;
 import com.roberthevesi.cryptoshred_health.security.JwtTokenProvider;
@@ -32,7 +33,7 @@ public class AuthService {
         User user = new User();
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole(request.getRole());
+        user.setRole(Role.PATIENT); // Public registration always creates PATIENT accounts
         userRepository.save(user);
 
         Authentication auth = authenticationManager.authenticate(
@@ -45,7 +46,9 @@ public class AuthService {
         Authentication auth = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
         String token = jwtTokenProvider.generateToken(auth);
-        User user = userRepository.findByEmail(request.getEmail()).orElseThrow();
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new IllegalStateException(
+                        "Authenticated user not found in repository: " + request.getEmail()));
         return new AuthResponse(token, user.getEmail(), user.getRole());
     }
 }

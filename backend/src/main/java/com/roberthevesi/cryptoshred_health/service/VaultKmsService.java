@@ -45,7 +45,6 @@ public class VaultKmsService {
 
     /** Wraps (encrypts) a raw DEK byte array using Vault Transit KEK. */
     public String wrapDek(String keyName, byte[] rawDek) {
-        ensureKeyExists(keyName);
         String base64Dek = Base64.getEncoder().encodeToString(rawDek);
         Ciphertext ciphertext = vaultOperations.opsForTransit().encrypt(keyName, Plaintext.of(base64Dek));
         return ciphertext.getCiphertext();
@@ -82,7 +81,6 @@ public class VaultKmsService {
      */
     public void rotateKey(String keyName) {
         try {
-            ensureKeyExists(keyName);
             vaultOperations.opsForTransit().rotate(keyName);
             log.info("Vault Transit KEK {} rotated to new version", keyName);
         } catch (Exception e) {
