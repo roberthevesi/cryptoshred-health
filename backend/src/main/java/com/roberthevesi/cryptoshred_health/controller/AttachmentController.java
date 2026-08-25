@@ -36,6 +36,7 @@ public class AttachmentController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @PreAuthorize("isAuthenticated()")
     @GetMapping
     public ResponseEntity<List<AttachmentResponse>> getAttachments(
             @PathVariable UUID visitId,
@@ -44,6 +45,7 @@ public class AttachmentController {
         return ResponseEntity.ok(attachmentService.getAttachmentsForVisit(visitId, currentUser.getUsername()));
     }
 
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/{attachmentId}")
     public ResponseEntity<byte[]> downloadAttachment(
             @PathVariable UUID visitId,

@@ -36,7 +36,7 @@ public class PatientVisitService {
     private final EnvelopeEncryptionService envelopeEncryptionService;
     private final EventLogPublisher eventLogPublisher;
     private final PatientVisitCacheService patientVisitCacheService;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
     @Transactional
     public PatientVisitResponse create(PatientVisitRequest request, String currentUserEmail) {
@@ -59,41 +59,12 @@ public class PatientVisitService {
 
 
         // 3. Wrap DEK via Vault KEK
-        String wrappedDek = vaultKmsService.wrapDek(vaultKeyName, dek);
+        vaultKmsService.ensureKeyExists(vaultKeyName);
+            String wrappedDek = vaultKmsService.wrapDek(vaultKeyName, dek);
 
 
         // 4. Build comprehensive clinical payload to encrypt under AES-256-GCM
-        Map<String, Object> clinicalPayload = new HashMap<>();
-        clinicalPayload.put("diagnosis", request.getDiagnosis());
-        clinicalPayload.put("medicalNotes", request.getMedicalNotes());
-        clinicalPayload.put("allergies", request.getAllergies());
-        clinicalPayload.put("prescriptions", request.getPrescriptions());
-        clinicalPayload.put("chiefComplaint", request.getChiefComplaint());
-        clinicalPayload.put("chronicConditions", request.getChronicConditions());
-        clinicalPayload.put("immunizationStatus", request.getImmunizationStatus());
-        clinicalPayload.put("lifestyleFactors", request.getLifestyleFactors());
-        clinicalPayload.put("followUpDate", request.getFollowUpDate());
-        clinicalPayload.put("soapSubjective", request.getSoapSubjective());
-        clinicalPayload.put("soapObjective", request.getSoapObjective());
-        clinicalPayload.put("soapAssessment", request.getSoapAssessment());
-        clinicalPayload.put("soapPlan", request.getSoapPlan());
-        clinicalPayload.put("bloodPressure", request.getBloodPressure());
-        clinicalPayload.put("heartRate", request.getHeartRate());
-        clinicalPayload.put("respiratoryRate", request.getRespiratoryRate());
-        clinicalPayload.put("temperature", request.getTemperature());
-        clinicalPayload.put("oxygenSaturation", request.getOxygenSaturation());
-        clinicalPayload.put("heightCm", request.getHeightCm());
-        clinicalPayload.put("weightKg", request.getWeightKg());
-        clinicalPayload.put("bmi", request.getBmi());
-        clinicalPayload.put("painScore", request.getPainScore());
-        clinicalPayload.put("attendingDoctor", request.getAttendingDoctor());
-        clinicalPayload.put("department", request.getDepartment());
-        clinicalPayload.put("insuranceProvider", request.getInsuranceProvider());
-        clinicalPayload.put("insurancePolicyNumber", request.getInsurancePolicyNumber());
-        clinicalPayload.put("insuranceGroupNumber", request.getInsuranceGroupNumber());
-        clinicalPayload.put("emergencyContactName", request.getEmergencyContactName());
-        clinicalPayload.put("emergencyContactPhone", request.getEmergencyContactPhone());
-        clinicalPayload.put("emergencyContactRelationship", request.getEmergencyContactRelationship());
+        Map<String, Object> clinicalPayload = buildClinicalPayload(request);
 
         String ciphertextBase64;
         String ivBase64;
@@ -117,7 +88,7 @@ public class PatientVisitService {
         visit.setPatientName(request.getPatientName());
         visit.setMrn(request.getMrn() != null && !request.getMrn().isBlank()
                 ? request.getMrn()
-                : (linkedPatient != null ? linkedPatient.getPatientId() : "MRN-" + (10000 + new Random().nextInt(90000))));
+                : (linkedPatient != null ? linkedPatient.getPatientId() : "MRN-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase()));
         visit.setDateOfBirth(request.getDateOfBirth());
         visit.setGender(request.getGender());
         visit.setBloodType(request.getBloodType());
@@ -173,10 +144,7 @@ public class PatientVisitService {
                 .patientId(linkedPatient != null ? linkedPatient.getPatientId() : savedVisit.getMrn())
                 .eventType("VISIT_CREATED")
                 .vaultKeyName(vaultKeyName)
-                .wrappedDek(wrappedDek)
-                .iv(ivBase64)
-                .encryptedDataBlob(ciphertextBase64)
-                .timestamp(LocalDateTime.now())
+                                                                .timestamp(LocalDateTime.now())
                 .build());
 
         PatientVisitResponse response = toResponse(savedVisit);
@@ -198,22 +166,8 @@ public class PatientVisitService {
         return visits.stream().map(visit -> {
             PatientVisitResponse cached = patientVisitCacheService.get(visit.getId());
             if (cached != null) {
-                if (!cached.isShredded() && visit.getEncryptionKey() != null) {
-                    try {
-                        vaultKmsService.unwrapDek(
-                                visit.getEncryptionKey().getVaultKeyName(),
-                                visit.getEncryptionKey().getWrappedDek());
-                        return cached;
-                    } catch (Exception e) {
-                        log.warn("Redis CACHE HIT detected destroyed Vault KEK for visit {}. Zero-purge invalidation triggered.", visit.getId());
-                        cached.setShredded(true);
-                        redactResponse(cached);
-                        patientVisitCacheService.evict(visit.getId());
-                        return cached;
-                    }
-                }
-                return cached;
-            }
+            return cached; // Trust the cache — ErasureService proactively evicts on shred
+        }
             PatientVisitResponse response = toResponse(visit);
             patientVisitCacheService.put(visit.getId(), response);
             return response;
@@ -228,20 +182,6 @@ public class PatientVisitService {
         // 1. Check Redis cache
         PatientVisitResponse cached = patientVisitCacheService.get(id);
         if (cached != null) {
-            if (!cached.isShredded() && visit.getEncryptionKey() != null) {
-                try {
-                    vaultKmsService.unwrapDek(
-                            visit.getEncryptionKey().getVaultKeyName(),
-                            visit.getEncryptionKey().getWrappedDek());
-                    return cached;
-                } catch (Exception e) {
-                    log.warn("Redis CACHE HIT detected destroyed Vault KEK for visit {}. Zero-purge invalidation triggered.", id);
-                    cached.setShredded(true);
-                    redactResponse(cached);
-                    patientVisitCacheService.evict(id);
-                    return cached;
-                }
-            }
             return cached;
         }
 
@@ -313,37 +253,7 @@ public class PatientVisitService {
                         visit.getEncryptionKey().getVaultKeyName(),
                         visit.getEncryptionKey().getWrappedDek());
 
-                Map<String, Object> clinicalPayload = new HashMap<>();
-                clinicalPayload.put("diagnosis", request.getDiagnosis());
-                clinicalPayload.put("medicalNotes", request.getMedicalNotes());
-                clinicalPayload.put("allergies", request.getAllergies());
-                clinicalPayload.put("prescriptions", request.getPrescriptions());
-                clinicalPayload.put("chiefComplaint", request.getChiefComplaint());
-                clinicalPayload.put("chronicConditions", request.getChronicConditions());
-                clinicalPayload.put("immunizationStatus", request.getImmunizationStatus());
-                clinicalPayload.put("lifestyleFactors", request.getLifestyleFactors());
-                clinicalPayload.put("followUpDate", request.getFollowUpDate());
-                clinicalPayload.put("soapSubjective", request.getSoapSubjective());
-                clinicalPayload.put("soapObjective", request.getSoapObjective());
-                clinicalPayload.put("soapAssessment", request.getSoapAssessment());
-                clinicalPayload.put("soapPlan", request.getSoapPlan());
-                clinicalPayload.put("bloodPressure", request.getBloodPressure());
-                clinicalPayload.put("heartRate", request.getHeartRate());
-                clinicalPayload.put("respiratoryRate", request.getRespiratoryRate());
-                clinicalPayload.put("temperature", request.getTemperature());
-                clinicalPayload.put("oxygenSaturation", request.getOxygenSaturation());
-                clinicalPayload.put("heightCm", request.getHeightCm());
-                clinicalPayload.put("weightKg", request.getWeightKg());
-                clinicalPayload.put("bmi", request.getBmi());
-                clinicalPayload.put("painScore", request.getPainScore());
-                clinicalPayload.put("attendingDoctor", request.getAttendingDoctor());
-                clinicalPayload.put("department", request.getDepartment());
-                clinicalPayload.put("insuranceProvider", request.getInsuranceProvider());
-                clinicalPayload.put("insurancePolicyNumber", request.getInsurancePolicyNumber());
-                clinicalPayload.put("insuranceGroupNumber", request.getInsuranceGroupNumber());
-                clinicalPayload.put("emergencyContactName", request.getEmergencyContactName());
-                clinicalPayload.put("emergencyContactPhone", request.getEmergencyContactPhone());
-                clinicalPayload.put("emergencyContactRelationship", request.getEmergencyContactRelationship());
+                Map<String, Object> clinicalPayload = buildClinicalPayload(request);
 
                 String jsonToEncrypt = objectMapper.writeValueAsString(clinicalPayload);
                 EnvelopeEncryptionService.EncryptedPayload encryptedPayload =
@@ -352,7 +262,8 @@ public class PatientVisitService {
                 visit.setEncryptedDataBlob(encryptedPayload.ciphertextBase64());
                 visit.getEncryptionKey().setIv(encryptedPayload.ivBase64());
             } catch (Exception e) {
-                log.warn("Failed to re-encrypt clinical payload during update", e);
+                log.error("Re-encryption failed for visit {}. Aborting update to preserve data integrity.", id, e);
+                throw new IllegalStateException("Clinical payload re-encryption failed; update aborted.", e);
             }
         }
 
@@ -365,10 +276,7 @@ public class PatientVisitService {
                     .patientId(updatedVisit.getPatient() != null ? updatedVisit.getPatient().getPatientId() : updatedVisit.getMrn())
                     .eventType("VISIT_UPDATED")
                     .vaultKeyName(updatedVisit.getEncryptionKey().getVaultKeyName())
-                    .wrappedDek(updatedVisit.getEncryptionKey().getWrappedDek())
-                    .iv(updatedVisit.getEncryptionKey().getIv())
-                    .encryptedDataBlob(updatedVisit.getEncryptedDataBlob())
-                    .timestamp(LocalDateTime.now())
+                                                                                .timestamp(LocalDateTime.now())
                     .build());
         }
 
@@ -526,8 +434,7 @@ public class PatientVisitService {
                 .emergencyContactName(isShredded ? null : v.getEmergencyContactName())
                 .emergencyContactPhone(isShredded ? null : v.getEmergencyContactPhone())
                 .emergencyContactRelationship(isShredded ? null : v.getEmergencyContactRelationship())
-                .encryptedDataBlob(isShredded ? null : v.getEncryptedDataBlob())
-                .shredded(isShredded)
+                                .shredded(isShredded)
                 .ownerEmail(v.getOwner() != null ? v.getOwner().getEmail() : null)
                 .attachments(attachmentResponses)
                 .createdAt(v.getCreatedAt())
@@ -539,5 +446,23 @@ public class PatientVisitService {
         }
 
         return resp;
+    }
+
+    private Map<String, Object> buildClinicalPayload(PatientVisitRequest request) {
+        Map<String, Object> payload = new HashMap<>();
+        if (request.getDiagnosis() != null) payload.put("diagnosis", request.getDiagnosis());
+        if (request.getMedicalNotes() != null) payload.put("medicalNotes", request.getMedicalNotes());
+        if (request.getAllergies() != null) payload.put("allergies", request.getAllergies());
+        if (request.getPrescriptions() != null) payload.put("prescriptions", request.getPrescriptions());
+        if (request.getChiefComplaint() != null) payload.put("chiefComplaint", request.getChiefComplaint());
+        if (request.getChronicConditions() != null) payload.put("chronicConditions", request.getChronicConditions());
+        if (request.getImmunizationStatus() != null) payload.put("immunizationStatus", request.getImmunizationStatus());
+        if (request.getLifestyleFactors() != null) payload.put("lifestyleFactors", request.getLifestyleFactors());
+        if (request.getFollowUpDate() != null) payload.put("followUpDate", request.getFollowUpDate());
+        if (request.getSoapSubjective() != null) payload.put("soapSubjective", request.getSoapSubjective());
+        if (request.getSoapObjective() != null) payload.put("soapObjective", request.getSoapObjective());
+        if (request.getSoapAssessment() != null) payload.put("soapAssessment", request.getSoapAssessment());
+        if (request.getSoapPlan() != null) payload.put("soapPlan", request.getSoapPlan());
+        return payload;
     }
 }

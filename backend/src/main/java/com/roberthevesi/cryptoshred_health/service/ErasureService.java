@@ -247,12 +247,11 @@ public class ErasureService {
 
     private void destroyKeyInVault(EncryptionKey key, LocalDateTime timestamp) {
         if (key.getVaultKeyName() != null) {
-            try {
-                vaultKmsService.destroyKey(key.getVaultKeyName());
-                log.info("Vault KEK {} destroyed", key.getVaultKeyName());
-            } catch (Exception e) {
-                log.error("Failed to destroy key in Vault {}: {}", key.getVaultKeyName(), e.getMessage());
-            }
+            // Allow exceptions to propagate — @Transactional caller will roll back the entire
+            // erasure if Vault key destruction fails. A deletion proof must not be issued
+            // unless the key is actually destroyed in Vault.
+            vaultKmsService.destroyKey(key.getVaultKeyName());
+            log.info("Vault KEK {} successfully destroyed", key.getVaultKeyName());
         }
         key.setWrappedDek(null);
         key.setKeyValue(null);

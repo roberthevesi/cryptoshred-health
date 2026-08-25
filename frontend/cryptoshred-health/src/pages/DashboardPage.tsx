@@ -146,7 +146,7 @@ export default function DashboardPage() {
               <p className="text-sm font-medium text-slate-900">{user?.email}</p>
               <span className={`${ROLE_BADGE[user?.role ?? '']} text-xs`}>{user?.role}</span>
             </div>
-            <button id="logout-btn" onClick={handleLogout} className="btn-ghost gap-1.5" title="Sign out">
+            <button id="logout-btn" onClick={handleLogout} className="btn-ghost gap-1.5" title="Sign out" aria-label="Sign out">
               <LogOut className="h-4 w-4" />
               <span className="hidden sm:inline">Sign out</span>
             </button>

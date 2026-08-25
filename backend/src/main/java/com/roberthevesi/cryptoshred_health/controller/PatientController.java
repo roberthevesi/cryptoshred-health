@@ -20,6 +20,7 @@ public class PatientController {
 
     private final PatientService patientService;
 
+    @PreAuthorize("hasAnyRole('DOCTOR', 'AUDITOR')")
     @GetMapping
     public ResponseEntity<List<PatientResponse>> getAll(
             @RequestParam(required = false) String search,
@@ -33,6 +34,7 @@ public class PatientController {
         return ResponseEntity.ok(patientService.findAll());
     }
 
+    @PreAuthorize("hasAnyRole('DOCTOR', 'AUDITOR')")
     @GetMapping("/{patientId}")
     public ResponseEntity<PatientResponse> getById(@PathVariable String patientId) {
         return ResponseEntity.ok(patientService.findByPatientId(patientId));

@@ -12,6 +12,9 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
+  # WARNING: DEV MODE — Vault runs in-memory (VAULT_DEV_ROOT_TOKEN_ID activates dev server).
+  # All Transit keys are lost on container restart. Existing encrypted records become
+  # permanently unreadable without a full DB reset. Use file/raft storage in production.
   vault:
     image: hashicorp/vault:1.13.3
     container_name: vault_kms
@@ -51,7 +54,7 @@ services:
     container_name: kafka_ui
     restart: always
     ports:
-      - "8085:8080"
+      - "127.0.0.1:8085:8080"
     environment:
       KAFKA_CLUSTERS_0_NAME: health-system-kafka
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092

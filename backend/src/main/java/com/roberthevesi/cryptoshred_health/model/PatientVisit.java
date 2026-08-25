@@ -2,6 +2,7 @@ package com.roberthevesi.cryptoshred_health.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import jakarta.persistence.Index;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -14,7 +15,12 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "patient_visits")
+@Table(name = "patient_visits", indexes = {
+        @Index(name = "idx_visit_owner_id",   columnList = "owner_id"),
+        @Index(name = "idx_visit_mrn",         columnList = "mrn"),
+        @Index(name = "idx_visit_shredded",    columnList = "shredded"),
+        @Index(name = "idx_visit_patient_id",  columnList = "patient_id")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -169,7 +175,7 @@ public class PatientVisit {
     private boolean shredded = false;
 
     /** Encrypted binary attachments (PDF reports, scans, etc.). */
-    @OneToMany(mappedBy = "patientVisit", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "patientVisit", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<PatientAttachment> attachments = new ArrayList<>();
 
     /** Envelope Encryption Key metadata. */

@@ -22,46 +22,43 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@Transactional
 public class PatientService {
 
     private final PatientRepository patientRepository;
     private final GpRepository gpRepository;
     private final VaultKmsService vaultKmsService;
     private final EnvelopeEncryptionService envelopeEncryptionService;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
+    @Transactional(readOnly = true)
     public List<PatientResponse> findAll() {
         return patientRepository.findByIsActiveTrue().stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public PatientResponse findByPatientId(String patientId) {
         return patientRepository.findByPatientId(patientId)
                 .map(this::toResponse)
                 .orElseThrow(() -> new RuntimeException("Patient not found: " + patientId));
     }
 
+    @Transactional(readOnly = true)
     public List<PatientResponse> search(String query) {
         if (query == null || query.isBlank()) {
             return findAll();
         }
-        return patientRepository.findAll().stream()
-                .filter(Patient::isActive)
+        String q = query.trim();
+        return patientRepository
+                .findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCaseOrPatientIdContainingIgnoreCase(q, q, q)
+                .stream()
+                .filter(p -> p.isActive() && !p.isShredded())
                 .map(this::toResponse)
-                .filter(p -> {
-                    String q = query.toLowerCase();
-                    String fullName = ((p.getFirstName() != null ? p.getFirstName() : "") + " " +
-                            (p.getLastName() != null ? p.getLastName() : "")).toLowerCase();
-                    String pid = p.getPatientId() != null ? p.getPatientId().toLowerCase() : "";
-                    String nhs = p.getNhsNumber() != null ? p.getNhsNumber().toLowerCase() : "";
-                    String gpName = p.getGp() != null ? (p.getGp().getFirstName() + " " + p.getGp().getLastName()).toLowerCase() : "";
-                    return fullName.contains(q) || pid.contains(q) || nhs.contains(q) || gpName.contains(q);
-                })
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<PatientResponse> findByGp(UUID gpId) {
         return patientRepository.findByGpId(gpId).stream()
                 .filter(Patient::isActive)
@@ -69,6 +66,7 @@ public class PatientService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
     public PatientResponse create(PatientRequest request) {
         Patient patient = new Patient();
 
@@ -89,9 +87,8 @@ public class PatientService {
         String keyId = patientUuid.toString();
         String vaultKeyName = "patient_" + patientUuid;
         byte[] dek = envelopeEncryptionService.generateDek();
+        vaultKmsService.ensureKeyExists(vaultKeyName);
         String wrappedDek = vaultKmsService.wrapDek(vaultKeyName, dek);
-
-
 
         // 2. Build demographic PII JSON payload and envelope encrypt
         Map<String, Object> piiPayload = new HashMap<>();
@@ -139,14 +136,10 @@ public class PatientService {
     }
 
     private String generateUniquePatientId() {
-        String generated;
-        do {
-            int randomNum = (int) (Math.random() * 90000) + 10000;
-            generated = "PAT-" + randomNum;
-        } while (patientRepository.findByPatientId(generated).isPresent());
-        return generated;
+        return "PAT-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
     }
 
+    @Transactional
     public PatientResponse update(String patientId, PatientRequest request) {
         Patient patient = patientRepository.findByPatientId(patientId)
                 .orElseThrow(() -> new RuntimeException("Patient not found: " + patientId));
@@ -195,12 +188,13 @@ public class PatientService {
 
                 String piiJson = objectMapper.writeValueAsString(piiPayload);
                 EnvelopeEncryptionService.EncryptedPayload encryptedPayload =
-                        envelopeEncryptionService.encrypt(piiJson.getBytes(StandardCharsets.UTF_8), dek);
+                    envelopeEncryptionService.encrypt(piiJson.getBytes(StandardCharsets.UTF_8), dek);
 
                 patient.setEncryptedDataBlob(encryptedPayload.ciphertextBase64());
                 patient.getEncryptionKey().setIv(encryptedPayload.ivBase64());
             } catch (Exception e) {
-                log.warn("Failed to re-encrypt demographic payload for patient {}: {}", patientId, e.getMessage());
+                log.error("Failed to re-encrypt demographic payload for patient {}: {}", patientId, e.getMessage(), e);
+                throw new IllegalStateException("Failed to re-encrypt patient demographics; update aborted.", e);
             }
         }
 
@@ -208,6 +202,7 @@ public class PatientService {
         return toResponse(updated);
     }
 
+    @Transactional
     public void deactivate(String patientId) {
         Patient patient = patientRepository.findByPatientId(patientId)
                 .orElseThrow(() -> new RuntimeException("Patient not found: " + patientId));

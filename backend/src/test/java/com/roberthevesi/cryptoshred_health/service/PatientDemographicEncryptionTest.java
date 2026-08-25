@@ -35,7 +35,8 @@ class PatientDemographicEncryptionTest {
                 patientRepository,
                 gpRepository,
                 vaultKmsService,
-                envelopeEncryptionService
+                envelopeEncryptionService,
+                new com.fasterxml.jackson.databind.ObjectMapper()
         );
 
         when(patientRepository.save(any(Patient.class))).thenAnswer(invocation -> {

@@ -20,6 +20,7 @@ public class GpController {
 
     private final GpService gpService;
 
+    @PreAuthorize("isAuthenticated()")
     @GetMapping
     public ResponseEntity<List<GpResponse>> getAll(@RequestParam(required = false) String search) {
         if (search != null && !search.isBlank()) {
@@ -28,6 +29,7 @@ public class GpController {
         return ResponseEntity.ok(gpService.findAll());
     }
 
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/{id}")
     public ResponseEntity<GpResponse> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(gpService.findById(id));

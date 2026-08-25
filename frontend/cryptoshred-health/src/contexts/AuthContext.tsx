@@ -6,7 +6,7 @@ interface AuthContextValue {
   user: AuthUser | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, role: Role) => Promise<void>;
+  register: (email: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -32,6 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(false);
   }, []);
 
+  // NOTE: Storing JWT tokens in localStorage is susceptible to XSS. In production, use httpOnly Secure SameSite cookies for session tokens.
   const persist = (data: AuthResponse) => {
     const authUser: AuthUser = { email: data.email, role: data.role, token: data.token };
     localStorage.setItem('auth_token', data.token);
@@ -44,8 +45,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     persist(data);
   }, []);
 
-  const register = useCallback(async (email: string, password: string, role: Role) => {
-    const { data } = await apiClient.post<AuthResponse>('/auth/register', { email, password, role });
+  const register = useCallback(async (email: string, password: string) => {
+    const { data } = await apiClient.post<AuthResponse>('/auth/register', { email, password });
     persist(data);
   }, []);
 

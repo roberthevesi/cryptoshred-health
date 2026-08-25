@@ -16,7 +16,7 @@ public class VaultConfig extends AbstractVaultConfiguration {
     @Value("${spring.vault.port:8200}")
     private int port;
 
-    @Value("${spring.vault.token:root}")
+    @Value("${spring.vault.token}")
     private String token;
 
     @Value("${spring.vault.scheme:http}")

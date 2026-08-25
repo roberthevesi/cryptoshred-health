@@ -155,6 +155,18 @@ public class WormBackupExporterService {
 
     /** Retrieves full WORM snapshot payload for a specific snapshot file. */
     public WormSnapshotDto getSnapshotByFileName(String fileName) {
+        // Sanitize fileName — prevent path traversal
+        if (fileName == null || fileName.contains("..") || fileName.contains("/") || fileName.contains("\\")) {
+            throw new IllegalArgumentException("Invalid snapshot file name");
+        }
+        if (!fileName.startsWith("snapshot_") || !fileName.endsWith(".json")) {
+            throw new IllegalArgumentException("Snapshot file name must match pattern: snapshot_*.json");
+        }
+        Path baseDir = Paths.get(backupDirectory).toAbsolutePath().normalize();
+        Path resolvedPath = baseDir.resolve(fileName).normalize();
+        if (!resolvedPath.startsWith(baseDir)) {
+            throw new IllegalArgumentException("Path traversal detected");
+        }
         try {
             Path filePath = Paths.get(backupDirectory).resolve(fileName);
             if (!Files.exists(filePath)) {
@@ -222,7 +234,7 @@ public class WormBackupExporterService {
                 .patientId(visit.getPatient() != null ? visit.getPatient().getPatientId() : visit.getMrn())
                 .mrn(visit.getMrn())
                 .vaultKeyName(key != null ? key.getVaultKeyName() : null)
-                .wrappedDek(key != null ? key.getWrappedDek() : null)
+                .wrappedDek(null)
                 .iv(key != null ? key.getIv() : null)
                 .encryptedDataBlob(visit.getEncryptedDataBlob())
                 .shredded(visit.isShredded())
