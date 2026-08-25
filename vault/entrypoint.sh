@@ -10,8 +10,7 @@ echo "[Vault-Init] Waiting for Vault server HTTP listener on port 8200..."
 MAX_RETRIES=30
 COUNT=0
 while [ $COUNT -lt $MAX_RETRIES ]; do
-  STATUS=$(vault status -format=json 2>/dev/null || true)
-  if [ -n "$STATUS" ]; then
+  if vault status >/dev/null 2>&1 || [ $? -le 2 ]; then
     echo "[Vault-Init] Vault listener is active."
     break
   fi
@@ -19,41 +18,37 @@ while [ $COUNT -lt $MAX_RETRIES ]; do
   COUNT=$((COUNT + 1))
 done
 
-STATUS=$(vault status -format=json 2>/dev/null || true)
-IS_INIT=$(echo "$STATUS" | grep -o '"initialized": *true' || true)
-IS_SEALED=$(echo "$STATUS" | grep -o '"sealed": *true' || true)
+INIT_FILE="/vault/file/vault-init.txt"
 
-if [ -z "$IS_INIT" ]; then
+# Check if Vault is initialized
+if ! vault status 2>&1 | grep -q "Initialized.*true"; then
   echo "[Vault-Init] First-time setup: Initializing Vault operator..."
-  INIT_OUTPUT=$(vault operator init -key-shares=1 -key-threshold=1 -format=json)
-  echo "$INIT_OUTPUT" > /vault/file/vault-init.json
-  chmod 600 /vault/file/vault-init.json
+  vault operator init -key-shares=1 -key-threshold=1 > "$INIT_FILE"
+  chmod 600 "$INIT_FILE"
 
-  UNSEAL_KEY=$(echo "$INIT_OUTPUT" | grep -o '"unseal_keys_b64": *\["[^"]*"' | sed 's/.*"\(.*\)".*/\1/')
-  ROOT_TOKEN=$(echo "$INIT_OUTPUT" | grep -o '"root_token": *"[^"]*"' | sed 's/.*"\(.*\)".*/\1/')
+  UNSEAL_KEY=$(grep -E 'Unseal Key 1:' "$INIT_FILE" | awk '{print $NF}' | tr -d '\r\n ')
+  ROOT_TOKEN=$(grep -E 'Initial Root Token:' "$INIT_FILE" | awk '{print $NF}' | tr -d '\r\n ')
 
-  echo "[Vault-Init] Unsealing Vault..."
+  echo "[Vault-Init] Unsealing Vault with generated key..."
   vault operator unseal "$UNSEAL_KEY"
 
   export VAULT_TOKEN="$ROOT_TOKEN"
 
   TARGET_DEV_TOKEN="${VAULT_DEV_ROOT_TOKEN:-root}"
-  if [ "$TARGET_DEV_TOKEN" != "$ROOT_TOKEN" ]; then
-    echo "[Vault-Init] Provisioning static root token '${TARGET_DEV_TOKEN}'..."
-    vault token create -id="$TARGET_DEV_TOKEN" -policy=root -orphan >/dev/null 2>&1 || true
-  fi
+  echo "[Vault-Init] Provisioning static root token '${TARGET_DEV_TOKEN}'..."
+  vault token create -id="$TARGET_DEV_TOKEN" -policy=root -orphan >/dev/null 2>&1 || true
 
   echo "[Vault-Init] Mounting Transit secrets engine..."
   vault secrets enable transit >/dev/null 2>&1 || true
 else
   echo "[Vault-Init] Vault is already initialized."
-  if [ -n "$IS_SEALED" ]; then
-    if [ -f /vault/file/vault-init.json ]; then
-      UNSEAL_KEY=$(grep -o '"unseal_keys_b64": *\["[^"]*"' /vault/file/vault-init.json | sed 's/.*"\(.*\)".*/\1/')
-      echo "[Vault-Init] Unsealing Vault from persistent credentials..."
+  if vault status 2>&1 | grep -q "Sealed.*true"; then
+    if [ -f "$INIT_FILE" ]; then
+      UNSEAL_KEY=$(grep -E 'Unseal Key 1:' "$INIT_FILE" | awk '{print $NF}' | tr -d '\r\n ')
+      echo "[Vault-Init] Unsealing Vault from saved credentials..."
       vault operator unseal "$UNSEAL_KEY"
     else
-      echo "[Vault-Init] WARNING: Vault is sealed but /vault/file/vault-init.json was not found!"
+      echo "[Vault-Init] WARNING: Vault is sealed but $INIT_FILE was not found!"
     fi
   fi
 fi
