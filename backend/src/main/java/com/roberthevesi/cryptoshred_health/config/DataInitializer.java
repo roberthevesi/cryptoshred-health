@@ -34,9 +34,17 @@ public class DataInitializer implements CommandLineRunner {
     private final GpService gpService;
     private final AttachmentService attachmentService;
     private final PasswordEncoder passwordEncoder;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     @Override
     public void run(String... args) {
+        // 0. Drop legacy PostgreSQL enum check constraint if it exists from earlier schema versions
+        try {
+            jdbcTemplate.execute("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check");
+        } catch (Exception e) {
+            log.debug("users_role_check constraint check: {}", e.getMessage());
+        }
+
         // 1. Create Default Users if missing
         User doctor = userRepository.findByEmail("doctor@hospital.com").orElse(null);
         if (doctor == null) {
