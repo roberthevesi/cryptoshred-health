@@ -246,6 +246,10 @@ public class ErasureService {
     }
 
     private void destroyKeyInVault(EncryptionKey key, LocalDateTime timestamp) {
+        if (key.isInvalidated()) {
+            log.info("Encryption key {} is already invalidated and destroyed", key.getKeyId());
+            return;
+        }
         if (key.getVaultKeyName() != null) {
             // Allow exceptions to propagate — @Transactional caller will roll back the entire
             // erasure if Vault key destruction fails. A deletion proof must not be issued

@@ -64,13 +64,18 @@ public class VaultKmsService {
         }
     }
 
-    /** Permanently destroys (deletes) the KEK from Vault Transit Engine. */
+    /** Permanently destroys (deletes) the KEK from Vault Transit Engine. Idempotent. */
     public void destroyKey(String keyName) {
         try {
             vaultOperations.write("transit/keys/" + keyName + "/config", Map.of("deletion_allowed", true));
             vaultOperations.opsForTransit().deleteKey(keyName);
             log.info("Vault Transit KEK {} permanently destroyed", keyName);
         } catch (Exception e) {
+            String msg = e.getMessage();
+            if (msg != null && (msg.contains("no existing key") || msg.contains("not found") || msg.contains("Status 400"))) {
+                log.info("Vault Transit KEK {} was already destroyed or not found in Vault", keyName);
+                return;
+            }
             log.error("Failed to destroy Vault key {}", keyName, e);
             throw new IllegalStateException("Failed to destroy KMS key in Vault: " + keyName, e);
         }
