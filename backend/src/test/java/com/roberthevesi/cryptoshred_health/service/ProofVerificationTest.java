@@ -208,4 +208,30 @@ class ProofVerificationTest {
         assertTrue(response.isPayloadIntegrityValid());
         assertTrue(response.isMerkleInclusionValid());
     }
+
+    @Test
+    void testMultiLeafMerkleTreeInclusion() {
+        MerkleTreeService service = new MerkleTreeService(merkleNodeRepository);
+        List<String> leafHashes = List.of(
+                sha256("leaf_hash_0"),
+                sha256("leaf_hash_1"),
+                sha256("leaf_hash_2"),
+                sha256("leaf_hash_3"),
+                sha256("leaf_hash_4")
+        );
+
+        for (String leaf : leafHashes) {
+            service.addLeaf(leaf);
+        }
+
+        String root = service.getMerkleRoot();
+        assertNotNull(root);
+
+        // Verify inclusion proof for every single leaf
+        for (String leaf : leafHashes) {
+            List<String> proof = service.getInclusionProof(leaf);
+            assertTrue(service.verifyInclusion(leaf, proof, root),
+                    "Inclusion verification should succeed for leaf: " + leaf);
+        }
+    }
 }
