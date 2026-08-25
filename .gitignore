@@ -54,6 +54,12 @@ pnpm-debug.log*
 pgdata/
 vaultdata/
 
+# ── Benchmark Results ──────────────────────────────────────────────────────
+backend/benchmark-results/*.json
+backend/benchmark-results/*.csv
+backend/benchmark-results/*.png
+!backend/benchmark-results/*.py
+
 
 # ── Gemini / Agent Metadata ────────────────────────────────────────────────
 .gemini/

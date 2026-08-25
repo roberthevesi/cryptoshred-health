@@ -46,14 +46,15 @@ public class MerkleTreeService {
     @Transactional
     public synchronized void addLeaf(String leafHash) {
         int nextIndex = leaves.size();
-        try {
-            merkleNodeRepository.save(new MerkleNode(nextIndex, leafHash));
-            leaves.add(leafHash); // Only add to memory after successful DB persist
-        } catch (Exception e) {
-            log.warn("Failed to persist Merkle leaf to database: {}", e.getMessage());
+        if (merkleNodeRepository != null) {
+            try {
+                merkleNodeRepository.save(new MerkleNode(nextIndex, leafHash));
+            } catch (Exception e) {
+                log.warn("Failed to persist Merkle leaf to database: {}", e.getMessage());
+            }
         }
-        log.info("MerkleTree added leaf at index {}. Total leaves: {}, New Root: {}",
-                nextIndex, leaves.size(), getMerkleRoot());
+        leaves.add(leafHash);
+        log.debug("MerkleTree added leaf at index {}. Total leaves: {}", nextIndex, leaves.size());
     }
 
     public synchronized String getMerkleRoot() {
