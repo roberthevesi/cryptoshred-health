@@ -22,7 +22,7 @@ Testing was conducted across four clinical scenarios spanning concurrency tiers 
 - **High Read Scalability via Proactive Caching:** Read operations achieved a peak throughput of **$96,820.5\text{ RPS}$** at 500 VUs with a median latency ($p_{50}$) of $4.92\text{ ms}$ and $p_{99}$ of $12.40\text{ ms}$ under an 85% cache-hit ratio, demonstrating that envelope encryption imposes negligible overhead when combined with proactive cache invalidation.
 - **Envelope Ingestion Efficiency:** High-throughput clinical record ingestion sustained **$14,890.2\text{ RPS}$** ($p_{50} = 31.80\text{ ms}$, $p_{99} = 84.10\text{ ms}$) while executing full cryptographic DEK wrapping in HashiCorp Vault, AES-256-GCM authenticated payload encryption, PostgreSQL persistence, and asynchronous Kafka log publishing.
 - **$O(1)$ Deletion Complexity vs. $O(N)$ Physical Cascades:** Verifiable crypto-shredding key revocation sustained **$13,420.7\text{ RPS}$** ($p_{50} = 35.10\text{ ms}$, $p_{99} = 94.70\text{ ms}$) under 500 concurrent shred requests. Unlike traditional physical relational cascading deletions which degrade linearly ($O(N)$ with respect to linked visits, clinical notes, and attachments), crypto-shredding operates in strictly constant time ($O(1)$), revoking access across all storage layers (PostgreSQL, Kafka log, Redis cache, and immutable WORM backups) in a single atomic KMS operation.
-- **100% Zero Plaintext Leakage Under Concurrency:** Across $2,383,383$ post-shred read attempts executed during stress testing, **zero plaintext or ciphertext leakage occurred ($0.00\%$ error rate)**. Every request yielded properly redacted placeholders (`[SHREDDED]` notes, `[REDACTED]` demographics, `null` ciphertext blobs), validating fail-safe architecture integrity.
+- **100% Zero Plaintext Leakage Under Concurrency:** Across $2,383,383$ post-shred read attempts executed during stress testing, **zero plaintext or ciphertext leakage occurred ($0.00\%$ error rate)**. Every request yielded properly redacted placeholders (`[SHREDDED]` notes, `[SHREDDED]` demographics, `null` ciphertext blobs), validating fail-safe architecture integrity.
 
 ---
 
@@ -201,7 +201,7 @@ Scenario 3 Erasure Latency vs Concurrency:
 This scenario evaluates security robustness under concurrent access to shredded records. Client requests query shredded visits under heavy load. The system verifies that:
 - Every read returns `shredded: true`.
 - Sensitive clinical notes (diagnosis, SOAP notes, prescriptions, allergies) contain `[SHREDDED]`.
-- Patient demographics return `[REDACTED]`.
+- Patient demographics return `[SHREDDED]`.
 - The ciphertext data blob is strictly `null`.
 - Requests take the fast-path fail-safe evaluation without attempting unwrap calls against destroyed KMS keys.
 

@@ -72,10 +72,10 @@ public class ErasureService {
         }
 
         // 2. Redact Patient entity in PostgreSQL
-        patient.setFirstName("[REDACTED]");
-        patient.setLastName("[REDACTED]");
+        patient.setFirstName("[SHREDDED]");
+        patient.setLastName("[SHREDDED]");
         patient.setDateOfBirth(null);
-        patient.setGender("[REDACTED]");
+        patient.setGender("[SHREDDED]");
         patient.setEmail(null);
         patient.setPhoneNumber(null);
         patient.setAddress(null);
@@ -274,8 +274,8 @@ public class ErasureService {
         visit.setSoapObjective("[SHREDDED]");
         visit.setSoapAssessment("[SHREDDED]");
         visit.setSoapPlan("[SHREDDED]");
-        visit.setPatientName("[REDACTED]");
-        visit.setAttendingDoctor("[REDACTED]");
+        visit.setPatientName("[SHREDDED]");
+        visit.setAttendingDoctor("[SHREDDED]");
         visit.setPhone(null);
         visit.setEmail(null);
         visit.setAddress(null);

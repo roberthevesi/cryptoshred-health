@@ -261,10 +261,10 @@ public class PatientService {
         }
 
         if (isShredded) {
-            firstName = "[REDACTED]";
-            lastName = "[REDACTED]";
+            firstName = "[SHREDDED]";
+            lastName = "[SHREDDED]";
             dob = null;
-            gender = "[REDACTED]";
+            gender = "[SHREDDED]";
             email = null;
             phone = null;
             address = null;

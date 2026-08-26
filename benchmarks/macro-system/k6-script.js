@@ -278,7 +278,7 @@ export function scenarioFailSafePostShred(data) {
         const json = JSON.parse(res.body);
         if (json.shredded === true) {
           zeroLeak = json.diagnosis === '[SHREDDED]' &&
-                     json.patientName === '[REDACTED]' &&
+                     json.patientName === '[SHREDDED]' &&
                      json.encryptedDataBlob === null;
         }
       } catch {}
