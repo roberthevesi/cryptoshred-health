@@ -1105,7 +1105,7 @@ export default function PatientDetailPage() {
                     Multi-tier cryptographic verification proving ciphertext unrecoverability across all underlying storage layers.
                   </p>
                 </div>
-                {proofBundle && (
+                {(proofBundle?.masterPatientProof || (proofBundle?.totalShreddedVisits ?? 0) > 0 || isShredded) && (
                   <button
                     onClick={handleDownloadProofBundle}
                     className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-sm transition shrink-0 cursor-pointer"
@@ -1214,17 +1214,8 @@ export default function PatientDetailPage() {
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-200 transition shadow-2xs cursor-pointer"
                     >
                       <Clock className="h-3.5 w-3.5 text-blue-600" />
-                      View Shredded Visits
+                      View Shredded Visits ({shreddedVisits.length > 0 ? shreddedVisits.length : (proofBundle?.totalShreddedVisits ?? 0)})
                     </button>
-                    {proofBundle && (
-                      <button
-                        onClick={handleDownloadProofBundle}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-2xs transition cursor-pointer"
-                      >
-                        <Download className="h-3.5 w-3.5" />
-                        Download All Proofs Bundle (JSON)
-                      </button>
-                    )}
                   </div>
                 </div>
               )}
