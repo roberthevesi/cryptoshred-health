@@ -180,6 +180,7 @@ class RedisCryptoShreddingTest {
         assertEquals("[SHREDDED]", response.getMedicalNotes());
         assertEquals("[SHREDDED]", response.getDiagnosis());
         assertNull(response.getEncryptedDataBlob());
+        verify(patientVisitCacheService, never()).put(eq(visitId), any(PatientVisitResponse.class));
     }
 
     @Test
