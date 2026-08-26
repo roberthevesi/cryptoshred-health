@@ -28,6 +28,7 @@ import {
   LogOut,
   Lock,
   Download,
+  Layers,
 } from 'lucide-react';
 import apiClient from '../lib/axios';
 import { useAuth } from '../contexts/AuthContext';
@@ -35,7 +36,6 @@ import RecordVisitModal from '../components/RecordVisitModal';
 import ViewVisitModal from '../components/ViewVisitModal';
 import PatientFormModal from '../components/PatientFormModal';
 import VitalsCard from '../components/VitalsCard';
-import DeletionProofCard from '../components/DeletionProofCard';
 import VerifyProofModal from '../components/VerifyProofModal';
 import ProofViewerModal from '../components/ProofViewerModal';
 import type { Patient, PatientVisit, DeletionProof, ErasureProofBundle } from '../types';
@@ -171,6 +171,39 @@ export default function PatientDetailPage() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadPatientProof = async () => {
+    const proofToDownload = proofBundle?.masterPatientProof || effectiveProof;
+    if (proofToDownload) {
+      const jsonString = JSON.stringify(proofToDownload, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `proof-patient-${patientId}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } else {
+      try {
+        const response = await apiClient.get<DeletionProof>(`/erasure/patients/${patientId}/proof`);
+        const jsonString = JSON.stringify(response.data, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `proof-patient-${patientId}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error('Failed to download patient proof:', err);
+        alert('Could not download deletion proof for patient ' + patientId);
+      }
+    }
   };
 
   const handleDownloadVisitProof = async (visitId: string) => {
@@ -385,9 +418,27 @@ export default function PatientDetailPage() {
                       <ShieldCheck className="h-3.5 w-3.5" /> Active Protected Patient
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-md bg-red-50 border border-red-200 text-red-700">
-                      <ShieldOff className="h-3.5 w-3.5" /> Crypto-Shredded (GDPR Art. 17)
-                    </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-md bg-red-50 border border-red-200 text-red-700">
+                        <ShieldOff className="h-3.5 w-3.5" /> Crypto-Shredded (GDPR Art. 17)
+                      </span>
+                      <button
+                        onClick={() => setSelectedProofForViewer({ proof: proofBundle?.masterPatientProof || effectiveProof, patientId })}
+                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold text-xs transition border border-purple-200 shadow-2xs cursor-pointer"
+                        title="View Cryptographic Proof of Erasure"
+                      >
+                        <ShieldCheck className="h-3.5 w-3.5 text-purple-600" />
+                        <span>View Proof of Erasure</span>
+                      </button>
+                      <button
+                        onClick={handleDownloadPatientProof}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs transition border border-slate-200 shadow-2xs cursor-pointer"
+                        title="Download JSON Proof"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        <span>Download JSON</span>
+                      </button>
+                    </div>
                   )}
                 </div>
 
@@ -909,13 +960,15 @@ export default function PatientDetailPage() {
         {/* TAB 4: GDPR Compliance & Erasure */}
         {activeTab === 'compliance' && (
           <div className="space-y-6 animate-fade-in">
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 flex items-start gap-4">
-              <ShieldAlert className="h-6 w-6 text-amber-600 shrink-0 mt-0.5" />
-              <div>
-                <h3 className="font-semibold text-amber-900">GDPR Article 17 — Patient Right to be Forgotten</h3>
-                <p className="mt-1 text-sm text-amber-700">
-                  Executing crypto-shredding irreversibly destroys the HashiCorp Vault KMS Transit keys protecting this patient's demographic PII and clinical visit ciphertext.
-                  A mathematically signed RSA deletion certificate with Merkle tree inclusion proof will be minted for compliance records.
+            {/* 1. GDPR Overview Banner */}
+            <div className="rounded-2xl border border-blue-200 bg-blue-50/70 p-5 flex items-start gap-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 border border-blue-200 text-blue-700">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-bold text-blue-950 text-base">GDPR Compliance &amp; Data Subject Rights Center</h3>
+                <p className="text-xs text-blue-800 leading-relaxed">
+                  Manage regulatory data subject rights under EU GDPR regulations for this patient profile. This compliance center governs <strong>Article 17 (Right to Erasure / "Right to be Forgotten")</strong> through cryptographically irreversible Vault KMS key destruction, <strong>Article 20 (Right to Data Portability)</strong> via standardized HL7 FHIR R4 exports, and <strong>Article 15 (Right of Access)</strong> with multi-layer cryptographic storage audit trails.
                 </p>
               </div>
             </div>
@@ -927,7 +980,7 @@ export default function PatientDetailPage() {
               </div>
             )}
 
-            {/* GDPR Article 20 — Right to Data Portability (HL7 FHIR R4) */}
+            {/* 2. GDPR Article 20 — Data Portability */}
             <div className="bg-white border border-slate-200 rounded-2xl shadow-card p-6 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
@@ -943,33 +996,33 @@ export default function PatientDetailPage() {
                 <button
                   onClick={handleExportFhir}
                   disabled={isExportingFhir}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-sm transition shrink-0"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-sm transition shrink-0 cursor-pointer disabled:opacity-50"
                 >
                   {isExportingFhir ? (
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                   ) : (
                     <Download className="h-4 w-4" />
                   )}
-                  Export FHIR R4 Bundle
+                  <span>Export FHIR R4 Bundle</span>
                 </button>
               </div>
             </div>
 
-            {/* Whole-Patient Destruction Card */}
-            <div className="bg-white border border-red-200 rounded-2xl shadow-card p-6 space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                    <ShieldAlert className="h-5 w-5 text-red-600" />
-                    Full Patient Cryptographic Erasure
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Permanently destroys the master patient demographic key and all {patientVisits.length} linked visit keys across all storage layers.
-                  </p>
-                </div>
+            {/* 3. GDPR Article 17 — Full Patient Cryptographic Erasure */}
+            {!isShredded ? (
+              <div className="bg-white border border-rose-200 rounded-2xl shadow-card p-6 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                      <ShieldAlert className="h-5 w-5 text-rose-600" />
+                      GDPR Article 17 — Full Patient Cryptographic Erasure
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Permanently destroys the master patient demographic key and all {patientVisits.length} linked visit keys across all storage layers.
+                    </p>
+                  </div>
 
-                {isAuditor ? (
-                  !isShredded ? (
+                  {isAuditor ? (
                     <button
                       onClick={() => {
                         if (confirm(`Are you certain you want to crypto-shred patient ${patient.patientId} (${patient.firstName} ${patient.lastName})? This will permanently destroy all encryption keys across Postgres, Kafka, Redis, and WORM backups.`)) {
@@ -977,7 +1030,7 @@ export default function PatientDetailPage() {
                         }
                       }}
                       disabled={patientErasureMutation.isPending}
-                      className="btn-danger shrink-0"
+                      className="btn-danger shrink-0 cursor-pointer"
                     >
                       {patientErasureMutation.isPending ? (
                         <div className="flex items-center gap-2">
@@ -991,126 +1044,191 @@ export default function PatientDetailPage() {
                       )}
                     </button>
                   ) : (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-100 text-red-800 text-xs font-bold border border-red-300">
-                      <ShieldOff className="h-4 w-4" /> Patient Already Crypto-Shredded
-                    </span>
-                  )
-                ) : (
-                  <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-600 text-xs font-medium">
-                    <Lock className="h-3.5 w-3.5 text-slate-400" />
-                    <span>Auditor Role Required to Execute Erasure</span>
-                  </div>
-                )}
+                    <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-600 text-xs font-medium">
+                      <Lock className="h-3.5 w-3.5 text-slate-400" />
+                      <span>Auditor Role Required to Execute Erasure</span>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-
-            {/* Visit Level Destruction Controls */}
-            {patientVisits.length > 0 && (
-              <div className="bg-white border border-slate-200 rounded-2xl shadow-card p-6 space-y-4">
-                <h3 className="text-sm font-bold text-slate-900">Individual Visit Key Destruction Controls</h3>
-                <p className="text-xs text-slate-500">
-                  Selectively shred specific clinical visits if required for targeted Right-to-be-Forgotten requests:
-                </p>
-
-                <div className="space-y-3">
-                  {patientVisits.map((visit) => (
-                    <div
-                      key={visit.id}
-                      className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50 gap-3"
-                    >
-                      <div>
-                        <span className="text-xs font-semibold text-slate-900 block">
-                          Visit: {new Date(visit.createdAt).toLocaleDateString()} — {visit.diagnosis || 'Clinical Chart'}
-                        </span>
-                        <span className="text-[11px] text-slate-500 font-mono">
-                          UUID: {visit.id} • {visit.shredded || isShredded ? 'Shredded' : 'Active Encrypted Data'}
+            ) : (
+              <div className="bg-white border border-emerald-200 rounded-2xl shadow-card p-6 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 border border-emerald-200">
+                      <ShieldCheck className="h-6 w-6 text-emerald-600" />
+                    </div>
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-base font-bold text-slate-900">
+                          GDPR Article 17 — Patient Cryptographically Shredded
+                        </h3>
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold bg-rose-100 text-rose-800 border border-rose-200 font-mono">
+                          Vault KEK Destroyed
                         </span>
                       </div>
-
-                      {!visit.shredded && !isShredded && (
-                        isAuditor ? (
-                          <button
-                            onClick={() => {
-                              if (confirm(`Permanently crypto-shred visit ${visit.id}? This is irreversible.`)) {
-                                visitErasureMutation.mutate(visit.id);
-                              }
-                            }}
-                            disabled={visitErasureMutation.isPending}
-                            className="btn-danger text-xs py-1.5 px-3 shrink-0"
-                          >
-                            <ShieldAlert className="h-3.5 w-3.5" /> Crypto-Shred Visit
-                          </button>
-                        ) : (
-                          <span className="text-[11px] text-slate-400 italic">Auditor clearance required</span>
-                        )
-                      )}
+                      <p className="text-xs text-slate-600 mt-1">
+                        Master demographic key and all associated clinical visit encryption keys have been irreversibly destroyed in HashiCorp Vault KMS. Ciphertext is permanently unrecoverable across all storage layers.
+                      </p>
                     </div>
-                  ))}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => setSelectedProofForViewer({ proof: proofBundle?.masterPatientProof || effectiveProof, patientId })}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-semibold border border-purple-200 transition shadow-2xs cursor-pointer"
+                    >
+                      <ShieldCheck className="h-4 w-4 text-purple-600" />
+                      View Master Certificate
+                    </button>
+                    <button
+                      onClick={handleDownloadPatientProof}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-2xs transition cursor-pointer"
+                    >
+                      <Download className="h-4 w-4" />
+                      Download JSON
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* Cryptographic Compliance Deletion Proofs & Certificates Section */}
-            {(proofBundle?.masterPatientProof || (proofBundle?.visitProofs && proofBundle.visitProofs.length > 0) || effectiveProof) && (
-              <div className="space-y-6 pt-4 border-t border-slate-200">
-                {/* Bundle Header & Download All */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-slate-900 text-white shadow-card">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck className="h-5 w-5 text-emerald-400" />
-                      <h3 className="text-base font-bold">Cryptographic Deletion Proof Bundle</h3>
-                      <span className="px-2 py-0.5 rounded text-[11px] font-mono bg-slate-800 text-emerald-300 border border-slate-700">
-                        {(proofBundle?.totalShreddedVisits ?? 0) + (proofBundle?.masterPatientProof || (isShredded && effectiveProof) ? 1 : 0)} Certificate(s)
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-400 mt-1">
-                      Consolidated GDPR Article 17 compliance proof bundle containing master demographic &amp; individual visit cryptographic signatures.
-                    </p>
-                  </div>
-
+            {/* 4. GDPR Article 15 — Storage Layer Cryptographic Audit & Proof Bundle */}
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-card p-6 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <Layers className="h-5 w-5 text-indigo-600" />
+                    GDPR Article 15 — Storage Layer Cryptographic Audit &amp; Proof Bundle
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Multi-tier cryptographic verification proving ciphertext unrecoverability across all underlying storage layers.
+                  </p>
+                </div>
+                {proofBundle && (
                   <button
                     onClick={handleDownloadProofBundle}
-                    disabled={!proofBundle}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-sm transition shrink-0 cursor-pointer disabled:opacity-50"
+                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-sm transition shrink-0 cursor-pointer"
+                    title="Download consolidated proof bundle JSON"
                   >
-                    <Download className="h-4 w-4" />
-                    <span>Download Proofs Bundle (JSON)</span>
+                    <Download className="h-3.5 w-3.5" />
+                    <span>Download All Proofs Bundle (JSON)</span>
                   </button>
-                </div>
-
-                {/* Master Patient Demographic Proof */}
-                {(proofBundle?.masterPatientProof || (isShredded && effectiveProof)) && (
-                  <div className="space-y-3">
-                    <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                      <span>🏛️ Master Patient Demographic Deletion Certificate</span>
-                    </h4>
-                    <DeletionProofCard
-                      proof={proofBundle?.masterPatientProof || effectiveProof!}
-                      onVerify={(p) => setSelectedProofForViewer({ proof: p })}
-                    />
-                  </div>
-                )}
-
-                {/* Individual Clinical Visit Certificates Gallery */}
-                {proofBundle?.visitProofs && proofBundle.visitProofs.length > 0 && (
-                  <div className="space-y-4">
-                    <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                      <span>🏥 Individual Clinical Visit Deletion Certificates ({proofBundle.visitProofs.length})</span>
-                    </h4>
-
-                    <div className="grid grid-cols-1 gap-4">
-                      {proofBundle.visitProofs.map((vProof, idx) => (
-                        <DeletionProofCard
-                          key={vProof.visitId || `visit-proof-${idx}`}
-                          proof={vProof}
-                          onVerify={(p) => setSelectedProofForViewer({ proof: p })}
-                        />
-                      ))}
-                    </div>
-                  </div>
                 )}
               </div>
-            )}
+
+              {/* Compact 4-Layer Audit Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                {/* Postgres */}
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <Building className="h-3.5 w-3.5 text-blue-600" /> PostgreSQL EHR
+                    </span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                      isShredded ? 'bg-rose-100 text-rose-800 border border-rose-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                    }`}>
+                      {isShredded ? 'KEY DESTROYED' : 'ENCRYPTED'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    {isShredded ? 'Tables encrypted under deleted KEK; rendered unrecoverable noise.' : 'AES-256-GCM envelope encryption at rest.'}
+                  </p>
+                </div>
+
+                {/* Kafka */}
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <Activity className="h-3.5 w-3.5 text-amber-600" /> Apache Kafka
+                    </span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                      isShredded ? 'bg-rose-100 text-rose-800 border border-rose-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                    }`}>
+                      {isShredded ? 'KEY DESTROYED' : 'ENCRYPTED'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    {isShredded ? 'Immutable log topics cannot be decrypted without transit KEK.' : 'End-to-end encrypted event streams.'}
+                  </p>
+                </div>
+
+                {/* Redis */}
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5 text-red-600" /> Redis Cache
+                    </span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                      isShredded ? 'bg-rose-100 text-rose-800 border border-rose-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                    }`}>
+                      {isShredded ? 'EVICTED & SHREDDED' : 'ACTIVE CACHE'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    {isShredded ? 'In-memory patient cache evicted; cached ciphertext permanently invalid.' : 'Fast in-memory encrypted cache.'}
+                  </p>
+                </div>
+
+                {/* WORM */}
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <ShieldCheck className="h-3.5 w-3.5 text-purple-600" /> WORM Backups
+                    </span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                      isShredded ? 'bg-rose-100 text-rose-800 border border-rose-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                    }`}>
+                      {isShredded ? 'MATH SHREDDED' : 'PROTECTED'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    {isShredded ? 'Write-once immutable media unreadable; compliant with retention rules.' : 'Tamper-proof compliance archives.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Compact Summary Row for Individually Shredded Visits */}
+              {(shreddedVisits.length > 0 || (proofBundle?.totalShreddedVisits ?? 0) > 0) && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-purple-100 border border-purple-200 text-purple-700">
+                      <ShieldOff className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">
+                        {shreddedVisits.length > 0 ? shreddedVisits.length : (proofBundle?.totalShreddedVisits ?? 0)} visit(s) individually crypto-shredded
+                      </p>
+                      <p className="text-[11px] text-slate-500">
+                        Individual visit cryptographic keys have been destroyed while preserving audit proofs.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setActiveTab('visits');
+                        setVisitsSubTab('shredded');
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-200 transition shadow-2xs cursor-pointer"
+                    >
+                      <Clock className="h-3.5 w-3.5 text-blue-600" />
+                      View Shredded Visits
+                    </button>
+                    {proofBundle && (
+                      <button
+                        onClick={handleDownloadProofBundle}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-2xs transition cursor-pointer"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        Download All Proofs Bundle (JSON)
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </main>
