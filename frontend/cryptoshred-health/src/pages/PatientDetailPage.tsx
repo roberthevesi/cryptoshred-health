@@ -74,6 +74,15 @@ export default function PatientDetailPage() {
     enabled: !!patientId,
   });
 
+  // Persistent Deletion Proof Query for crypto-shredded patients
+  const { data: persistentProof } = useQuery<DeletionProof>({
+    queryKey: ['deletionProof', patientId],
+    queryFn: () => apiClient.get<DeletionProof>(`/erasure/patients/${patientId}/proof`).then((r) => r.data),
+    enabled: !!patientId && (!!patient?.shredded || patient?.isActive === false || patient?.active === false),
+  });
+
+  const effectiveProof = deletionProof || persistentProof;
+
   // 2. Fetch All Clinical Visits
   const { data: allVisits = [], isLoading: isVisitsLoading } = useQuery<PatientVisit[]>({
     queryKey: ['visits'],
@@ -916,7 +925,7 @@ export default function PatientDetailPage() {
               </div>
             )}
 
-            {deletionProof && <DeletionProofCard proof={deletionProof} />}
+            {effectiveProof && <DeletionProofCard proof={effectiveProof} />}
           </div>
         )}
       </main>
