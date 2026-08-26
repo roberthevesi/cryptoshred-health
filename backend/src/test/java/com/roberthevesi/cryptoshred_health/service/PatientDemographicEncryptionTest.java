@@ -22,6 +22,7 @@ class PatientDemographicEncryptionTest {
     private GpRepository gpRepository;
     private VaultKmsService vaultKmsService;
     private EnvelopeEncryptionService envelopeEncryptionService;
+    private EventLogPublisher eventLogPublisher;
     private PatientService patientService;
 
     @BeforeEach
@@ -30,6 +31,7 @@ class PatientDemographicEncryptionTest {
         gpRepository = Mockito.mock(GpRepository.class);
         vaultKmsService = Mockito.mock(VaultKmsService.class);
         envelopeEncryptionService = new EnvelopeEncryptionService();
+        eventLogPublisher = Mockito.mock(EventLogPublisher.class);
 
         PatientCacheService patientCacheService = Mockito.mock(PatientCacheService.class);
         patientService = new PatientService(
@@ -38,7 +40,8 @@ class PatientDemographicEncryptionTest {
                 vaultKmsService,
                 envelopeEncryptionService,
                 new com.fasterxml.jackson.databind.ObjectMapper(),
-                patientCacheService
+                patientCacheService,
+                eventLogPublisher
         );
 
         when(patientRepository.save(any(Patient.class))).thenAnswer(invocation -> {
@@ -78,8 +81,70 @@ class PatientDemographicEncryptionTest {
 
         verify(vaultKmsService, times(1)).wrapDek(startsWith("patient_"), any());
         verify(patientRepository, times(1)).save(any(Patient.class));
+        verify(eventLogPublisher, times(1)).publishEvent(argThat(event ->
+                "PATIENT_CREATED".equals(event.getEventType()) &&
+                response.getPatientId().equals(event.getPatientId()) &&
+                event.getVaultKeyName() != null &&
+                event.getWrappedDek() != null &&
+                event.getEncryptedDataBlob() != null
+        ));
+    }
 
+    @Test
+    void testPatientUpdateEmitsPatientUpdatedEvent() {
+        String patientId = "PAT-12345";
+        Patient patient = new Patient();
+        patient.setPatientId(patientId);
+        patient.setFirstName("OldFirst");
+        patient.setLastName("OldLast");
+        com.roberthevesi.cryptoshred_health.model.EncryptionKey key =
+                new com.roberthevesi.cryptoshred_health.model.EncryptionKey(
+                        UUID.randomUUID().toString(),
+                        "patient_uuid_123",
+                        "wrapped_dek_123",
+                        "iv_123"
+                );
+        patient.setEncryptionKey(key);
 
+        when(patientRepository.findByPatientId(patientId)).thenReturn(Optional.of(patient));
+        when(patientRepository.save(any(Patient.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        byte[] rawDek = envelopeEncryptionService.generateDek();
+        when(vaultKmsService.unwrapDek(eq("patient_uuid_123"), eq("wrapped_dek_123"))).thenReturn(rawDek);
+
+        PatientRequest updateReq = new PatientRequest();
+        updateReq.setFirstName("NewFirst");
+        updateReq.setLastName("NewLast");
+        updateReq.setEmail("new.email@example.com");
+
+        PatientResponse updatedResp = patientService.update(patientId, updateReq);
+
+        assertEquals("NewFirst", updatedResp.getFirstName());
+        verify(eventLogPublisher, times(1)).publishEvent(argThat(event ->
+                "PATIENT_UPDATED".equals(event.getEventType()) &&
+                patientId.equals(event.getPatientId()) &&
+                "patient_uuid_123".equals(event.getVaultKeyName()) &&
+                event.getEncryptedDataBlob() != null
+        ));
+    }
+
+    @Test
+    void testPatientDeactivateEmitsPatientDeactivatedEvent() {
+        String patientId = "PAT-54321";
+        Patient patient = new Patient();
+        patient.setPatientId(patientId);
+        patient.setActive(true);
+
+        when(patientRepository.findByPatientId(patientId)).thenReturn(Optional.of(patient));
+        when(patientRepository.save(any(Patient.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        patientService.deactivate(patientId);
+
+        assertFalse(patient.isActive());
+        verify(eventLogPublisher, times(1)).publishEvent(argThat(event ->
+                "PATIENT_DEACTIVATED".equals(event.getEventType()) &&
+                patientId.equals(event.getPatientId())
+        ));
     }
 
     @Test

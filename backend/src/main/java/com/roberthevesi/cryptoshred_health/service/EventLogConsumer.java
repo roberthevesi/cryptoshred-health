@@ -34,8 +34,8 @@ public class EventLogConsumer {
             capturedEvents.pollFirst();
             capturedEvents.offerLast(event);
         }
-            log.info("Kafka Consumer received event [{}] for patient visit {}",
-                    event.getEventType(), event.getVisitId());
+            log.info("Kafka Consumer received event [{}] for entity {}",
+                    event.getEventType(), event.getVisitId() != null ? event.getVisitId() : event.getPatientId());
         } catch (Exception e) {
             log.error("Failed to parse incoming Kafka event log message: {}", e.getMessage());
         }

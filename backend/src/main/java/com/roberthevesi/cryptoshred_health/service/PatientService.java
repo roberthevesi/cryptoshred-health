@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.roberthevesi.cryptoshred_health.dto.GpResponse;
 import com.roberthevesi.cryptoshred_health.dto.PatientRequest;
 import com.roberthevesi.cryptoshred_health.dto.PatientResponse;
+import com.roberthevesi.cryptoshred_health.dto.PatientVisitEventDto;
 import com.roberthevesi.cryptoshred_health.model.EncryptionKey;
 import com.roberthevesi.cryptoshred_health.model.GP;
 import com.roberthevesi.cryptoshred_health.model.Patient;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -30,6 +32,7 @@ public class PatientService {
     private final EnvelopeEncryptionService envelopeEncryptionService;
     private final ObjectMapper objectMapper;
     private final PatientCacheService patientCacheService;
+    private final EventLogPublisher eventLogPublisher;
 
     @Transactional(readOnly = true)
     public List<PatientResponse> findAll() {
@@ -123,9 +126,10 @@ public class PatientService {
         piiPayload.put("address", request.getAddress());
         piiPayload.put("nhsNumber", request.getNhsNumber());
 
+        EnvelopeEncryptionService.EncryptedPayload encryptedPayload;
         try {
             String piiJson = objectMapper.writeValueAsString(piiPayload);
-            EnvelopeEncryptionService.EncryptedPayload encryptedPayload =
+            encryptedPayload =
                     envelopeEncryptionService.encrypt(piiJson.getBytes(StandardCharsets.UTF_8), dek);
 
             EncryptionKey encryptionKey = new EncryptionKey(keyId, vaultKeyName, wrappedDek, encryptedPayload.ivBase64());
@@ -154,6 +158,18 @@ public class PatientService {
         }
 
         Patient saved = patientRepository.save(patient);
+
+        eventLogPublisher.publishEvent(PatientVisitEventDto.builder()
+                .eventId(UUID.randomUUID())
+                .patientId(saved.getPatientId())
+                .eventType("PATIENT_CREATED")
+                .vaultKeyName(vaultKeyName)
+                .wrappedDek(wrappedDek)
+                .iv(encryptedPayload.ivBase64())
+                .encryptedDataBlob(encryptedPayload.ciphertextBase64())
+                .timestamp(LocalDateTime.now())
+                .build());
+
         PatientResponse resp = toResponse(saved);
         if (resp.isActive() && !resp.isShredded()) {
             patientCacheService.put(resp.getPatientId(), resp);
@@ -225,6 +241,20 @@ public class PatientService {
         }
 
         Patient updated = patientRepository.save(patient);
+
+        if (patient.getEncryptionKey() != null) {
+            eventLogPublisher.publishEvent(PatientVisitEventDto.builder()
+                    .eventId(UUID.randomUUID())
+                    .patientId(updated.getPatientId())
+                    .eventType("PATIENT_UPDATED")
+                    .vaultKeyName(patient.getEncryptionKey().getVaultKeyName())
+                    .wrappedDek(patient.getEncryptionKey().getWrappedDek())
+                    .iv(patient.getEncryptionKey().getIv())
+                    .encryptedDataBlob(updated.getEncryptedDataBlob())
+                    .timestamp(LocalDateTime.now())
+                    .build());
+        }
+
         PatientResponse resp = toResponse(updated);
         if (resp.isActive() && !resp.isShredded()) {
             patientCacheService.put(resp.getPatientId(), resp);
@@ -241,6 +271,13 @@ public class PatientService {
         patient.setActive(false);
         patientRepository.save(patient);
         patientCacheService.evict(patientId);
+
+        eventLogPublisher.publishEvent(PatientVisitEventDto.builder()
+                .eventId(UUID.randomUUID())
+                .patientId(patientId)
+                .eventType("PATIENT_DEACTIVATED")
+                .timestamp(LocalDateTime.now())
+                .build());
     }
 
     public PatientResponse toResponse(Patient patient) {
