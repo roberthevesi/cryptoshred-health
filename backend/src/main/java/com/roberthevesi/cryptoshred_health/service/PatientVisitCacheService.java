@@ -38,7 +38,11 @@ public class PatientVisitCacheService {
         if (visitId == null) return null;
         try {
             String json = redisTemplate.opsForValue().get(CACHE_PREFIX + visitId);
-            if (json == null) return null;
+            if (json == null) {
+                log.info("🐢 [REDIS MISS] patient_visit:{} not found in Redis cache", visitId);
+                return null;
+            }
+            log.info("⚡ [REDIS HIT] patient_visit:{} loaded from Redis cache", visitId);
             return objectMapper.readValue(json, PatientVisitResponse.class);
         } catch (Exception e) {
             log.warn("Failed to read patient visit {} from Redis: {}", visitId, e.getMessage());

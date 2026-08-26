@@ -200,10 +200,12 @@ public class PatientVisitService {
         // 1. Check Redis cache
         PatientVisitResponse cached = patientVisitCacheService.get(id);
         if (cached != null) {
+            log.info("⚡ [REDIS HIT] Serving clinical visit record {} from Redis L2 cache", id);
             return cached;
         }
 
         // 2. Cache miss — decrypt from DB & put in Redis
+        log.info("🐢 [REDIS MISS] Clinical visit {} not in Redis. Decrypting payload via Vault KMS and caching...", id);
         PatientVisitResponse response = toResponse(visit);
         patientVisitCacheService.put(id, response);
         return response;
