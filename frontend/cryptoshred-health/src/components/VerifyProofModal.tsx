@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Upload, CheckCircle2, XCircle, ShieldCheck, AlertTriangle, FileCode } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { X, Upload, CheckCircle2, XCircle, ShieldCheck, AlertTriangle, FileCode, FileText, ArrowDownToLine } from 'lucide-react';
 import type { ProofVerificationResponse, DeletionProof } from '../types';
 
 interface Props {
@@ -10,24 +10,102 @@ interface Props {
 
 export default function VerifyProofModal({ isOpen, onClose, token }: Props) {
   const [jsonInput, setJsonInput] = useState('');
+  const [loadedFileName, setLoadedFileName] = useState<string | null>(null);
+  const [fileSize, setFileSize] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ProofVerificationResponse | null>(null);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   if (!isOpen) return null;
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const processFile = (file: File) => {
     if (!file) return;
+    setLoadedFileName(file.name);
+    setFileSize((file.size / 1024).toFixed(1) + ' KB');
 
     const reader = new FileReader();
     reader.onload = (event) => {
       if (event.target?.result) {
-        setJsonInput(event.target.result as string);
+        const raw = event.target.result as string;
+        try {
+          // Prettify if valid JSON
+          const parsed = JSON.parse(raw);
+          setJsonInput(JSON.stringify(parsed, null, 2));
+        } catch {
+          setJsonInput(raw);
+        }
         setError(null);
+        setResult(null);
       }
     };
+    reader.onerror = () => {
+      setError('Failed to read the dropped file.');
+    };
     reader.readAsText(file);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processFile(file);
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only set dragging to false if we're leaving the drop container
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      processFile(files[0]);
+      return;
+    }
+
+    const textData = e.dataTransfer.getData('text');
+    if (textData) {
+      try {
+        const parsed = JSON.parse(textData);
+        setJsonInput(JSON.stringify(parsed, null, 2));
+        setLoadedFileName('pasted-proof.json');
+      } catch {
+        setJsonInput(textData);
+      }
+      setError(null);
+      setResult(null);
+    }
+  };
+
+  const clearFile = () => {
+    setJsonInput('');
+    setLoadedFileName(null);
+    setFileSize(null);
+    setError(null);
+    setResult(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleVerify = async () => {
@@ -35,7 +113,7 @@ export default function VerifyProofModal({ isOpen, onClose, token }: Props) {
     setResult(null);
 
     if (!jsonInput.trim()) {
-      setError('Please paste a JSON proof artifact or upload a .json file');
+      setError('Please drag & drop a .json proof file or paste the JSON payload.');
       return;
     }
 
@@ -43,7 +121,7 @@ export default function VerifyProofModal({ isOpen, onClose, token }: Props) {
     try {
       parsedArtifact = JSON.parse(jsonInput);
     } catch {
-      setError('Invalid JSON format. Please ensure the file contains valid JSON.');
+      setError('Invalid JSON format. Please ensure the payload is well-formed JSON.');
       return;
     }
 
@@ -84,7 +162,7 @@ export default function VerifyProofModal({ isOpen, onClose, token }: Props) {
             </div>
             <div>
               <h2 className="text-lg font-semibold text-slate-900">Verify Cryptographic Proof Artifact</h2>
-              <p className="text-xs text-slate-500">Validate RSA signatures, SHA-256 payload integrity, and Merkle tree inclusion</p>
+              <p className="text-xs text-slate-500">Validate RSA-2048 digital signatures, SHA-256 integrity, and Merkle tree inclusion</p>
             </div>
           </div>
           <button
@@ -95,30 +173,90 @@ export default function VerifyProofModal({ isOpen, onClose, token }: Props) {
           </button>
         </div>
 
-        {/* Input Area */}
-        <div className="space-y-3">
+        {/* Drag & Drop Zone */}
+        <div
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={`relative rounded-2xl border-2 transition-all p-4 space-y-3 ${
+            isDragging
+              ? 'border-emerald-500 bg-emerald-50/70 border-dashed shadow-inner'
+              : 'border-slate-200 bg-slate-50/50 hover:bg-slate-50'
+          }`}
+        >
+          {/* Drag Overlay Hint */}
+          {isDragging && (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-2xl bg-emerald-50/90 backdrop-blur-xs border-2 border-emerald-500 border-dashed text-emerald-700">
+              <ArrowDownToLine className="h-10 w-10 animate-bounce mb-2" />
+              <p className="text-sm font-bold">Drop JSON proof artifact here</p>
+              <p className="text-xs text-emerald-600">Release file to load cryptographic proof</p>
+            </div>
+          )}
+
+          {/* Top Control Bar */}
           <div className="flex items-center justify-between text-xs text-slate-700">
-            <label className="font-medium flex items-center gap-1">
-              <FileCode className="h-4 w-4 text-emerald-600" /> JSON Proof Artifact Payload
+            <label className="font-medium flex items-center gap-1.5">
+              <FileCode className="h-4 w-4 text-emerald-600" />
+              <span>Proof Artifact Payload</span>
+              {loadedFileName && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-mono text-[11px]">
+                  <FileText className="h-3 w-3" />
+                  {loadedFileName} {fileSize ? `(${fileSize})` : ''}
+                </span>
+              )}
             </label>
-            <label className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-medium text-emerald-700 cursor-pointer transition border border-slate-200">
-              <Upload className="h-3.5 w-3.5" />
-              Upload .json File
-              <input type="file" accept=".json" onChange={handleFileUpload} className="hidden" />
-            </label>
+
+            <div className="flex items-center gap-2">
+              {loadedFileName && (
+                <button
+                  type="button"
+                  onClick={clearFile}
+                  className="text-xs text-slate-400 hover:text-rose-600 transition px-1.5 py-0.5"
+                  title="Clear loaded file"
+                >
+                  Clear
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white hover:bg-slate-100 text-xs font-medium text-emerald-700 transition border border-slate-300 shadow-2xs cursor-pointer"
+              >
+                <Upload className="h-3.5 w-3.5" />
+                Browse .json File
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json,application/json"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+            </div>
           </div>
 
+          {/* Textarea for drag & drop or direct paste */}
           <textarea
             value={jsonInput}
-            onChange={(e) => { setJsonInput(e.target.value); setError(null); }}
-            placeholder='Paste JSON proof artifact here...'
-            rows={8}
-            className="w-full rounded-xl bg-white border border-slate-300 p-3 text-xs font-mono text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+            onChange={(e) => {
+              setJsonInput(e.target.value);
+              setError(null);
+              setResult(null);
+            }}
+            placeholder='Drag & drop a .json proof file here, browse from your computer, or paste the raw JSON payload...'
+            rows={7}
+            className="w-full rounded-xl bg-white border border-slate-300 p-3 text-xs font-mono text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all shadow-inner"
           />
+
+          <div className="flex items-center justify-between text-[11px] text-slate-400 px-1">
+            <span>Supports .json deletion proof artifacts from CryptoShred Health</span>
+            <span>{jsonInput ? `${jsonInput.length} characters` : 'Drop zone active'}</span>
+          </div>
         </div>
 
         {error && (
-          <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700">
+          <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 animate-fade-in">
             <AlertTriangle className="h-4 w-4 shrink-0" />
             {error}
           </div>
@@ -134,10 +272,17 @@ export default function VerifyProofModal({ isOpen, onClose, token }: Props) {
           </button>
           <button
             onClick={handleVerify}
-            disabled={loading}
+            disabled={loading || !jsonInput.trim()}
             className="flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition shadow-sm disabled:opacity-50"
           >
-            {loading ? 'Verifying Proof...' : 'Verify Cryptographic Signature'}
+            {loading ? (
+              <>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                <span>Verifying Proof...</span>
+              </>
+            ) : (
+              <span>Verify Cryptographic Signature</span>
+            )}
           </button>
         </div>
 
@@ -196,3 +341,4 @@ export default function VerifyProofModal({ isOpen, onClose, token }: Props) {
     </div>
   );
 }
+
