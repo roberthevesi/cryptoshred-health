@@ -19,6 +19,12 @@ public interface PatientVisitRepository extends JpaRepository<PatientVisit, UUID
     @Query("SELECT v FROM PatientVisit v WHERE v.patient.patientId = :patientId OR v.mrn = :patientId")
     List<PatientVisit> findByPatientIdentifier(String patientId);
 
+    @Query("SELECT COUNT(v) FROM PatientVisit v WHERE (v.patient.patientId = :patientId OR v.mrn = :patientId) AND v.shredded = false")
+    int countActiveByPatientIdentifier(String patientId);
+
+    @Query("SELECT COUNT(v) FROM PatientVisit v WHERE v.patient.patientId = :patientId OR v.mrn = :patientId")
+    int countByPatientIdentifier(String patientId);
+
     @Query("SELECT DISTINCT v FROM PatientVisit v LEFT JOIN FETCH v.encryptionKey")
     List<PatientVisit> findAllWithEncryptionKey();
 }

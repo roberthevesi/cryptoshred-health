@@ -34,7 +34,11 @@ public class PatientVisitController {
     @GetMapping
     @PreAuthorize("hasAnyRole('DOCTOR', 'AUDITOR', 'PATIENT')")
     public ResponseEntity<List<PatientVisitResponse>> findAll(
+            @RequestParam(required = false) String patientId,
             @AuthenticationPrincipal UserDetails currentUser) {
+        if (patientId != null && !patientId.isBlank()) {
+            return ResponseEntity.ok(patientVisitService.findByPatientIdentifier(patientId, currentUser.getUsername()));
+        }
         return ResponseEntity.ok(patientVisitService.findAll(currentUser.getUsername()));
     }
 

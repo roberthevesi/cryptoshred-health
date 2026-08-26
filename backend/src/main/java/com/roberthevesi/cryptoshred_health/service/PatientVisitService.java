@@ -37,6 +37,7 @@ public class PatientVisitService {
     private final EnvelopeEncryptionService envelopeEncryptionService;
     private final EventLogPublisher eventLogPublisher;
     private final PatientVisitCacheService patientVisitCacheService;
+    private final PatientCacheService patientCacheService;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -167,6 +168,12 @@ public class PatientVisitService {
 
         PatientVisitResponse response = toResponse(savedVisit);
         patientVisitCacheService.put(savedVisit.getId(), response);
+
+        // Evict cached patient demographic profile so visitCount is recomputed on next read
+        String patientIdentifier = linkedPatient != null ? linkedPatient.getPatientId() : savedVisit.getMrn();
+        if (patientIdentifier != null && patientCacheService != null) {
+            patientCacheService.evict(patientIdentifier);
+        }
         return response;
     }
 
@@ -184,8 +191,30 @@ public class PatientVisitService {
         return visits.stream().map(visit -> {
             PatientVisitResponse cached = patientVisitCacheService.get(visit.getId());
             if (cached != null) {
-            return cached; // Trust the cache — ErasureService proactively evicts on shred
+                return cached; // Trust the cache — ErasureService proactively evicts on shred
+            }
+            PatientVisitResponse response = toResponse(visit);
+            patientVisitCacheService.put(visit.getId(), response);
+            return response;
+        }).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<PatientVisitResponse> findByPatientIdentifier(String patientId, String currentUserEmail) {
+        User user = findUser(currentUserEmail);
+        List<PatientVisit> visits = patientVisitRepository.findByPatientIdentifier(patientId);
+
+        if (user.getRole() == Role.PATIENT) {
+            visits = visits.stream()
+                    .filter(v -> v.getOwner() != null && v.getOwner().getId().equals(user.getId()))
+                    .collect(Collectors.toList());
         }
+
+        return visits.stream().map(visit -> {
+            PatientVisitResponse cached = patientVisitCacheService.get(visit.getId());
+            if (cached != null) {
+                return cached;
+            }
             PatientVisitResponse response = toResponse(visit);
             patientVisitCacheService.put(visit.getId(), response);
             return response;
@@ -313,8 +342,12 @@ public class PatientVisitService {
         if (user.getRole() != Role.DOCTOR && !visit.getOwner().getId().equals(user.getId())) {
             throw new AccessDeniedException("Not authorized to delete this visit");
         }
+        String patientIdentifier = visit.getPatient() != null ? visit.getPatient().getPatientId() : visit.getMrn();
         patientVisitRepository.delete(visit);
         patientVisitCacheService.evict(id);
+        if (patientIdentifier != null && patientCacheService != null) {
+            patientCacheService.evict(patientIdentifier);
+        }
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
