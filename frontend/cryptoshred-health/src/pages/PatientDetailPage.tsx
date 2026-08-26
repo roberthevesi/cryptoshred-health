@@ -27,6 +27,7 @@ import {
   FileCheck2,
   LogOut,
   Lock,
+  Download,
 } from 'lucide-react';
 import apiClient from '../lib/axios';
 import { useAuth } from '../contexts/AuthContext';
@@ -60,6 +61,7 @@ export default function PatientDetailPage() {
   const [deletionProof, setDeletionProof] = useState<DeletionProof | null>(null);
   const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
   const [erasureError, setErasureError] = useState('');
+  const [isExportingFhir, setIsExportingFhir] = useState(false);
 
   // 1. Fetch Patient Master Profile
   const {
@@ -135,6 +137,29 @@ export default function PatientDetailPage() {
       setErasureError(msg);
     },
   });
+
+  const handleExportFhir = async () => {
+    if (!patient?.patientId) return;
+    try {
+      setIsExportingFhir(true);
+      const response = await apiClient.get(`/patients/${patient.patientId}/fhir`, {
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/fhir+json' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${patient.patientId}-fhir-r4.json`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to export FHIR bundle:', err);
+      alert('Failed to export FHIR R4 bundle. Please try again.');
+    } finally {
+      setIsExportingFhir(false);
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -250,6 +275,20 @@ export default function PatientDetailPage() {
           </div>
 
           <div className="flex items-center gap-2.5">
+            <button
+              onClick={handleExportFhir}
+              disabled={isExportingFhir}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold transition shadow-sm"
+              title="Export complete HL7 FHIR R4 Collection Bundle"
+            >
+              {isExportingFhir ? (
+                <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+              ) : (
+                <Download className="h-3.5 w-3.5 text-blue-600" />
+              )}
+              <span>Export FHIR R4</span>
+            </button>
+
             {isDoctor && !isShredded && (
               <button
                 onClick={() => setShowEditPatientModal(true)}
@@ -649,15 +688,32 @@ export default function PatientDetailPage() {
         {activeTab === 'demographics' && (
           <div className="bg-white border border-slate-200 rounded-2xl shadow-card p-6 animate-fade-in space-y-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-slate-900">Master Patient Registry Details</h3>
-              {isDoctor && !isShredded && (
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Master Patient Registry Details</h3>
+                <p className="text-xs text-slate-500">Envelope-encrypted master demographic profile &amp; FHIR interoperability</p>
+              </div>
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setShowEditPatientModal(true)}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-medium transition shadow-sm"
+                  onClick={handleExportFhir}
+                  disabled={isExportingFhir}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold transition shadow-sm"
                 >
-                  <Pencil className="h-3.5 w-3.5" /> Edit Information
+                  {isExportingFhir ? (
+                    <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                  ) : (
+                    <Download className="h-3.5 w-3.5 text-blue-600" />
+                  )}
+                  Export FHIR R4
                 </button>
-              )}
+                {isDoctor && !isShredded && (
+                  <button
+                    onClick={() => setShowEditPatientModal(true)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-medium transition shadow-sm"
+                  >
+                    <Pencil className="h-3.5 w-3.5" /> Edit Information
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
@@ -736,6 +792,34 @@ export default function PatientDetailPage() {
                 {erasureError}
               </div>
             )}
+
+            {/* GDPR Article 20 — Right to Data Portability (HL7 FHIR R4) */}
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-card p-6 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <Download className="h-5 w-5 text-blue-600" />
+                    GDPR Article 20 — Right to Data Portability (HL7 FHIR R4)
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Export all patient demographics, visits, observations, conditions, and encrypted document references in international HL7 FHIR R4 Bundle format.
+                  </p>
+                </div>
+
+                <button
+                  onClick={handleExportFhir}
+                  disabled={isExportingFhir}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-sm transition shrink-0"
+                >
+                  {isExportingFhir ? (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  ) : (
+                    <Download className="h-4 w-4" />
+                  )}
+                  Export FHIR R4 Bundle
+                </button>
+              </div>
+            </div>
 
             {/* Whole-Patient Destruction Card */}
             <div className="bg-white border border-red-200 rounded-2xl shadow-card p-6 space-y-4">
