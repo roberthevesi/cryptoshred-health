@@ -257,13 +257,13 @@ export default function ViewVisitModal({ visitId, onClose }: Props) {
                       <div>
                         <span className="text-[11px] font-medium text-slate-500 block">Attending Clinician</span>
                         <p className="text-sm font-semibold text-slate-900 mt-0.5">
-                          {visit.attendingDoctor || 'Dr. Alistair Finch, MD'}
+                          {visit.shredded ? '[SHREDDED]' : (visit.attendingDoctor || 'Dr. Alistair Finch, MD')}
                         </p>
                       </div>
                       <div>
                         <span className="text-[11px] font-medium text-slate-500 block">Department</span>
                         <p className="text-sm font-semibold text-slate-700 mt-0.5">
-                          {visit.department || 'General Practice'}
+                          {visit.shredded ? '[SHREDDED]' : (visit.department || 'General Practice')}
                         </p>
                       </div>
                     </div>
@@ -287,7 +287,7 @@ export default function ViewVisitModal({ visitId, onClose }: Props) {
                       <AlertTriangle className="h-3.5 w-3.5" /> Documented Allergies &amp; Adverse Reactions
                     </h4>
                     <p className="text-sm font-medium text-slate-900">
-                      {visit.allergies || 'No Known Drug Allergies (NKDA)'}
+                      {visit.shredded ? '[SHREDDED]' : (visit.allergies || 'No Known Drug Allergies (NKDA)')}
                     </p>
                   </div>
 
@@ -296,7 +296,7 @@ export default function ViewVisitModal({ visitId, onClose }: Props) {
                       <Pill className="h-3.5 w-3.5" /> Active Prescriptions &amp; Dosages
                     </h4>
                     <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed font-mono">
-                      {visit.prescriptions || 'No active outpatient prescriptions recorded.'}
+                      {visit.shredded ? '[SHREDDED]' : (visit.prescriptions || 'No active outpatient prescriptions recorded.')}
                     </p>
                   </div>
 
@@ -306,7 +306,7 @@ export default function ViewVisitModal({ visitId, onClose }: Props) {
                         Chronic Conditions
                       </span>
                       <p className="text-xs text-slate-700 leading-relaxed">
-                        {visit.chronicConditions || 'None documented.'}
+                        {visit.shredded ? '[SHREDDED]' : (visit.chronicConditions || 'None documented.')}
                       </p>
                     </div>
 
@@ -315,7 +315,7 @@ export default function ViewVisitModal({ visitId, onClose }: Props) {
                         Immunizations &amp; Vaccines
                       </span>
                       <p className="text-xs text-slate-700 leading-relaxed">
-                        {visit.immunizationStatus || 'Standard immunization schedule.'}
+                        {visit.shredded ? '[SHREDDED]' : (visit.immunizationStatus || 'Standard immunization schedule.')}
                       </p>
                     </div>
                   </div>
@@ -326,7 +326,7 @@ export default function ViewVisitModal({ visitId, onClose }: Props) {
                         Lifestyle &amp; Social History
                       </span>
                       <p className="text-xs text-slate-700 leading-relaxed">
-                        {visit.lifestyleFactors}
+                        {visit.shredded ? '[SHREDDED]' : visit.lifestyleFactors}
                       </p>
                     </div>
                   )}
@@ -344,15 +344,21 @@ export default function ViewVisitModal({ visitId, onClose }: Props) {
                       <div className="space-y-2 text-xs">
                         <div>
                           <span className="text-slate-500 block">Phone:</span>
-                          <span className="text-slate-800 font-medium">{visit.phone || 'Not provided'}</span>
+                          <span className="text-slate-800 font-medium">
+                            {visit.shredded ? '[SHREDDED]' : (visit.phone || 'Not provided')}
+                          </span>
                         </div>
                         <div>
                           <span className="text-slate-500 block">Email:</span>
-                          <span className="text-slate-800 font-medium">{visit.email || visit.ownerEmail}</span>
+                          <span className="text-slate-800 font-medium">
+                            {visit.shredded ? '[SHREDDED]' : (visit.email || visit.ownerEmail)}
+                          </span>
                         </div>
                         <div>
                           <span className="text-slate-500 block">Residential Address:</span>
-                          <span className="text-slate-800 font-medium">{visit.address || 'Not provided'}</span>
+                          <span className="text-slate-800 font-medium">
+                            {visit.shredded ? '[SHREDDED]' : (visit.address || 'Not provided')}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -364,15 +370,21 @@ export default function ViewVisitModal({ visitId, onClose }: Props) {
                       <div className="space-y-2 text-xs">
                         <div>
                           <span className="text-slate-500 block">Name:</span>
-                          <span className="text-slate-800 font-medium">{visit.emergencyContactName || 'Not recorded'}</span>
+                          <span className="text-slate-800 font-medium">
+                            {visit.shredded ? '[SHREDDED]' : (visit.emergencyContactName || 'Not recorded')}
+                          </span>
                         </div>
                         <div>
                           <span className="text-slate-500 block">Relationship:</span>
-                          <span className="text-slate-800 font-medium">{visit.emergencyContactRelationship || '—'}</span>
+                          <span className="text-slate-800 font-medium">
+                            {visit.shredded ? '[SHREDDED]' : (visit.emergencyContactRelationship || '—')}
+                          </span>
                         </div>
                         <div>
                           <span className="text-slate-500 block">Emergency Phone:</span>
-                          <span className="text-slate-800 font-medium">{visit.emergencyContactPhone || '—'}</span>
+                          <span className="text-slate-800 font-medium">
+                            {visit.shredded ? '[SHREDDED]' : (visit.emergencyContactPhone || '—')}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -385,15 +397,21 @@ export default function ViewVisitModal({ visitId, onClose }: Props) {
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                       <div>
                         <span className="text-slate-500 block">Provider:</span>
-                        <span className="text-slate-800 font-medium">{visit.insuranceProvider || 'None'}</span>
+                        <span className="text-slate-800 font-medium">
+                          {visit.shredded ? '[SHREDDED]' : (visit.insuranceProvider || 'None')}
+                        </span>
                       </div>
                       <div>
                         <span className="text-slate-500 block">Policy / Member ID:</span>
-                        <span className="font-mono text-slate-800 font-medium">{visit.insurancePolicyNumber || '—'}</span>
+                        <span className="font-mono text-slate-800 font-medium">
+                          {visit.shredded ? '[SHREDDED]' : (visit.insurancePolicyNumber || '—')}
+                        </span>
                       </div>
                       <div>
                         <span className="text-slate-500 block">Group Number:</span>
-                        <span className="font-mono text-slate-800 font-medium">{visit.insuranceGroupNumber || '—'}</span>
+                        <span className="font-mono text-slate-800 font-medium">
+                          {visit.shredded ? '[SHREDDED]' : (visit.insuranceGroupNumber || '—')}
+                        </span>
                       </div>
                     </div>
                   </div>
