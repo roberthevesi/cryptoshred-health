@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -130,6 +131,23 @@ public class PatientVisitService {
         visit.setEmergencyContactName(request.getEmergencyContactName());
         visit.setEmergencyContactPhone(request.getEmergencyContactPhone());
         visit.setEmergencyContactRelationship(request.getEmergencyContactRelationship());
+
+        LocalDateTime visitTime = LocalDateTime.now();
+        if (request.getCreatedAt() != null) {
+            visitTime = request.getCreatedAt();
+        } else if (request.getVisitDate() != null && !request.getVisitDate().isBlank()) {
+            try {
+                if (request.getVisitDate().length() == 10) {
+                    visitTime = LocalDate.parse(request.getVisitDate()).atTime(9, 30);
+                } else {
+                    visitTime = LocalDateTime.parse(request.getVisitDate());
+                }
+            } catch (Exception e) {
+                visitTime = LocalDateTime.now();
+            }
+        }
+        visit.setCreatedAt(visitTime);
+        visit.setUpdatedAt(visitTime);
 
         visit.setEncryptedDataBlob(ciphertextBase64);
         visit.setEncryptionKey(encryptionKey);

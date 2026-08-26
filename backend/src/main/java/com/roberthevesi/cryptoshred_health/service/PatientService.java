@@ -29,6 +29,7 @@ public class PatientService {
     private final VaultKmsService vaultKmsService;
     private final EnvelopeEncryptionService envelopeEncryptionService;
     private final ObjectMapper objectMapper;
+    private final PatientCacheService patientCacheService;
 
     @Transactional(readOnly = true)
     public List<PatientResponse> findAll() {
@@ -42,14 +43,27 @@ public class PatientService {
                 : patientRepository.findByIsActiveTrue();
         return patients.stream()
                 .map(this::toResponse)
+                .peek(resp -> {
+                    if (resp.isActive() && !resp.isShredded()) {
+                        patientCacheService.put(resp.getPatientId(), resp);
+                    }
+                })
                 .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public PatientResponse findByPatientId(String patientId) {
-        return patientRepository.findByPatientId(patientId)
+        PatientResponse cached = patientCacheService.get(patientId);
+        if (cached != null) {
+            return cached;
+        }
+        PatientResponse resp = patientRepository.findByPatientId(patientId)
                 .map(this::toResponse)
                 .orElseThrow(() -> new RuntimeException("Patient not found: " + patientId));
+        if (resp.isActive() && !resp.isShredded()) {
+            patientCacheService.put(patientId, resp);
+        }
+        return resp;
     }
 
     @Transactional(readOnly = true)
@@ -140,7 +154,11 @@ public class PatientService {
         }
 
         Patient saved = patientRepository.save(patient);
-        return toResponse(saved);
+        PatientResponse resp = toResponse(saved);
+        if (resp.isActive() && !resp.isShredded()) {
+            patientCacheService.put(resp.getPatientId(), resp);
+        }
+        return resp;
     }
 
     private String generateUniquePatientId() {
@@ -207,7 +225,13 @@ public class PatientService {
         }
 
         Patient updated = patientRepository.save(patient);
-        return toResponse(updated);
+        PatientResponse resp = toResponse(updated);
+        if (resp.isActive() && !resp.isShredded()) {
+            patientCacheService.put(resp.getPatientId(), resp);
+        } else {
+            patientCacheService.evict(patientId);
+        }
+        return resp;
     }
 
     @Transactional
@@ -216,6 +240,7 @@ public class PatientService {
                 .orElseThrow(() -> new RuntimeException("Patient not found: " + patientId));
         patient.setActive(false);
         patientRepository.save(patient);
+        patientCacheService.evict(patientId);
     }
 
     public PatientResponse toResponse(Patient patient) {

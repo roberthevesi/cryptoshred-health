@@ -45,6 +45,7 @@ public class ErasureService {
     private final VaultKmsService vaultKmsService;
     private final EventLogPublisher eventLogPublisher;
     private final PatientVisitCacheService patientVisitCacheService;
+    private final PatientCacheService patientCacheService;
     private final ProofSigningService proofSigningService;
     private final MerkleTreeService merkleTreeService;
     private final ObjectMapper objectMapper;
@@ -85,7 +86,10 @@ public class ErasureService {
         patient.setActive(false);
         patientRepository.save(patient);
 
-        // 3. Shred all associated clinical visits & attachments
+        // 3. Proactively evict patient from Redis cache
+        patientCacheService.evict(patientId);
+
+        // 4. Shred all associated clinical visits & attachments
         List<PatientVisit> visits = patientVisitRepository.findByPatientIdentifier(patientId);
         for (PatientVisit visit : visits) {
             shredVisit(visit, timestamp);

@@ -77,7 +77,7 @@ class ProofVerificationTest {
                 .digitalSignature(signature)
                 .build();
 
-        ErasureService erasureService = new ErasureService(null, null, null, null, null, null, proofSigningService, merkleTreeService, new com.fasterxml.jackson.databind.ObjectMapper());
+        ErasureService erasureService = new ErasureService(null, null, null, null, null, null, null, proofSigningService, merkleTreeService, new com.fasterxml.jackson.databind.ObjectMapper());
 
         ProofVerificationResponseDto response = erasureService.verifyProofArtifact(proof);
 
@@ -117,7 +117,7 @@ class ProofVerificationTest {
                 .digitalSignature(signature)
                 .build();
 
-        ErasureService erasureService = new ErasureService(null, null, null, null, null, null, proofSigningService, merkleTreeService, new com.fasterxml.jackson.databind.ObjectMapper());
+        ErasureService erasureService = new ErasureService(null, null, null, null, null, null, null, proofSigningService, merkleTreeService, new com.fasterxml.jackson.databind.ObjectMapper());
 
         ProofVerificationResponseDto response = erasureService.verifyProofArtifact(tamperedProof);
 
@@ -158,7 +158,7 @@ class ProofVerificationTest {
                 .digitalSignature(signature)
                 .build();
 
-        ErasureService erasureService = new ErasureService(null, null, null, null, null, null, proofSigningService, merkleTreeService, new com.fasterxml.jackson.databind.ObjectMapper());
+        ErasureService erasureService = new ErasureService(null, null, null, null, null, null, null, proofSigningService, merkleTreeService, new com.fasterxml.jackson.databind.ObjectMapper());
 
         ProofVerificationResponseDto response = erasureService.verifyProofArtifact(proof);
 
@@ -199,7 +199,7 @@ class ProofVerificationTest {
                 .digitalSignature(signature)
                 .build();
 
-        ErasureService erasureService = new ErasureService(null, null, null, null, null, null, proofSigningService, merkleTreeService, new com.fasterxml.jackson.databind.ObjectMapper());
+        ErasureService erasureService = new ErasureService(null, null, null, null, null, null, null, proofSigningService, merkleTreeService, new com.fasterxml.jackson.databind.ObjectMapper());
 
         ProofVerificationResponseDto response = erasureService.verifyProofArtifact(proof);
 
