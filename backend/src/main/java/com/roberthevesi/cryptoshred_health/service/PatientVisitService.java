@@ -167,7 +167,9 @@ public class PatientVisitService {
                 .build());
 
         PatientVisitResponse response = toResponse(savedVisit);
-        patientVisitCacheService.put(savedVisit.getId(), response);
+        if (response != null && !response.isShredded()) {
+            patientVisitCacheService.put(savedVisit.getId(), response);
+        }
 
         // Evict cached patient demographic profile so visitCount is recomputed on next read
         String patientIdentifier = linkedPatient != null ? linkedPatient.getPatientId() : savedVisit.getMrn();
@@ -194,7 +196,9 @@ public class PatientVisitService {
                 return cached; // Trust the cache — ErasureService proactively evicts on shred
             }
             PatientVisitResponse response = toResponse(visit);
-            patientVisitCacheService.put(visit.getId(), response);
+            if (response != null && !response.isShredded()) {
+                patientVisitCacheService.put(visit.getId(), response);
+            }
             return response;
         }).collect(Collectors.toList());
     }
@@ -216,7 +220,9 @@ public class PatientVisitService {
                 return cached;
             }
             PatientVisitResponse response = toResponse(visit);
-            patientVisitCacheService.put(visit.getId(), response);
+            if (response != null && !response.isShredded()) {
+                patientVisitCacheService.put(visit.getId(), response);
+            }
             return response;
         }).collect(Collectors.toList());
     }
@@ -233,10 +239,12 @@ public class PatientVisitService {
             return cached;
         }
 
-        // 2. Cache miss — decrypt from DB & put in Redis
+        // 2. Cache miss — decrypt from DB & put in Redis if not shredded
         log.info("🐢 [REDIS MISS] Clinical visit {} not in Redis. Decrypting payload via Vault KMS and caching...", id);
         PatientVisitResponse response = toResponse(visit);
-        patientVisitCacheService.put(id, response);
+        if (response != null && !response.isShredded()) {
+            patientVisitCacheService.put(id, response);
+        }
         return response;
     }
 
@@ -330,7 +338,9 @@ public class PatientVisitService {
         }
 
         PatientVisitResponse updatedResponse = toResponse(updatedVisit);
-        patientVisitCacheService.put(id, updatedResponse);
+        if (updatedResponse != null && !updatedResponse.isShredded()) {
+            patientVisitCacheService.put(id, updatedResponse);
+        }
         return updatedResponse;
     }
 
