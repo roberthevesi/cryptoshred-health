@@ -83,20 +83,11 @@ export default function PatientDetailPage() {
 
   const effectiveProof = deletionProof || persistentProof;
 
-  // 2. Fetch All Clinical Visits
-  const { data: allVisits = [], isLoading: isVisitsLoading } = useQuery<PatientVisit[]>({
-    queryKey: ['visits'],
-    queryFn: () => apiClient.get<PatientVisit[]>('/visits').then((r) => r.data),
-  });
-
-  // Filter visits specific to this patient
-  const patientFullName = patient ? `${patient.firstName} ${patient.lastName}`.trim().toLowerCase() : '';
-  const patientVisits = allVisits.filter((v) => {
-    if (!patient) return false;
-    if (v.patientId && v.patientId === patient.patientId) return true;
-    if (v.mrn && (v.mrn === patient.patientId || v.mrn === patient.nhsNumber)) return true;
-    if (v.patientName && v.patientName.toLowerCase() === patientFullName && patientFullName !== '[shredded] [shredded]' && patientFullName !== '[redacted] [redacted]') return true;
-    return false;
+  // 2. Fetch Clinical Visits for this Patient
+  const { data: patientVisits = [], isLoading: isVisitsLoading } = useQuery<PatientVisit[]>({
+    queryKey: ['visits', patientId],
+    queryFn: () => apiClient.get<PatientVisit[]>(`/visits?patientId=${patientId}`).then((r) => r.data),
+    enabled: !!patientId,
   });
 
   // Delete a visit mutation
@@ -105,6 +96,8 @@ export default function PatientDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['visits'] });
       queryClient.invalidateQueries({ queryKey: ['records'] });
+      queryClient.invalidateQueries({ queryKey: ['patient', patientId] });
+      queryClient.invalidateQueries({ queryKey: ['patients'] });
     },
   });
 

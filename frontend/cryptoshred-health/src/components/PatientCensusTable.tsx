@@ -20,7 +20,7 @@ import {
 import apiClient from '../lib/axios';
 import { useAuth } from '../contexts/AuthContext';
 import PatientFormModal from './PatientFormModal';
-import type { Patient, PatientVisit } from '../types';
+import type { Patient } from '../types';
 
 export default function PatientCensusTable() {
   const { user } = useAuth();
@@ -43,12 +43,6 @@ export default function PatientCensusTable() {
   } = useQuery<Patient[]>({
     queryKey: ['patients'],
     queryFn: () => apiClient.get<Patient[]>('/patients?includeDeleted=true').then((r) => r.data),
-  });
-
-  // 2. Fetch Visits to compute visit counts
-  const { data: visits = [] } = useQuery<PatientVisit[]>({
-    queryKey: ['visits'],
-    queryFn: () => apiClient.get<PatientVisit[]>('/visits').then((r) => r.data),
   });
 
   const isDoctor = user?.role === 'DOCTOR';
@@ -275,14 +269,8 @@ export default function PatientCensusTable() {
                   paginatedPatients.map((patient) => {
                     const isShredded = !!patient.shredded || patient.isActive === false || patient.active === false;
                     const age = !isShredded ? getAge(patient.dateOfBirth) : null;
-                    // Match historical visits
-                    const patientVisitsCount = visits.filter(
-                      (v) =>
-                        v.patientId === patient.patientId ||
-                        v.mrn === patient.patientId ||
-                        v.mrn === patient.nhsNumber ||
-                        v.patientName.toLowerCase() === `${patient.firstName} ${patient.lastName}`.toLowerCase()
-                    ).length;
+                    // Lightweight visit count from patient profile
+                    const patientVisitsCount = patient.visitCount ?? 0;
 
                     return (
                       <tr

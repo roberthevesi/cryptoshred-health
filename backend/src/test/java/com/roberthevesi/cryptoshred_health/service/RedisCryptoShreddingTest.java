@@ -65,11 +65,13 @@ class RedisCryptoShreddingTest {
                 envelopeEncryptionService,
                 eventLogPublisher,
                 patientVisitCacheService,
+                patientCacheService,
                 objectMapper
         );
 
         patientService = new PatientService(
                 patientRepository,
+                patientVisitRepository,
                 gpRepository,
                 vaultKmsService,
                 envelopeEncryptionService,
@@ -256,5 +258,61 @@ class RedisCryptoShreddingTest {
         verify(patientCacheService, times(1)).get(patientId);
         verify(vaultKmsService, times(1)).unwrapDek(eq(vaultKeyName), eq(wrappedDek));
         verify(patientCacheService, times(1)).put(eq(patientId), any(PatientResponse.class));
+    }
+
+    @Test
+    void testPatientServicePopulatesVisitCountFromRepository() {
+        // Arrange
+        String patientId = "PAT-10003";
+        Patient patient = new Patient();
+        patient.setId(UUID.randomUUID());
+        patient.setPatientId(patientId);
+        patient.setFirstName("Thomas");
+        patient.setLastName("Shelby");
+        patient.setActive(true);
+
+        when(patientRepository.findAll()).thenReturn(List.of(patient));
+        when(patientCacheService.get(patientId)).thenReturn(null);
+        when(patientVisitRepository.countActiveByPatientIdentifier(patientId)).thenReturn(7);
+
+        // Act
+        List<PatientResponse> responses = patientService.findAll();
+
+        // Assert
+        assertNotNull(responses);
+        assertEquals(1, responses.size());
+        assertEquals(7, responses.get(0).getVisitCount());
+    }
+
+    @Test
+    void testPatientVisitServiceFindByPatientIdentifierUsesCache() {
+        // Arrange
+        UUID visitId = UUID.randomUUID();
+        String patientId = "PAT-10004";
+        PatientVisit visit = new PatientVisit();
+        visit.setId(visitId);
+        visit.setMrn(patientId);
+        visit.setPatientName("Arthur Shelby");
+        visit.setOwner(testDoctor);
+
+        PatientVisitResponse cached = PatientVisitResponse.builder()
+                .id(visitId)
+                .patientId(patientId)
+                .patientName("Arthur Shelby")
+                .diagnosis("Hypertension")
+                .build();
+
+        when(patientVisitRepository.findByPatientIdentifier(patientId)).thenReturn(List.of(visit));
+        when(patientVisitCacheService.get(visitId)).thenReturn(cached);
+
+        // Act
+        List<PatientVisitResponse> responses = patientVisitService.findByPatientIdentifier(patientId, "doctor@hospital.org");
+
+        // Assert
+        assertNotNull(responses);
+        assertEquals(1, responses.size());
+        assertEquals("Hypertension", responses.get(0).getDiagnosis());
+        verify(patientVisitCacheService, times(1)).get(visitId);
+        verify(vaultKmsService, never()).unwrapDek(anyString(), anyString());
     }
 }
