@@ -545,18 +545,18 @@ export default function PatientDetailPage() {
                         {/* Attending Clinician */}
                         <td className="py-3.5 px-3">
                           <span className="font-medium text-slate-900 block">
-                            {visit.attendingDoctor || (patient.gp ? `Dr. ${patient.gp.firstName} ${patient.gp.lastName}` : 'Dr. Alistair Finch, MD')}
+                            {visit.attendingDoctor || (patient.gp ? `Dr. ${patient.gp.firstName} ${patient.gp.lastName}` : 'Unassigned')}
                           </span>
                           <span className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
                             <Building className="h-3 w-3 text-slate-400" />
-                            {visit.department || patient.gp?.practiceName || 'General Practice'}
+                            {visit.department || patient.gp?.practiceName || '—'}
                           </span>
                         </td>
 
                         {/* Diagnosis */}
                         <td className="py-3.5 px-3 max-w-[240px]">
                           <p className="font-medium text-slate-900 truncate">
-                            {visit.diagnosis || 'General Clinical Review'}
+                            {visit.diagnosis || '—'}
                           </p>
                           {visit.chiefComplaint && (
                             <p className="text-[11px] text-slate-500 truncate mt-0.5">

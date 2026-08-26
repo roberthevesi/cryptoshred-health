@@ -176,13 +176,13 @@ export default function ViewVisitModal({ visitId, onClose }: Props) {
                       <div>
                         <span className="text-[11px] font-medium text-slate-500 block">Chief Complaint</span>
                         <p className="text-sm font-semibold text-slate-900 mt-0.5">
-                          {visit.chiefComplaint || 'Routine clinical visit'}
+                          {visit.chiefComplaint || 'None recorded'}
                         </p>
                       </div>
                       <div>
                         <span className="text-[11px] font-medium text-slate-500 block">Primary Diagnosis / ICD-10</span>
                         <p className="text-sm font-semibold text-blue-700 mt-0.5">
-                          {visit.diagnosis || 'No primary diagnosis recorded'}
+                          {visit.diagnosis || 'None recorded'}
                         </p>
                       </div>
                     </div>
@@ -194,7 +194,7 @@ export default function ViewVisitModal({ visitId, onClose }: Props) {
                         [S] Subjective History
                       </span>
                       <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
-                        {visit.soapSubjective || visit.medicalNotes || 'No subjective narrative recorded.'}
+                        {visit.soapSubjective || visit.medicalNotes || 'None recorded'}
                       </p>
                     </div>
 
@@ -203,7 +203,7 @@ export default function ViewVisitModal({ visitId, onClose }: Props) {
                         [O] Objective Examination
                       </span>
                       <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
-                        {visit.soapObjective || 'Physical examination and objective vitals recorded in biometric chart.'}
+                        {visit.soapObjective || 'None recorded'}
                       </p>
                     </div>
 
@@ -212,7 +212,7 @@ export default function ViewVisitModal({ visitId, onClose }: Props) {
                         [A] Clinical Assessment
                       </span>
                       <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
-                        {visit.soapAssessment || visit.diagnosis || 'Clinical evaluation consistent with primary presentation.'}
+                        {visit.soapAssessment || visit.diagnosis || 'None recorded'}
                       </p>
                     </div>
 
@@ -221,7 +221,7 @@ export default function ViewVisitModal({ visitId, onClose }: Props) {
                         [P] Treatment &amp; Management Plan
                       </span>
                       <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
-                        {visit.soapPlan || 'Continue active prescription regimen and monitor vitals.'}
+                        {visit.soapPlan || 'None recorded'}
                       </p>
                     </div>
                   </div>
@@ -257,13 +257,13 @@ export default function ViewVisitModal({ visitId, onClose }: Props) {
                       <div>
                         <span className="text-[11px] font-medium text-slate-500 block">Attending Clinician</span>
                         <p className="text-sm font-semibold text-slate-900 mt-0.5">
-                          {visit.shredded ? '[SHREDDED]' : (visit.attendingDoctor || 'Dr. Alistair Finch, MD')}
+                          {visit.shredded ? '[SHREDDED]' : (visit.attendingDoctor || 'Unassigned')}
                         </p>
                       </div>
                       <div>
                         <span className="text-[11px] font-medium text-slate-500 block">Department</span>
                         <p className="text-sm font-semibold text-slate-700 mt-0.5">
-                          {visit.shredded ? '[SHREDDED]' : (visit.department || 'General Practice')}
+                          {visit.shredded ? '[SHREDDED]' : (visit.department || '—')}
                         </p>
                       </div>
                     </div>
