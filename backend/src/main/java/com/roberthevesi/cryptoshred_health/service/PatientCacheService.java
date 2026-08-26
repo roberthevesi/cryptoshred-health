@@ -28,7 +28,7 @@ public class PatientCacheService {
         try {
             String json = objectMapper.writeValueAsString(response);
             redisTemplate.opsForValue().set(CACHE_PREFIX + patientId, json, Duration.ofMillis(ttlMs));
-            log.debug("Cached patient demographic profile in Redis: {}", patientId);
+            log.info("➕ [REDIS ADD] Cached patient demographic profile in Redis: patient:{} (TTL: {} ms)", patientId, ttlMs);
         } catch (Exception e) {
             log.warn("Failed to cache patient {} in Redis: {}", patientId, e.getMessage());
         }
@@ -54,7 +54,7 @@ public class PatientCacheService {
         if (patientId == null) return;
         try {
             redisTemplate.delete(CACHE_PREFIX + patientId);
-            log.info("Proactively evicted patient {} from Redis cache", patientId);
+            log.info("🗑️ [REDIS EVICT] Proactively evicted patient:{} from Redis cache", patientId);
         } catch (Exception e) {
             log.warn("Failed to evict patient {} from Redis: {}", patientId, e.getMessage());
         }
