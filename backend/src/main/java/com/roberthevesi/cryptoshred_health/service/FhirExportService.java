@@ -185,8 +185,8 @@ public class FhirExportService {
         List<Map<String, Object>> nameList = new ArrayList<>();
         Map<String, Object> nameMap = new LinkedHashMap<>();
         nameMap.put("use", "official");
-        nameMap.put("family", isShredded ? "[REDACTED]" : (pResp.getLastName() != null ? pResp.getLastName() : ""));
-        nameMap.put("given", List.of(isShredded ? "[REDACTED]" : (pResp.getFirstName() != null ? pResp.getFirstName() : "")));
+        nameMap.put("family", isShredded ? "[SHREDDED]" : (pResp.getLastName() != null ? pResp.getLastName() : ""));
+        nameMap.put("given", List.of(isShredded ? "[SHREDDED]" : (pResp.getFirstName() != null ? pResp.getFirstName() : "")));
         nameList.add(nameMap);
         resource.put("name", nameList);
 
@@ -289,7 +289,7 @@ public class FhirExportService {
 
         resource.put("subject", Map.of(
                 "reference", "Patient/" + patient.getPatientId(),
-                "display", isPatientShredded ? "[REDACTED]" : (pResp.getFirstName() + " " + pResp.getLastName())
+                "display", isPatientShredded ? "[SHREDDED]" : (pResp.getFirstName() + " " + pResp.getLastName())
         ));
 
         String startTime = visit.getCreatedAt() != null ? visit.getCreatedAt().toString() : Instant.now().toString();
@@ -306,7 +306,7 @@ public class FhirExportService {
 
         if (vResp.getAttendingDoctor() != null && !vResp.getAttendingDoctor().isBlank()) {
             resource.put("participant", List.of(Map.of(
-                    "individual", Map.of("display", isVisitShredded ? "[REDACTED]" : vResp.getAttendingDoctor())
+                    "individual", Map.of("display", isVisitShredded ? "[SHREDDED]" : vResp.getAttendingDoctor())
             )));
         }
 

@@ -549,7 +549,7 @@ export class MultiUserLoadTester {
         if (res.success && res.json) {
           const isSanitized = res.json.shredded === true ||
                               res.json.diagnosis === '[SHREDDED]' ||
-                              res.json.patientName === '[REDACTED]';
+                              res.json.patientName === '[SHREDDED]';
           return {
             ...res,
             success: isSanitized

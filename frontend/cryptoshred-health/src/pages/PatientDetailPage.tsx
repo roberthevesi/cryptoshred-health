@@ -95,7 +95,7 @@ export default function PatientDetailPage() {
     if (!patient) return false;
     if (v.patientId && v.patientId === patient.patientId) return true;
     if (v.mrn && (v.mrn === patient.patientId || v.mrn === patient.nhsNumber)) return true;
-    if (v.patientName && v.patientName.toLowerCase() === patientFullName && patientFullName !== '[redacted] [redacted]') return true;
+    if (v.patientName && v.patientName.toLowerCase() === patientFullName && patientFullName !== '[shredded] [shredded]' && patientFullName !== '[redacted] [redacted]') return true;
     return false;
   });
 

@@ -306,10 +306,10 @@ class FhirExportIntegrationTest {
         PatientResponse redactedResponse = PatientResponse.builder()
                 .id(patientUuid)
                 .patientId(patientId)
-                .firstName("[REDACTED]")
-                .lastName("[REDACTED]")
+                .firstName("[SHREDDED]")
+                .lastName("[SHREDDED]")
                 .dateOfBirth(null)
-                .gender("[REDACTED]")
+                .gender("[SHREDDED]")
                 .email(null)
                 .phoneNumber(null)
                 .address(null)
@@ -327,7 +327,7 @@ class FhirExportIntegrationTest {
         PatientVisitResponse redactedVisitResponse = PatientVisitResponse.builder()
                 .id(visitUuid)
                 .patientId(patientId)
-                .patientName("[REDACTED]")
+                .patientName("[SHREDDED]")
                 .diagnosis("[SHREDDED]")
                 .medicalNotes("[SHREDDED]")
                 .allergies("[SHREDDED]")
@@ -364,8 +364,8 @@ class FhirExportIntegrationTest {
         assertNull(patientRes.get("address"));
 
         List<Map<String, Object>> names = (List<Map<String, Object>>) patientRes.get("name");
-        assertEquals("[REDACTED]", names.get(0).get("family"));
-        assertEquals(List.of("[REDACTED]"), names.get(0).get("given"));
+        assertEquals("[SHREDDED]", names.get(0).get("family"));
+        assertEquals(List.of("[SHREDDED]"), names.get(0).get("given"));
 
         // Confirm NHS number is omitted from shredded bundle
         List<Map<String, Object>> identifiers = (List<Map<String, Object>>) patientRes.get("identifier");

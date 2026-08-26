@@ -278,7 +278,7 @@ export default function PatientCensusTable() {
                                       : 'text-slate-900 group-hover:text-blue-600'
                                   }`}
                                 >
-                                  {isShredded ? '[REDACTED]' : `${patient.firstName} ${patient.lastName}`}
+                                  {isShredded ? '[SHREDDED]' : `${patient.firstName} ${patient.lastName}`}
                                 </span>
                                 {isShredded ? (
                                   <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-rose-100 text-rose-800 border border-rose-200 font-semibold">
@@ -302,7 +302,7 @@ export default function PatientCensusTable() {
                         {/* 2. Demographics */}
                         <td className="py-3.5 px-3">
                           {isShredded ? (
-                            <span className="text-slate-400 font-mono text-[11px] italic">[REDACTED]</span>
+                            <span className="text-slate-400 font-mono text-[11px] italic">[SHREDDED]</span>
                           ) : (
                             <div className="space-y-0.5">
                               <span className="text-slate-700 font-medium block">
@@ -320,7 +320,7 @@ export default function PatientCensusTable() {
                         {/* 3. Assigned GP */}
                         <td className="py-3.5 px-3">
                           {isShredded ? (
-                            <span className="text-slate-400 font-mono text-[11px] italic">[REDACTED]</span>
+                            <span className="text-slate-400 font-mono text-[11px] italic">[SHREDDED]</span>
                           ) : patient.gp ? (
                             <div>
                               <span className="font-medium text-slate-900 flex items-center gap-1">
@@ -340,7 +340,7 @@ export default function PatientCensusTable() {
                         {/* 4. Contact */}
                         <td className="py-3.5 px-3">
                           {isShredded ? (
-                            <span className="text-slate-400 font-mono text-[11px] italic">[REDACTED]</span>
+                            <span className="text-slate-400 font-mono text-[11px] italic">[SHREDDED]</span>
                           ) : (
                             <div className="space-y-0.5 text-[11px]">
                               {patient.phoneNumber && (

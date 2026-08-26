@@ -110,8 +110,8 @@ class PatientDemographicEncryptionTest {
         PatientResponse postShredResponse = patientService.toResponse(patient);
 
         assertTrue(postShredResponse.isShredded());
-        assertEquals("[REDACTED]", postShredResponse.getFirstName());
-        assertEquals("[REDACTED]", postShredResponse.getLastName());
+        assertEquals("[SHREDDED]", postShredResponse.getFirstName());
+        assertEquals("[SHREDDED]", postShredResponse.getLastName());
         assertNull(postShredResponse.getEmail());
     }
 }
