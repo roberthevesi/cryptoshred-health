@@ -51,15 +51,21 @@ public class PatientService {
 
     @Transactional(readOnly = true)
     public PatientResponse findByPatientId(String patientId) {
+        Patient patient = patientRepository.findByPatientId(patientId)
+                .orElseThrow(() -> new RuntimeException("Patient not found: " + patientId));
+
+        if (patient.isShredded() || !patient.isActive()) {
+            return toResponse(patient); // Skip Redis check entirely for shredded/deactivated patients
+        }
+
         PatientResponse cached = patientCacheService.get(patientId);
         if (cached != null) {
             log.info("⚡ [REDIS HIT] Serving patient demographic record {} from Redis L2 cache", patientId);
             return cached;
         }
-        log.info("🐢 [REDIS MISS] Patient {} not in Redis. Querying PostgreSQL (L3) & decrypting via Vault KMS...", patientId);
-        PatientResponse resp = patientRepository.findByPatientId(patientId)
-                .map(this::toResponse)
-                .orElseThrow(() -> new RuntimeException("Patient not found: " + patientId));
+
+        log.info("🐢 [REDIS MISS] Patient {} not in Redis. Decrypting via Vault KMS and caching...", patientId);
+        PatientResponse resp = toResponse(patient);
         if (resp.isActive() && !resp.isShredded()) {
             patientCacheService.put(patientId, resp);
         }
