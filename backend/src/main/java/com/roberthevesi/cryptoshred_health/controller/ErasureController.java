@@ -1,5 +1,6 @@
 package com.roberthevesi.cryptoshred_health.controller;
 
+import com.roberthevesi.cryptoshred_health.dto.ErasureProofBundleDto;
 import com.roberthevesi.cryptoshred_health.dto.ProofVerificationRequestDto;
 import com.roberthevesi.cryptoshred_health.dto.ProofVerificationResponseDto;
 import com.roberthevesi.cryptoshred_health.dto.VerifiableDeletionProofDto;
@@ -56,6 +57,12 @@ public class ErasureController {
     @PreAuthorize("hasAnyRole('DOCTOR', 'AUDITOR', 'ADMIN', 'PATIENT')")
     public ResponseEntity<VerifiableDeletionProofDto> getPatientProof(@PathVariable String patientId) {
         return ResponseEntity.ok(erasureService.getPatientDeletionProof(patientId));
+    }
+
+    @GetMapping("/patients/{patientId}/proofs")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'AUDITOR', 'ADMIN', 'PATIENT')")
+    public ResponseEntity<ErasureProofBundleDto> getPatientProofBundle(@PathVariable String patientId) {
+        return ResponseEntity.ok(erasureService.getPatientDeletionProofBundle(patientId));
     }
 
     @GetMapping("/visits/{visitId}/proof")
