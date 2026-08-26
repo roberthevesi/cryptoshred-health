@@ -141,7 +141,6 @@ class PatientKafkaEventStreamingTest {
 
         patientService = new PatientService(
                 patientRepository,
-                patientVisitRepository,
                 gpRepository,
                 vaultKmsService,
                 envelopeEncryptionService,

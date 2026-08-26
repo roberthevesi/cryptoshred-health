@@ -180,7 +180,6 @@ export interface Patient {
   isActive?: boolean;
   active?: boolean;
   shredded?: boolean;
-  visitCount?: number;
   createdAt: string;
   updatedAt: string;
 }

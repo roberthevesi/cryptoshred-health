@@ -10,7 +10,6 @@ import com.roberthevesi.cryptoshred_health.model.GP;
 import com.roberthevesi.cryptoshred_health.model.Patient;
 import com.roberthevesi.cryptoshred_health.repository.GpRepository;
 import com.roberthevesi.cryptoshred_health.repository.PatientRepository;
-import com.roberthevesi.cryptoshred_health.repository.PatientVisitRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,7 +27,6 @@ import java.util.stream.Collectors;
 public class PatientService {
 
     private final PatientRepository patientRepository;
-    private final PatientVisitRepository patientVisitRepository;
     private final GpRepository gpRepository;
     private final VaultKmsService vaultKmsService;
     private final EnvelopeEncryptionService envelopeEncryptionService;
@@ -91,6 +89,9 @@ public class PatientService {
     }
 
     private PatientResponse resolvePatientResponse(Patient patient) {
+        if (patient.isShredded() || !patient.isActive()) {
+            return toResponse(patient); // Skip Redis check entirely for shredded/deactivated patients
+        }
         PatientResponse cached = patientCacheService.get(patient.getPatientId());
         if (cached != null) {
             return cached;
@@ -344,15 +345,6 @@ public class PatientService {
             nhs = null;
         }
 
-        int visitCount = 0;
-        if (!isShredded && patient.getPatientId() != null && patientVisitRepository != null) {
-            try {
-                visitCount = patientVisitRepository.countActiveByPatientIdentifier(patient.getPatientId());
-            } catch (Exception e) {
-                log.warn("Failed to count visits for patient {}: {}", patient.getPatientId(), e.getMessage());
-            }
-        }
-
         return PatientResponse.builder()
                 .id(patient.getId())
                 .patientId(patient.getPatientId())
@@ -367,7 +359,6 @@ public class PatientService {
                 .gp(patient.getGp() != null ? toGpResponse(patient.getGp()) : null)
                 .isActive(patient.isActive() && !isShredded)
                 .shredded(isShredded)
-                .visitCount(visitCount)
                 .createdAt(patient.getCreatedAt())
                 .updatedAt(patient.getUpdatedAt())
                 .build();

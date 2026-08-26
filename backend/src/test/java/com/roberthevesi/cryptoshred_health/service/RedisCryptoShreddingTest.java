@@ -71,7 +71,6 @@ class RedisCryptoShreddingTest {
 
         patientService = new PatientService(
                 patientRepository,
-                patientVisitRepository,
                 gpRepository,
                 vaultKmsService,
                 envelopeEncryptionService,
@@ -262,7 +261,7 @@ class RedisCryptoShreddingTest {
     }
 
     @Test
-    void testPatientServicePopulatesVisitCountFromRepository() {
+    void testPatientServiceSkipsRedisForShreddedPatients() {
         // Arrange
         String patientId = "PAT-10003";
         Patient patient = new Patient();
@@ -270,11 +269,10 @@ class RedisCryptoShreddingTest {
         patient.setPatientId(patientId);
         patient.setFirstName("Thomas");
         patient.setLastName("Shelby");
-        patient.setActive(true);
+        patient.setActive(false);
+        patient.setShredded(true);
 
         when(patientRepository.findAll()).thenReturn(List.of(patient));
-        when(patientCacheService.get(patientId)).thenReturn(null);
-        when(patientVisitRepository.countActiveByPatientIdentifier(patientId)).thenReturn(7);
 
         // Act
         List<PatientResponse> responses = patientService.findAll();
@@ -282,7 +280,36 @@ class RedisCryptoShreddingTest {
         // Assert
         assertNotNull(responses);
         assertEquals(1, responses.size());
-        assertEquals(7, responses.get(0).getVisitCount());
+        assertTrue(responses.get(0).isShredded());
+        assertEquals("[SHREDDED]", responses.get(0).getFirstName());
+        verify(patientCacheService, never()).get(anyString());
+        verify(patientCacheService, never()).put(anyString(), any());
+    }
+
+    @Test
+    void testPatientVisitServiceSkipsRedisForShreddedVisits() {
+        // Arrange
+        UUID visitId = UUID.randomUUID();
+        String patientId = "PAT-10003";
+        PatientVisit visit = new PatientVisit();
+        visit.setId(visitId);
+        visit.setMrn(patientId);
+        visit.setPatientName("Thomas Shelby");
+        visit.setShredded(true);
+        visit.setOwner(testDoctor);
+
+        when(patientVisitRepository.findByPatientIdentifier(patientId)).thenReturn(List.of(visit));
+
+        // Act
+        List<PatientVisitResponse> responses = patientVisitService.findByPatientIdentifier(patientId, "doctor@hospital.org");
+
+        // Assert
+        assertNotNull(responses);
+        assertEquals(1, responses.size());
+        assertTrue(responses.get(0).isShredded());
+        assertEquals("[SHREDDED]", responses.get(0).getDiagnosis());
+        verify(patientVisitCacheService, never()).get(any(UUID.class));
+        verify(patientVisitCacheService, never()).put(any(UUID.class), any());
     }
 
     @Test

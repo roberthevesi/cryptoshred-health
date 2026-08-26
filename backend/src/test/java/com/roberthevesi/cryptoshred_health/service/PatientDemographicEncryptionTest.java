@@ -29,7 +29,6 @@ class PatientDemographicEncryptionTest {
     @BeforeEach
     void setUp() {
         patientRepository = Mockito.mock(PatientRepository.class);
-        patientVisitRepository = Mockito.mock(com.roberthevesi.cryptoshred_health.repository.PatientVisitRepository.class);
         gpRepository = Mockito.mock(GpRepository.class);
         vaultKmsService = Mockito.mock(VaultKmsService.class);
         envelopeEncryptionService = new EnvelopeEncryptionService();
@@ -38,7 +37,6 @@ class PatientDemographicEncryptionTest {
         PatientCacheService patientCacheService = Mockito.mock(PatientCacheService.class);
         patientService = new PatientService(
                 patientRepository,
-                patientVisitRepository,
                 gpRepository,
                 vaultKmsService,
                 envelopeEncryptionService,

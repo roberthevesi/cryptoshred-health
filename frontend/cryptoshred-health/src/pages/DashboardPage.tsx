@@ -37,7 +37,8 @@ export default function DashboardPage() {
     queryFn: () => apiClient.get<Patient[]>('/patients?includeDeleted=true').then((r) => r.data),
   });
 
-  const totalVisitsCount = patients.reduce((sum, p) => sum + (p.visitCount || 0), 0);
+  const activePatientsCount = patients.filter((p) => p.isActive !== false && !p.shredded).length;
+  const shreddedPatientsCount = patients.filter((p) => p.shredded || p.isActive === false).length;
 
   const handleLogout = () => {
     logout();
@@ -98,15 +99,15 @@ export default function DashboardPage() {
             <div className="flex items-center gap-3">
               <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-center">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                  Registered Patients
+                  Active Patients
                 </span>
-                <span className="text-lg font-bold text-slate-900">{patients.length}</span>
+                <span className="text-lg font-bold text-emerald-600">{activePatientsCount}</span>
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-center">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                  Total Visits
+                  Crypto-Shredded
                 </span>
-                <span className="text-lg font-bold text-blue-600">{totalVisitsCount}</span>
+                <span className="text-lg font-bold text-rose-600">{shreddedPatientsCount}</span>
               </div>
             </div>
           </div>
