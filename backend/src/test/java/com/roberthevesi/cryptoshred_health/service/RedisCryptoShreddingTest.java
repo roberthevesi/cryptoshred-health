@@ -287,6 +287,31 @@ class RedisCryptoShreddingTest {
     }
 
     @Test
+    void testPatientServiceFindByPatientIdSkipsRedisForShreddedPatient() {
+        // Arrange
+        String patientId = "PAT-10003";
+        Patient patient = new Patient();
+        patient.setId(UUID.randomUUID());
+        patient.setPatientId(patientId);
+        patient.setFirstName("Thomas");
+        patient.setLastName("Shelby");
+        patient.setActive(false);
+        patient.setShredded(true);
+
+        when(patientRepository.findByPatientId(patientId)).thenReturn(Optional.of(patient));
+
+        // Act
+        PatientResponse response = patientService.findByPatientId(patientId);
+
+        // Assert
+        assertNotNull(response);
+        assertTrue(response.isShredded());
+        assertEquals("[SHREDDED]", response.getFirstName());
+        verify(patientCacheService, never()).get(anyString());
+        verify(patientCacheService, never()).put(anyString(), any());
+    }
+
+    @Test
     void testPatientVisitServiceSkipsRedisForShreddedVisits() {
         // Arrange
         UUID visitId = UUID.randomUUID();
