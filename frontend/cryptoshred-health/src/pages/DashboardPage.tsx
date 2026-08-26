@@ -42,13 +42,14 @@ export default function DashboardPage() {
   // Fetch Patients
   const { data: patients = [] } = useQuery<Patient[]>({
     queryKey: ['patients'],
-    queryFn: () => apiClient.get<Patient[]>('/patients').then((r) => r.data),
+    queryFn: () => apiClient.get<Patient[]>('/patients?includeDeleted=true').then((r) => r.data),
   });
 
-  // Fetch Clinical Visits
+  // Fetch Clinical Visits only when Auditor opens the Compliance Tab
   const { data: allVisits = [] } = useQuery<PatientVisit[]>({
     queryKey: ['visits'],
     queryFn: () => apiClient.get<PatientVisit[]>('/visits').then((r) => r.data),
+    enabled: activeTab === 'compliance' && user?.role === 'AUDITOR',
   });
 
   // Patient-level erasure mutation
@@ -112,6 +113,7 @@ export default function DashboardPage() {
 
   const activePatients = patients.filter((p) => p.isActive !== false && !p.shredded);
   const activeVisits = allVisits.filter((v) => !v.shredded);
+  const totalVisitsCount = patients.reduce((sum, p) => sum + (p.visitCount || 0), 0);
   const isPending = patientErasureMutation.isPending || visitErasureMutation.isPending;
 
   return (
@@ -176,7 +178,7 @@ export default function DashboardPage() {
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
                   Total Visits
                 </span>
-                <span className="text-lg font-bold text-blue-600">{allVisits.length}</span>
+                <span className="text-lg font-bold text-blue-600">{totalVisitsCount}</span>
               </div>
             </div>
           </div>
