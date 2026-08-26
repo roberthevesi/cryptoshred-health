@@ -32,8 +32,6 @@ public class PatientResponse {
 
     private boolean shredded;
 
-    private int visitCount;
-
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

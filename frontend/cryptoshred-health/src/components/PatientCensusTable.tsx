@@ -251,7 +251,6 @@ export default function PatientCensusTable() {
                   <th className="py-3.5 px-3">Demographics</th>
                   <th className="py-3.5 px-3">Assigned GP Surgery</th>
                   <th className="py-3.5 px-3">Contact</th>
-                  <th className="py-3.5 px-3">Visits Count</th>
                   <th className="py-3.5 px-3">Status</th>
                   <th className="py-3.5 pl-3 pr-4 text-right">Patient File</th>
                 </tr>
@@ -259,7 +258,7 @@ export default function PatientCensusTable() {
               <tbody className="divide-y divide-slate-100">
                 {filteredPatients.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-slate-500">
+                    <td colSpan={6} className="py-12 text-center text-slate-500">
                       {patients.length === 0
                         ? 'No patients registered in the database yet. Click "Register Patient (GP)" above to add the first patient.'
                         : 'No matching patients found in registry.'}
@@ -269,8 +268,6 @@ export default function PatientCensusTable() {
                   paginatedPatients.map((patient) => {
                     const isShredded = !!patient.shredded || patient.isActive === false || patient.active === false;
                     const age = !isShredded ? getAge(patient.dateOfBirth) : null;
-                    // Lightweight visit count from patient profile
-                    const patientVisitsCount = patient.visitCount ?? 0;
 
                     return (
                       <tr
@@ -384,20 +381,7 @@ export default function PatientCensusTable() {
                           )}
                         </td>
 
-                        {/* 5. Visits Count */}
-                        <td className="py-3.5 px-3">
-                          <span
-                            className={`inline-flex items-center gap-1 font-semibold px-2 py-0.5 rounded-md text-[11px] border ${
-                              isShredded
-                                ? 'bg-rose-50 border-rose-200 text-rose-700 font-mono'
-                                : 'text-slate-700 bg-slate-100 border-slate-200'
-                            }`}
-                          >
-                            {patientVisitsCount} visit(s)
-                          </span>
-                        </td>
-
-                        {/* 6. Status */}
+                        {/* 5. Status */}
                         <td className="py-3.5 px-3">
                           {!isShredded ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-semibold">

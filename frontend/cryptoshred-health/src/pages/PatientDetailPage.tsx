@@ -62,6 +62,7 @@ export default function PatientDetailPage() {
   const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
   const [erasureError, setErasureError] = useState('');
   const [isExportingFhir, setIsExportingFhir] = useState(false);
+  const [visitsSubTab, setVisitsSubTab] = useState<'active' | 'shredded'>('active');
 
   // 1. Fetch Patient Master Profile
   const {
@@ -184,7 +185,10 @@ export default function PatientDetailPage() {
   const isDoctor = user?.role === 'DOCTOR';
   const isAuditor = user?.role === 'AUDITOR';
   const isShredded = patient?.shredded || patient?.isActive === false || patient?.active === false;
-  const latestVisit = patientVisits.find((v) => !v.shredded);
+  const activeVisits = patientVisits.filter((v) => !v.shredded && !isShredded);
+  const shreddedVisits = patientVisits.filter((v) => v.shredded || isShredded);
+  const displayedVisits = visitsSubTab === 'active' ? activeVisits : shreddedVisits;
+  const latestVisit = activeVisits[0] || patientVisits.find((v) => !v.shredded);
 
   if (isPatientLoading || isVisitsLoading) {
     return (
@@ -460,7 +464,7 @@ export default function PatientDetailPage() {
         {/* TAB 1: Visits & Encounters */}
         {activeTab === 'visits' && (
           <div className="bg-white border border-slate-200 rounded-2xl shadow-card p-6 animate-fade-in space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h2 className="text-base font-bold text-slate-900">Clinical Visits &amp; Consultations</h2>
                 <p className="text-xs text-slate-500">
@@ -481,14 +485,55 @@ export default function PatientDetailPage() {
               )}
             </div>
 
-            {patientVisits.length === 0 ? (
+            {/* Segmented Filter: Active vs Crypto-Shredded Visits */}
+            <div className="flex gap-1 rounded-xl bg-slate-100 p-1 w-fit border border-slate-200 text-xs font-medium">
+              <button
+                onClick={() => setVisitsSubTab('active')}
+                className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-1.5 transition-all ${
+                  visitsSubTab === 'active'
+                    ? 'bg-white text-emerald-800 font-semibold shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <ShieldCheck className={`h-3.5 w-3.5 ${visitsSubTab === 'active' ? 'text-emerald-600' : 'text-slate-400'}`} />
+                <span>Active Clinical Visits</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                  visitsSubTab === 'active' ? 'bg-emerald-100 text-emerald-800 font-bold' : 'bg-slate-200 text-slate-600'
+                }`}>
+                  {activeVisits.length}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setVisitsSubTab('shredded')}
+                className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-1.5 transition-all ${
+                  visitsSubTab === 'shredded'
+                    ? 'bg-white text-rose-800 font-semibold shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <ShieldOff className={`h-3.5 w-3.5 ${visitsSubTab === 'shredded' ? 'text-rose-600' : 'text-slate-400'}`} />
+                <span>Crypto-Shredded Visits</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                  visitsSubTab === 'shredded' ? 'bg-rose-100 text-rose-800 font-bold' : 'bg-slate-200 text-slate-600'
+                }`}>
+                  {shreddedVisits.length}
+                </span>
+              </button>
+            </div>
+
+            {displayedVisits.length === 0 ? (
               <div className="rounded-xl border border-dashed border-slate-300 p-12 text-center bg-slate-50">
                 <FileText className="mx-auto h-8 w-8 text-slate-400 mb-2" />
-                <h3 className="text-sm font-semibold text-slate-800">No clinical visits recorded yet</h3>
+                <h3 className="text-sm font-semibold text-slate-800">
+                  {visitsSubTab === 'active' ? 'No active clinical visits recorded' : 'No crypto-shredded visits for this patient'}
+                </h3>
                 <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                  Click "Record New Visit" to document today's medical consultation, vital signs, and SOAP notes.
+                  {visitsSubTab === 'active'
+                    ? 'Click "Record New Visit" to document today\'s medical consultation, vital signs, and SOAP notes.'
+                    : 'All visits for this patient currently remain protected under active Vault KMS Transit encryption keys.'}
                 </p>
-                {isDoctor && !isShredded && (
+                {visitsSubTab === 'active' && isDoctor && !isShredded && (
                   <button
                     onClick={() => {
                       setSelectedVisitForEdit(null);
@@ -509,16 +554,16 @@ export default function PatientDetailPage() {
                       <th className="py-3.5 px-3">Attending Clinician</th>
                       <th className="py-3.5 px-3">Diagnosis &amp; Reason</th>
                       <th className="py-3.5 px-3">Vital Signs</th>
-                      <th className="py-3.5 px-3">Security &amp; Files</th>
+                      <th className="py-3.5 px-3">Security &amp; Encryption</th>
                       <th className="py-3.5 pl-3 pr-4 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {patientVisits.map((visit) => (
+                    {displayedVisits.map((visit) => (
                       <tr
                         key={visit.id}
                         className={`hover:bg-slate-50 transition-colors ${
-                          visit.shredded || isShredded ? 'opacity-60 bg-red-50/30' : ''
+                          visit.shredded || isShredded ? 'opacity-70 bg-rose-50/30' : ''
                         }`}
                       >
                         {/* Visit Date */}
@@ -548,10 +593,10 @@ export default function PatientDetailPage() {
 
                         {/* Diagnosis */}
                         <td className="py-3.5 px-3 max-w-[240px]">
-                          <p className="font-medium text-slate-900 truncate">
-                            {visit.diagnosis || '—'}
+                          <p className={`font-medium truncate ${visit.shredded || isShredded ? 'text-rose-900 font-mono' : 'text-slate-900'}`}>
+                            {visit.shredded || isShredded ? '[SHREDDED]' : (visit.diagnosis || '—')}
                           </p>
-                          {visit.chiefComplaint && (
+                          {!visit.shredded && !isShredded && visit.chiefComplaint && (
                             <p className="text-[11px] text-slate-500 truncate mt-0.5">
                               {visit.chiefComplaint}
                             </p>
@@ -583,8 +628,8 @@ export default function PatientDetailPage() {
                         {/* Security */}
                         <td className="py-3.5 px-3">
                           {visit.shredded || isShredded ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-50 border border-red-200 text-red-700 text-[10px] font-semibold">
-                              <ShieldOff className="h-3 w-3" /> Shredded
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-100 border border-rose-200 text-rose-800 text-[10px] font-semibold font-mono">
+                              <ShieldOff className="h-3 w-3" /> Key Shredded
                             </span>
                           ) : (
                             <div className="space-y-1">
@@ -633,6 +678,20 @@ export default function PatientDetailPage() {
                                 title="Delete visit"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                            {isAuditor && !visit.shredded && !isShredded && (
+                              <button
+                                onClick={() => {
+                                  if (confirm(`Permanently crypto-shred visit ${visit.id}? This destroys the Vault KMS key and is irreversible.`)) {
+                                    visitErasureMutation.mutate(visit.id);
+                                  }
+                                }}
+                                disabled={visitErasureMutation.isPending}
+                                className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition"
+                                title="Crypto-Shred Visit (GDPR Art. 17)"
+                              >
+                                <ShieldAlert className="h-3.5 w-3.5" />
                               </button>
                             )}
                           </div>

@@ -191,6 +191,9 @@ public class PatientVisitService {
         }
 
         return visits.stream().map(visit -> {
+            if (visit.isShredded()) {
+                return toResponse(visit); // Skip Redis check entirely for shredded visits
+            }
             PatientVisitResponse cached = patientVisitCacheService.get(visit.getId());
             if (cached != null) {
                 return cached; // Trust the cache — ErasureService proactively evicts on shred
@@ -215,6 +218,9 @@ public class PatientVisitService {
         }
 
         return visits.stream().map(visit -> {
+            if (visit.isShredded()) {
+                return toResponse(visit); // Skip Redis check entirely for shredded visits
+            }
             PatientVisitResponse cached = patientVisitCacheService.get(visit.getId());
             if (cached != null) {
                 return cached;
@@ -231,6 +237,10 @@ public class PatientVisitService {
     public PatientVisitResponse findById(UUID id, String currentUserEmail) {
         PatientVisit visit = findVisit(id);
         checkReadAccess(visit, findUser(currentUserEmail));
+
+        if (visit.isShredded()) {
+            return toResponse(visit); // Skip Redis check entirely for shredded visits
+        }
 
         // 1. Check Redis cache
         PatientVisitResponse cached = patientVisitCacheService.get(id);
