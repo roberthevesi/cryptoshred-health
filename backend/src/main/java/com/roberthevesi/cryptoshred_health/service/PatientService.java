@@ -58,8 +58,10 @@ public class PatientService {
     public PatientResponse findByPatientId(String patientId) {
         PatientResponse cached = patientCacheService.get(patientId);
         if (cached != null) {
+            log.info("⚡ [REDIS HIT] Serving patient demographic record {} from Redis L2 cache", patientId);
             return cached;
         }
+        log.info("🐢 [REDIS MISS] Patient {} not in Redis. Querying PostgreSQL (L3) & decrypting via Vault KMS...", patientId);
         PatientResponse resp = patientRepository.findByPatientId(patientId)
                 .map(this::toResponse)
                 .orElseThrow(() -> new RuntimeException("Patient not found: " + patientId));
