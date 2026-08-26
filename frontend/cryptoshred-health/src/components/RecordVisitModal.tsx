@@ -43,8 +43,8 @@ export default function RecordVisitModal({ onClose, editVisit, defaultPatient }:
     patientName: editVisit?.patientName ?? (defaultPatient ? `${defaultPatient.firstName} ${defaultPatient.lastName}` : ''),
     mrn: editVisit?.mrn ?? defaultPatient?.patientId ?? '',
     dateOfBirth: editVisit?.dateOfBirth ?? defaultPatient?.dateOfBirth ?? '',
-    gender: editVisit?.gender ?? defaultPatient?.gender ?? 'Female',
-    bloodType: editVisit?.bloodType ?? 'O+',
+    gender: editVisit?.gender ?? defaultPatient?.gender ?? '',
+    bloodType: editVisit?.bloodType ?? '',
 
     // Contact & Admin
     phone: editVisit?.phone ?? defaultPatient?.phoneNumber ?? '',
@@ -57,24 +57,24 @@ export default function RecordVisitModal({ onClose, editVisit, defaultPatient }:
     // Provider & Insurance
     attendingDoctor:
       editVisit?.attendingDoctor ??
-      (defaultPatient?.gp ? `Dr. ${defaultPatient.gp.firstName} ${defaultPatient.gp.lastName}` : 'Dr. Alistair Finch, MD'),
+      (defaultPatient?.gp ? `Dr. ${defaultPatient.gp.firstName} ${defaultPatient.gp.lastName}` : ''),
     department:
       editVisit?.department ??
-      (defaultPatient?.gp?.practiceName || 'General Practice'),
+      (defaultPatient?.gp?.practiceName || ''),
     insuranceProvider: editVisit?.insuranceProvider ?? '',
     insurancePolicyNumber: editVisit?.insurancePolicyNumber ?? '',
     insuranceGroupNumber: editVisit?.insuranceGroupNumber ?? '',
 
     // Biometrics & Vitals
-    bloodPressure: editVisit?.bloodPressure ?? '120/80 mmHg',
-    heartRate: editVisit?.heartRate ?? 72,
-    respiratoryRate: editVisit?.respiratoryRate ?? '16 breaths/min',
-    temperature: editVisit?.temperature ?? '36.8 °C',
-    oxygenSaturation: editVisit?.oxygenSaturation ?? '98%',
-    heightCm: editVisit?.heightCm ?? '170 cm',
-    weightKg: editVisit?.weightKg ?? '70.0 kg',
-    bmi: editVisit?.bmi ?? '24.2',
-    painScore: editVisit?.painScore ?? 0,
+    bloodPressure: editVisit?.bloodPressure ?? '',
+    heartRate: editVisit?.heartRate ?? undefined,
+    respiratoryRate: editVisit?.respiratoryRate ?? '',
+    temperature: editVisit?.temperature ?? '',
+    oxygenSaturation: editVisit?.oxygenSaturation ?? '',
+    heightCm: editVisit?.heightCm ?? '',
+    weightKg: editVisit?.weightKg ?? '',
+    bmi: editVisit?.bmi ?? '',
+    painScore: editVisit?.painScore ?? undefined,
 
     // Clinical Profile
     allergies: editVisit?.allergies ?? '',
@@ -404,8 +404,9 @@ export default function RecordVisitModal({ onClose, editVisit, defaultPatient }:
                       type="number"
                       min={30}
                       max={240}
-                      value={form.heartRate ?? 72}
+                      value={form.heartRate ?? ''}
                       onChange={handleChange('heartRate')}
+                      placeholder="e.g. 72"
                       className="input-field font-mono"
                     />
                   </div>
@@ -415,7 +416,7 @@ export default function RecordVisitModal({ onClose, editVisit, defaultPatient }:
                       type="text"
                       value={form.oxygenSaturation ?? ''}
                       onChange={handleChange('oxygenSaturation')}
-                      placeholder="98%"
+                      placeholder="e.g. 98%"
                       className="input-field font-mono"
                     />
                   </div>
@@ -425,7 +426,7 @@ export default function RecordVisitModal({ onClose, editVisit, defaultPatient }:
                       type="text"
                       value={form.temperature ?? ''}
                       onChange={handleChange('temperature')}
-                      placeholder="36.8 °C"
+                      placeholder="e.g. 36.8 °C"
                       className="input-field font-mono"
                     />
                   </div>
@@ -435,7 +436,7 @@ export default function RecordVisitModal({ onClose, editVisit, defaultPatient }:
                       type="text"
                       value={form.respiratoryRate ?? ''}
                       onChange={handleChange('respiratoryRate')}
-                      placeholder="16 breaths/min"
+                      placeholder="e.g. 16 breaths/min"
                       className="input-field font-mono"
                     />
                   </div>
@@ -445,8 +446,9 @@ export default function RecordVisitModal({ onClose, editVisit, defaultPatient }:
                       type="number"
                       min={0}
                       max={10}
-                      value={form.painScore ?? 0}
+                      value={form.painScore ?? ''}
                       onChange={handleChange('painScore')}
+                      placeholder="e.g. 0"
                       className="input-field font-mono"
                     />
                   </div>
@@ -589,7 +591,7 @@ export default function RecordVisitModal({ onClose, editVisit, defaultPatient }:
                             email: sel.email ?? prev.email,
                             address: sel.address ?? prev.address,
                             attendingDoctor: sel.gp ? `Dr. ${sel.gp.firstName} ${sel.gp.lastName}` : prev.attendingDoctor,
-                            department: sel.gp?.practiceName || prev.department || 'General Practice',
+                            department: sel.gp?.practiceName || prev.department || '',
                           }));
                         }
                       }}
@@ -644,7 +646,8 @@ export default function RecordVisitModal({ onClose, editVisit, defaultPatient }:
                   </div>
                   <div>
                     <label className="text-xs font-medium text-slate-700 block mb-1">Biological Sex / Gender</label>
-                    <select value={form.gender ?? 'Female'} onChange={handleChange('gender')} className="input-field">
+                    <select value={form.gender ?? ''} onChange={handleChange('gender')} className="input-field">
+                      <option value="">— Select Gender —</option>
                       <option value="Female">Female</option>
                       <option value="Male">Male</option>
                       <option value="Non-Binary">Non-Binary</option>
@@ -653,7 +656,8 @@ export default function RecordVisitModal({ onClose, editVisit, defaultPatient }:
                   </div>
                   <div>
                     <label className="text-xs font-medium text-slate-700 block mb-1">Blood Type</label>
-                    <select value={form.bloodType ?? 'O+'} onChange={handleChange('bloodType')} className="input-field">
+                    <select value={form.bloodType ?? ''} onChange={handleChange('bloodType')} className="input-field">
+                      <option value="">— Select Blood Type —</option>
                       <option value="A+">A+</option>
                       <option value="A-">A-</option>
                       <option value="B+">B+</option>
@@ -757,7 +761,7 @@ export default function RecordVisitModal({ onClose, editVisit, defaultPatient }:
                           setForm((prev) => ({
                             ...prev,
                             attendingDoctor: `Dr. ${gp.firstName} ${gp.lastName}${gp.specialisation ? `, ${gp.specialisation}` : ''}`,
-                            department: gp.practiceName || prev.department || 'General Practice',
+                            department: gp.practiceName || prev.department || '',
                           }));
                         }
                       }}
@@ -771,7 +775,7 @@ export default function RecordVisitModal({ onClose, editVisit, defaultPatient }:
                         type="text"
                         value={form.attendingDoctor ?? ''}
                         onChange={handleChange('attendingDoctor')}
-                        placeholder="Dr. Alistair Finch, MD"
+                        placeholder="e.g. Dr. Sarah Jenkins, MD"
                         className="input-field"
                       />
                     </div>
@@ -781,7 +785,7 @@ export default function RecordVisitModal({ onClose, editVisit, defaultPatient }:
                         type="text"
                         value={form.department ?? ''}
                         onChange={handleChange('department')}
-                        placeholder="General Practice"
+                        placeholder="e.g. General Practice, Cardiology"
                         className="input-field"
                       />
                     </div>
