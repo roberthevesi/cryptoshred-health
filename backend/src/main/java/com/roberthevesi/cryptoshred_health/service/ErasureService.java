@@ -1,6 +1,7 @@
 package com.roberthevesi.cryptoshred_health.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.roberthevesi.cryptoshred_health.dto.ErasureProofBundleDto;
 import com.roberthevesi.cryptoshred_health.dto.PatientVisitEventDto;
 import com.roberthevesi.cryptoshred_health.dto.ProofVerificationResponseDto;
 import com.roberthevesi.cryptoshred_health.dto.VerifiableDeletionProofDto;
@@ -89,10 +90,72 @@ public class ErasureService {
         // 3. Proactively evict patient from Redis cache
         patientCacheService.evict(patientId);
 
-        // 4. Shred all associated clinical visits & attachments
+        // 4. Shred all associated clinical visits & attachments and generate individual proofs
         List<PatientVisit> visits = patientVisitRepository.findByPatientIdentifier(patientId);
         for (PatientVisit visit : visits) {
-            shredVisit(visit, timestamp);
+            if (!visit.isShredded()) {
+                String visitDiagnosis = (visit.getDiagnosis() != null && !"[SHREDDED]".equals(visit.getDiagnosis())) ? visit.getDiagnosis() : "General Consultation";
+                String visitVaultKeyName = visit.getEncryptionKey() != null ? visit.getEncryptionKey().getVaultKeyName() : null;
+
+                shredVisit(visit, timestamp);
+
+                // Publish VISIT_SHREDDED event to Kafka
+                eventLogPublisher.publishEvent(PatientVisitEventDto.builder()
+                        .eventId(UUID.randomUUID())
+                        .visitId(visit.getId())
+                        .patientId(patientId)
+                        .eventType("VISIT_SHREDDED")
+                        .vaultKeyName(visitVaultKeyName)
+                        .timestamp(timestamp)
+                        .build());
+
+                // Build audit trail, Merkle proof, RSA signature for this visit
+                String visitAuditTrail = buildVisitAuditTrail(visit.getId(), requestedBy, timestamp);
+                String visitSha256 = sha256Hex(visitAuditTrail);
+
+                merkleTreeService.addLeaf(visitSha256);
+                String visitMerkleRoot = merkleTreeService.getMerkleRoot();
+                List<String> visitMerklePath = merkleTreeService.getInclusionProof(visitSha256);
+
+                String visitSignPayload = buildCanonicalSignPayload(visit.getId().toString(), timestamp, visitSha256, visitMerkleRoot);
+                String visitSignature = proofSigningService.sign(visitSignPayload);
+
+                VerifiableDeletionProofDto visitProof = VerifiableDeletionProofDto.builder()
+                        .proofVersion("1.0")
+                        .scope("CLINICAL_VISIT")
+                        .entityDescription("Clinical Visit Chart: " + visit.getId() + " (Diagnosis: " + visitDiagnosis + ")")
+                        .visitId(visit.getId())
+                        .patientRecordId(visit.getId())
+                        .patientId(patientId)
+                        .vaultKeyName(visitVaultKeyName)
+                        .requestedBy(requestedBy)
+                        .timestamp(timestamp)
+                        .status("VISIT_DELETED")
+                        .coveredStorageLayers(List.of("POSTGRES_DB", "KAFKA_EVENT_LOG", "REDIS_CACHE", "WORM_BACKUP"))
+                        .layerStatus(Map.of(
+                                "POSTGRES_DB", "TEXT_NULLIFIED",
+                                "KAFKA_EVENT_LOG", "KEY_DESTROYED_PAYLOAD_UNREADABLE",
+                                "REDIS_CACHE", "CACHE_EVICTED",
+                                "WORM_BACKUP", "ZERO_PURGE_UNDECRYPTABLE"
+                        ))
+                        .auditTrail(visitAuditTrail)
+                        .auditTrailHash(visitSha256)
+                        .merkleRoot(visitMerkleRoot)
+                        .merklePath(visitMerklePath)
+                        .signatureAlgorithm("SHA256withRSA")
+                        .digitalSignature(visitSignature)
+                        .build();
+
+                try {
+                    String visitProofJson = objectMapper.writeValueAsString(visitProof);
+                    visit.setDeletionProofJson(visitProofJson);
+                    patientVisitRepository.save(visit);
+                } catch (Exception e) {
+                    log.error("Failed to serialize cascaded deletion proof for visit {}: {}", visit.getId(), e.getMessage(), e);
+                }
+            } else {
+                shredVisit(visit, timestamp);
+            }
         }
 
         // 4. Publish PATIENT_SHREDDED event to Kafka
@@ -119,6 +182,8 @@ public class ErasureService {
 
         VerifiableDeletionProofDto proof = VerifiableDeletionProofDto.builder()
                 .proofVersion("1.0")
+                .scope("PATIENT_PROFILE")
+                .entityDescription("Patient Demographic Profile: " + patientId)
                 .patientId(patientId)
                 .vaultKeyName(vaultKeyName)
                 .requestedBy(requestedBy)
@@ -166,6 +231,7 @@ public class ErasureService {
         }
 
         LocalDateTime timestamp = LocalDateTime.now();
+        String diagnosis = (visit.getDiagnosis() != null && !"[SHREDDED]".equals(visit.getDiagnosis())) ? visit.getDiagnosis() : "General Consultation";
         String vaultKeyName = visit.getEncryptionKey() != null ? visit.getEncryptionKey().getVaultKeyName() : null;
 
         shredVisit(visit, timestamp);
@@ -195,6 +261,8 @@ public class ErasureService {
 
         VerifiableDeletionProofDto proof = VerifiableDeletionProofDto.builder()
                 .proofVersion("1.0")
+                .scope("CLINICAL_VISIT")
+                .entityDescription("Clinical Visit Chart: " + visitId + " (Diagnosis: " + diagnosis + ")")
                 .visitId(visitId)
                 .patientRecordId(visitId) // legacy alias
                 .patientId(visit.getPatient() != null ? visit.getPatient().getPatientId() : visit.getMrn())
@@ -227,6 +295,40 @@ public class ErasureService {
         }
 
         return proof;
+    }
+
+    @Transactional(readOnly = true)
+    public ErasureProofBundleDto getPatientDeletionProofBundle(String patientId) {
+        Patient patient = patientRepository.findByPatientId(patientId)
+                .orElseThrow(() -> new IllegalArgumentException("Patient not found: " + patientId));
+
+        VerifiableDeletionProofDto masterPatientProof = null;
+        if (patient.getDeletionProofJson() != null && !patient.getDeletionProofJson().isBlank()) {
+            try {
+                masterPatientProof = objectMapper.readValue(patient.getDeletionProofJson(), VerifiableDeletionProofDto.class);
+            } catch (Exception e) {
+                log.error("Failed to deserialize master deletion proof for patient {}: {}", patientId, e.getMessage(), e);
+            }
+        }
+
+        List<PatientVisit> visits = patientVisitRepository.findByPatientIdentifier(patientId);
+        List<VerifiableDeletionProofDto> visitProofs = new java.util.ArrayList<>();
+        for (PatientVisit visit : visits) {
+            if (visit.getDeletionProofJson() != null && !visit.getDeletionProofJson().isBlank()) {
+                try {
+                    visitProofs.add(objectMapper.readValue(visit.getDeletionProofJson(), VerifiableDeletionProofDto.class));
+                } catch (Exception e) {
+                    log.error("Failed to deserialize visit deletion proof for visit {}: {}", visit.getId(), e.getMessage(), e);
+                }
+            }
+        }
+
+        return ErasureProofBundleDto.builder()
+                .patientId(patientId)
+                .masterPatientProof(masterPatientProof)
+                .visitProofs(visitProofs)
+                .totalShreddedVisits(visitProofs.size())
+                .build();
     }
 
     @Transactional(readOnly = true)

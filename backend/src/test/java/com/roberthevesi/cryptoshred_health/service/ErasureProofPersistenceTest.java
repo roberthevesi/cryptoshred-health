@@ -1,6 +1,7 @@
 package com.roberthevesi.cryptoshred_health.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.roberthevesi.cryptoshred_health.dto.ErasureProofBundleDto;
 import com.roberthevesi.cryptoshred_health.dto.VerifiableDeletionProofDto;
 import com.roberthevesi.cryptoshred_health.model.Patient;
 import com.roberthevesi.cryptoshred_health.model.PatientVisit;
@@ -65,7 +66,7 @@ class ErasureProofPersistenceTest {
     }
 
     @Test
-    void testForgetPatientPersistsDeletionProof() {
+    void testForgetPatientPersistsDeletionProofAndCascadesToVisits() {
         String patientId = "PAT-TEST-001";
         Patient patient = new Patient();
         patient.setPatientId(patientId);
@@ -74,27 +75,47 @@ class ErasureProofPersistenceTest {
         patient.setShredded(false);
         patient.setActive(true);
 
+        UUID visitId = UUID.randomUUID();
+        PatientVisit visit = new PatientVisit();
+        visit.setId(visitId);
+        visit.setPatient(patient);
+        visit.setMrn(patientId);
+        visit.setDiagnosis("Hypertension Consultation");
+        visit.setShredded(false);
+
         when(patientRepository.findByPatientId(patientId)).thenReturn(Optional.of(patient));
-        when(patientVisitRepository.findByPatientIdentifier(patientId)).thenReturn(Collections.emptyList());
+        when(patientVisitRepository.findByPatientIdentifier(patientId)).thenReturn(List.of(visit));
 
         VerifiableDeletionProofDto proof = erasureService.forgetPatient(patientId, "auditor_user");
 
         assertNotNull(proof);
         assertEquals("PATIENT_DELETED", proof.getStatus());
+        assertEquals("PATIENT_PROFILE", proof.getScope());
+        assertEquals("Patient Demographic Profile: " + patientId, proof.getEntityDescription());
         assertEquals("auditor_user", proof.getRequestedBy());
         assertTrue(patient.isShredded());
         assertFalse(patient.isActive());
         assertNotNull(patient.getDeletionProofJson());
         assertTrue(patient.getDeletionProofJson().contains("PATIENT_DELETED"));
 
-        verify(patientRepository, atLeastOnce()).save(patient);
+        // Verify cascaded visit proof
+        assertTrue(visit.isShredded());
+        assertNotNull(visit.getDeletionProofJson());
+        assertTrue(visit.getDeletionProofJson().contains("CLINICAL_VISIT"));
+        assertTrue(visit.getDeletionProofJson().contains("Hypertension Consultation"));
 
-        // Now test retrieval
-        VerifiableDeletionProofDto retrievedProof = erasureService.getPatientDeletionProof(patientId);
-        assertNotNull(retrievedProof);
-        assertEquals(patientId, retrievedProof.getPatientId());
-        assertEquals("PATIENT_DELETED", retrievedProof.getStatus());
-        assertEquals("auditor_user", retrievedProof.getRequestedBy());
+        verify(patientRepository, atLeastOnce()).save(patient);
+        verify(patientVisitRepository, atLeastOnce()).save(visit);
+
+        // Now test bundle retrieval
+        ErasureProofBundleDto bundle = erasureService.getPatientDeletionProofBundle(patientId);
+        assertNotNull(bundle);
+        assertEquals(patientId, bundle.getPatientId());
+        assertNotNull(bundle.getMasterPatientProof());
+        assertEquals("PATIENT_PROFILE", bundle.getMasterPatientProof().getScope());
+        assertEquals(1, bundle.getVisitProofs().size());
+        assertEquals("CLINICAL_VISIT", bundle.getVisitProofs().get(0).getScope());
+        assertEquals(1, bundle.getTotalShreddedVisits());
     }
 
     @Test
@@ -104,6 +125,7 @@ class ErasureProofPersistenceTest {
         visit.setId(visitId);
         visit.setMrn("PAT-TEST-002");
         visit.setPatientName("Jane Doe");
+        visit.setDiagnosis("Routine Health Check");
         visit.setShredded(false);
 
         when(patientVisitRepository.findById(visitId)).thenReturn(Optional.of(visit));
@@ -112,6 +134,8 @@ class ErasureProofPersistenceTest {
 
         assertNotNull(proof);
         assertEquals("VISIT_DELETED", proof.getStatus());
+        assertEquals("CLINICAL_VISIT", proof.getScope());
+        assertTrue(proof.getEntityDescription().contains("Routine Health Check"));
         assertTrue(visit.isShredded());
         assertNotNull(visit.getDeletionProofJson());
         assertTrue(visit.getDeletionProofJson().contains("VISIT_DELETED"));
@@ -123,6 +147,7 @@ class ErasureProofPersistenceTest {
         assertNotNull(retrievedProof);
         assertEquals(visitId, retrievedProof.getVisitId());
         assertEquals("VISIT_DELETED", retrievedProof.getStatus());
+        assertEquals("CLINICAL_VISIT", retrievedProof.getScope());
     }
 
     @Test

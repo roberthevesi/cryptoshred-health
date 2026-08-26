@@ -37,7 +37,8 @@ import PatientFormModal from '../components/PatientFormModal';
 import VitalsCard from '../components/VitalsCard';
 import DeletionProofCard from '../components/DeletionProofCard';
 import VerifyProofModal from '../components/VerifyProofModal';
-import type { Patient, PatientVisit, DeletionProof } from '../types';
+import ProofViewerModal from '../components/ProofViewerModal';
+import type { Patient, PatientVisit, DeletionProof, ErasureProofBundle } from '../types';
 
 type DetailTab = 'visits' | 'clinical' | 'demographics' | 'compliance';
 
@@ -59,6 +60,11 @@ export default function PatientDetailPage() {
   const [selectedVisitForEdit, setSelectedVisitForEdit] = useState<PatientVisit | null>(null);
   const [selectedVisitForView, setSelectedVisitForView] = useState<string | null>(null);
   const [deletionProof, setDeletionProof] = useState<DeletionProof | null>(null);
+  const [selectedProofForViewer, setSelectedProofForViewer] = useState<{
+    proof?: DeletionProof | null;
+    visitId?: string | null;
+    patientId?: string | null;
+  } | null>(null);
   const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
   const [erasureError, setErasureError] = useState('');
   const [isExportingFhir, setIsExportingFhir] = useState(false);
@@ -82,6 +88,13 @@ export default function PatientDetailPage() {
     enabled: !!patientId && (!!patient?.shredded || patient?.isActive === false || patient?.active === false),
   });
 
+  // Complete Deletion Proof Bundle Query
+  const { data: proofBundle } = useQuery<ErasureProofBundle>({
+    queryKey: ['proofBundle', patientId],
+    queryFn: () => apiClient.get<ErasureProofBundle>(`/erasure/patients/${patientId}/proofs`).then((r) => r.data),
+    enabled: !!patientId,
+  });
+
   const effectiveProof = deletionProof || persistentProof;
 
   // 2. Fetch Clinical Visits for this Patient
@@ -99,6 +112,7 @@ export default function PatientDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['records'] });
       queryClient.invalidateQueries({ queryKey: ['patient', patientId] });
       queryClient.invalidateQueries({ queryKey: ['patients'] });
+      queryClient.invalidateQueries({ queryKey: ['proofBundle', patientId] });
     },
   });
 
@@ -113,6 +127,8 @@ export default function PatientDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['records'] });
       queryClient.invalidateQueries({ queryKey: ['patient', patientId] });
       queryClient.invalidateQueries({ queryKey: ['patients'] });
+      queryClient.invalidateQueries({ queryKey: ['proofBundle', patientId] });
+      queryClient.invalidateQueries({ queryKey: ['deletionProof', patientId] });
     },
     onError: (err: unknown) => {
       const msg =
@@ -132,6 +148,8 @@ export default function PatientDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['visits'] });
       queryClient.invalidateQueries({ queryKey: ['records'] });
       queryClient.invalidateQueries({ queryKey: ['patient', patientId] });
+      queryClient.invalidateQueries({ queryKey: ['proofBundle', patientId] });
+      queryClient.invalidateQueries({ queryKey: ['deletionProof', patientId] });
     },
     onError: (err: unknown) => {
       const msg =
@@ -140,6 +158,39 @@ export default function PatientDetailPage() {
       setErasureError(msg);
     },
   });
+
+  const handleDownloadProofBundle = () => {
+    if (!proofBundle) return;
+    const jsonString = JSON.stringify(proofBundle, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `proof-bundle-${patientId}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadVisitProof = async (visitId: string) => {
+    try {
+      const response = await apiClient.get<DeletionProof>(`/erasure/visits/${visitId}/proof`);
+      const jsonString = JSON.stringify(response.data, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `proof-visit-${visitId}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to download visit proof:', err);
+      alert('Could not download deletion proof for visit ' + visitId);
+    }
+  };
 
   const handleExportFhir = async () => {
     if (!patient?.patientId) return;
@@ -655,6 +706,28 @@ export default function PatientDetailPage() {
                             >
                               <Eye className="h-3.5 w-3.5" /> Chart
                             </button>
+
+                            {/* Actions for Shredded Visits: View Proof & Download JSON */}
+                            {(visit.shredded || isShredded) && (
+                              <>
+                                <button
+                                  onClick={() => setSelectedProofForViewer({ visitId: visit.id })}
+                                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold text-xs transition border border-purple-200"
+                                  title="Inspect Cryptographic Deletion Proof"
+                                >
+                                  <ShieldCheck className="h-3.5 w-3.5 text-purple-600" /> Proof
+                                </button>
+                                <button
+                                  onClick={() => handleDownloadVisitProof(visit.id)}
+                                  className="p-1.5 rounded-lg text-slate-500 hover:text-purple-700 hover:bg-purple-50 transition border border-slate-200 hover:border-purple-200"
+                                  title="Download Visit Proof JSON"
+                                >
+                                  <Download className="h-3.5 w-3.5" />
+                                </button>
+                              </>
+                            )}
+
+                            {/* Actions for Active Protected Visits */}
                             {isDoctor && !visit.shredded && !isShredded && (
                               <button
                                 onClick={() => {
@@ -667,7 +740,7 @@ export default function PatientDetailPage() {
                                 <Pencil className="h-3.5 w-3.5" />
                               </button>
                             )}
-                            {isDoctor && !isShredded && (
+                            {isDoctor && !isShredded && !visit.shredded && (
                               <button
                                 onClick={() => {
                                   if (confirm('Delete this clinical visit?')) {
@@ -977,7 +1050,67 @@ export default function PatientDetailPage() {
               </div>
             )}
 
-            {effectiveProof && <DeletionProofCard proof={effectiveProof} />}
+            {/* Cryptographic Compliance Deletion Proofs & Certificates Section */}
+            {(proofBundle?.masterPatientProof || (proofBundle?.visitProofs && proofBundle.visitProofs.length > 0) || effectiveProof) && (
+              <div className="space-y-6 pt-4 border-t border-slate-200">
+                {/* Bundle Header & Download All */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-slate-900 text-white shadow-card">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="h-5 w-5 text-emerald-400" />
+                      <h3 className="text-base font-bold">Cryptographic Deletion Proof Bundle</h3>
+                      <span className="px-2 py-0.5 rounded text-[11px] font-mono bg-slate-800 text-emerald-300 border border-slate-700">
+                        {(proofBundle?.totalShreddedVisits ?? 0) + (proofBundle?.masterPatientProof || (isShredded && effectiveProof) ? 1 : 0)} Certificate(s)
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Consolidated GDPR Article 17 compliance proof bundle containing master demographic &amp; individual visit cryptographic signatures.
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={handleDownloadProofBundle}
+                    disabled={!proofBundle}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-sm transition shrink-0 cursor-pointer disabled:opacity-50"
+                  >
+                    <Download className="h-4 w-4" />
+                    <span>Download Proofs Bundle (JSON)</span>
+                  </button>
+                </div>
+
+                {/* Master Patient Demographic Proof */}
+                {(proofBundle?.masterPatientProof || (isShredded && effectiveProof)) && (
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <span>🏛️ Master Patient Demographic Deletion Certificate</span>
+                    </h4>
+                    <DeletionProofCard
+                      proof={proofBundle?.masterPatientProof || effectiveProof!}
+                      onVerify={(p) => setSelectedProofForViewer({ proof: p })}
+                    />
+                  </div>
+                )}
+
+                {/* Individual Clinical Visit Certificates Gallery */}
+                {proofBundle?.visitProofs && proofBundle.visitProofs.length > 0 && (
+                  <div className="space-y-4">
+                    <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <span>🏥 Individual Clinical Visit Deletion Certificates ({proofBundle.visitProofs.length})</span>
+                    </h4>
+
+                    <div className="grid grid-cols-1 gap-4">
+                      {proofBundle.visitProofs.map((vProof, idx) => (
+                        <DeletionProofCard
+                          key={vProof.visitId || `visit-proof-${idx}`}
+                          proof={vProof}
+                          onVerify={(p) => setSelectedProofForViewer({ proof: p })}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </main>
@@ -1018,6 +1151,16 @@ export default function PatientDetailPage() {
         onClose={() => setIsVerifyModalOpen(false)}
         token={user?.token || ''}
       />
+
+      {selectedProofForViewer && (
+        <ProofViewerModal
+          isOpen={!!selectedProofForViewer}
+          onClose={() => setSelectedProofForViewer(null)}
+          proof={selectedProofForViewer.proof}
+          visitId={selectedProofForViewer.visitId}
+          patientId={selectedProofForViewer.patientId}
+        />
+      )}
     </div>
   );
 }

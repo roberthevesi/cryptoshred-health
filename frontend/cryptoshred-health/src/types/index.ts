@@ -118,6 +118,8 @@ export type PatientRecordRequest = PatientVisitRequest;
 
 export interface DeletionProof {
   proofVersion?: string;
+  scope?: 'PATIENT_PROFILE' | 'CLINICAL_VISIT';
+  entityDescription?: string;
   timestamp: string;
   visitId?: string;
   patientRecordId?: string;
@@ -134,6 +136,13 @@ export interface DeletionProof {
   merklePath?: string[];
   signatureAlgorithm?: string;
   digitalSignature?: string;
+}
+
+export interface ErasureProofBundle {
+  patientId: string;
+  masterPatientProof?: DeletionProof | null;
+  visitProofs: DeletionProof[];
+  totalShreddedVisits: number;
 }
 
 export interface ProofVerificationResponse {
