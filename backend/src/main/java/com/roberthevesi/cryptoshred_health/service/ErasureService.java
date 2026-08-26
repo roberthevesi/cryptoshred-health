@@ -1,5 +1,6 @@
 package com.roberthevesi.cryptoshred_health.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.roberthevesi.cryptoshred_health.dto.PatientVisitEventDto;
 import com.roberthevesi.cryptoshred_health.dto.ProofVerificationResponseDto;
 import com.roberthevesi.cryptoshred_health.dto.VerifiableDeletionProofDto;
@@ -46,6 +47,7 @@ public class ErasureService {
     private final PatientVisitCacheService patientVisitCacheService;
     private final ProofSigningService proofSigningService;
     private final MerkleTreeService merkleTreeService;
+    private final ObjectMapper objectMapper;
 
     /**
      * Complete Patient Right-to-be-Forgotten:
@@ -111,7 +113,7 @@ public class ErasureService {
 
         log.info("Full Patient crypto-shred complete for {}. Proof hash: {}, Signature: {}", patientId, sha256Hash, digitalSignature);
 
-        return VerifiableDeletionProofDto.builder()
+        VerifiableDeletionProofDto proof = VerifiableDeletionProofDto.builder()
                 .proofVersion("1.0")
                 .patientId(patientId)
                 .vaultKeyName(vaultKeyName)
@@ -132,6 +134,17 @@ public class ErasureService {
                 .signatureAlgorithm("SHA256withRSA")
                 .digitalSignature(digitalSignature)
                 .build();
+
+        try {
+            String proofJson = objectMapper.writeValueAsString(proof);
+            patient.setDeletionProofJson(proofJson);
+            patientRepository.save(patient);
+        } catch (Exception e) {
+            log.error("Failed to serialize deletion proof for patient {}: {}", patientId, e.getMessage(), e);
+            throw new RuntimeException("Failed to persist deletion proof: " + e.getMessage(), e);
+        }
+
+        return proof;
     }
 
     /**
@@ -176,7 +189,7 @@ public class ErasureService {
 
         log.info("Visit erasure complete for visit {}. Proof hash: {}, Signature: {}", visitId, sha256Hash, digitalSignature);
 
-        return VerifiableDeletionProofDto.builder()
+        VerifiableDeletionProofDto proof = VerifiableDeletionProofDto.builder()
                 .proofVersion("1.0")
                 .visitId(visitId)
                 .patientRecordId(visitId) // legacy alias
@@ -199,6 +212,51 @@ public class ErasureService {
                 .signatureAlgorithm("SHA256withRSA")
                 .digitalSignature(digitalSignature)
                 .build();
+
+        try {
+            String proofJson = objectMapper.writeValueAsString(proof);
+            visit.setDeletionProofJson(proofJson);
+            patientVisitRepository.save(visit);
+        } catch (Exception e) {
+            log.error("Failed to serialize deletion proof for visit {}: {}", visitId, e.getMessage(), e);
+            throw new RuntimeException("Failed to persist deletion proof: " + e.getMessage(), e);
+        }
+
+        return proof;
+    }
+
+    @Transactional(readOnly = true)
+    public VerifiableDeletionProofDto getPatientDeletionProof(String patientId) {
+        Patient patient = patientRepository.findByPatientId(patientId)
+                .orElseThrow(() -> new IllegalArgumentException("Patient not found: " + patientId));
+
+        if (patient.getDeletionProofJson() == null || patient.getDeletionProofJson().isBlank()) {
+            throw new RuntimeException("No deletion proof found for patient: " + patientId);
+        }
+
+        try {
+            return objectMapper.readValue(patient.getDeletionProofJson(), VerifiableDeletionProofDto.class);
+        } catch (Exception e) {
+            log.error("Failed to deserialize deletion proof for patient {}: {}", patientId, e.getMessage(), e);
+            throw new RuntimeException("Failed to deserialize deletion proof: " + e.getMessage(), e);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public VerifiableDeletionProofDto getVisitDeletionProof(UUID visitId) {
+        PatientVisit visit = patientVisitRepository.findById(visitId)
+                .orElseThrow(() -> new IllegalArgumentException("Patient visit not found: " + visitId));
+
+        if (visit.getDeletionProofJson() == null || visit.getDeletionProofJson().isBlank()) {
+            throw new RuntimeException("No deletion proof found for visit: " + visitId);
+        }
+
+        try {
+            return objectMapper.readValue(visit.getDeletionProofJson(), VerifiableDeletionProofDto.class);
+        } catch (Exception e) {
+            log.error("Failed to deserialize deletion proof for visit {}: {}", visitId, e.getMessage(), e);
+            throw new RuntimeException("Failed to deserialize deletion proof: " + e.getMessage(), e);
+        }
     }
 
     private void shredVisit(PatientVisit visit, LocalDateTime timestamp) {

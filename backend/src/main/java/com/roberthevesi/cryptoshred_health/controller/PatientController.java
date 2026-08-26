@@ -24,14 +24,15 @@ public class PatientController {
     @GetMapping
     public ResponseEntity<List<PatientResponse>> getAll(
             @RequestParam(required = false) String search,
-            @RequestParam(required = false) UUID gpId) {
+            @RequestParam(required = false) UUID gpId,
+            @RequestParam(required = false, defaultValue = "true") boolean includeDeleted) {
         if (search != null && !search.isBlank()) {
             return ResponseEntity.ok(patientService.search(search));
         }
         if (gpId != null) {
             return ResponseEntity.ok(patientService.findByGp(gpId));
         }
-        return ResponseEntity.ok(patientService.findAll());
+        return ResponseEntity.ok(patientService.findAll(includeDeleted));
     }
 
     @PreAuthorize("hasAnyRole('DOCTOR', 'AUDITOR')")

@@ -52,6 +52,18 @@ public class ErasureController {
         return ResponseEntity.ok(proof);
     }
 
+    @GetMapping("/patients/{patientId}/proof")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'AUDITOR', 'ADMIN', 'PATIENT')")
+    public ResponseEntity<VerifiableDeletionProofDto> getPatientProof(@PathVariable String patientId) {
+        return ResponseEntity.ok(erasureService.getPatientDeletionProof(patientId));
+    }
+
+    @GetMapping("/visits/{visitId}/proof")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'AUDITOR', 'ADMIN', 'PATIENT')")
+    public ResponseEntity<VerifiableDeletionProofDto> getVisitProof(@PathVariable UUID visitId) {
+        return ResponseEntity.ok(erasureService.getVisitDeletionProof(visitId));
+    }
+
     /**
      * Verifies a submitted {@link VerifiableDeletionProofDto} artifact against the system's RSA public key and Merkle tree.
      */

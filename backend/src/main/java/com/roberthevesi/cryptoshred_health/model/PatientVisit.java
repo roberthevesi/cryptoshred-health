@@ -174,6 +174,10 @@ public class PatientVisit {
     @Column(nullable = false)
     private boolean shredded = false;
 
+    /** Permanent JSON serialization of the GDPR Art. 17 verifiable deletion proof. */
+    @Column(columnDefinition = "TEXT")
+    private String deletionProofJson;
+
     /** Encrypted binary attachments (PDF reports, scans, etc.). */
     @OneToMany(mappedBy = "patientVisit", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<PatientAttachment> attachments = new ArrayList<>();

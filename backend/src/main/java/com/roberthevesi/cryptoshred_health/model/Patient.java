@@ -76,6 +76,10 @@ public class Patient {
     @Column(nullable = false)
     private boolean shredded = false;
 
+    /** Permanent JSON serialization of the GDPR Art. 17 verifiable deletion proof. */
+    @Column(columnDefinition = "TEXT")
+    private String deletionProofJson;
+
     /** Dedicated Vault Transit KEK for patient demographics. */
     @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "encryption_key_id")

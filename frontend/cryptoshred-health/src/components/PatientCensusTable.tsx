@@ -25,10 +25,11 @@ export default function PatientCensusTable() {
   const queryClient = useQueryClient();
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeCensusTab, setActiveCensusTab] = useState<'active' | 'shredded' | 'all'>('active');
   const [selectedPatientForEdit, setSelectedPatientForEdit] = useState<Patient | null>(null);
   const [showPatientModal, setShowPatientModal] = useState(false);
 
-  // 1. Fetch Patients from /api/patients
+  // 1. Fetch Patients from /api/patients (includes shredded records)
   const {
     data: patients = [],
     isLoading: isPatientsLoading,
@@ -36,7 +37,7 @@ export default function PatientCensusTable() {
     refetch: refetchPatients,
   } = useQuery<Patient[]>({
     queryKey: ['patients'],
-    queryFn: () => apiClient.get<Patient[]>('/patients').then((r) => r.data),
+    queryFn: () => apiClient.get<Patient[]>('/patients?includeDeleted=true').then((r) => r.data),
   });
 
   // 2. Fetch Visits to compute visit counts
@@ -46,6 +47,10 @@ export default function PatientCensusTable() {
   });
 
   const isDoctor = user?.role === 'DOCTOR';
+
+  const activeCount = patients.filter((p) => !p.shredded && p.isActive !== false && p.active !== false).length;
+  const shreddedCount = patients.filter((p) => p.shredded || p.isActive === false || p.active === false).length;
+  const totalCount = patients.length;
 
   const getAge = (dobString?: string) => {
     if (!dobString) return null;
@@ -59,8 +64,13 @@ export default function PatientCensusTable() {
     }
   };
 
-  // Filter patients by search query
+  // Filter patients by tab and search query
   const filteredPatients = patients.filter((p) => {
+    const isShredded = !!p.shredded || p.isActive === false || p.active === false;
+
+    if (activeCensusTab === 'active' && isShredded) return false;
+    if (activeCensusTab === 'shredded' && !isShredded) return false;
+
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     const fullName = `${p.firstName} ${p.lastName}`.toLowerCase();
@@ -108,7 +118,7 @@ export default function PatientCensusTable() {
             <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
               Primary Care Patient Census
               <span className="text-xs font-mono font-normal bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-0.5 rounded-full">
-                {patients.length} Registered Patients
+                {totalCount} Registered Patients
               </span>
             </h2>
             <p className="text-xs text-slate-500">
@@ -145,6 +155,61 @@ export default function PatientCensusTable() {
           </div>
         </div>
 
+        {/* Census Tab Navigation */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+          <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200 text-xs font-medium">
+            <button
+              onClick={() => setActiveCensusTab('active')}
+              className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-1.5 transition-all ${
+                activeCensusTab === 'active'
+                  ? 'bg-white text-emerald-800 font-semibold shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <ShieldCheck className={`h-3.5 w-3.5 ${activeCensusTab === 'active' ? 'text-emerald-600' : 'text-slate-400'}`} />
+              <span>Active Patients</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                activeCensusTab === 'active' ? 'bg-emerald-100 text-emerald-800 font-bold' : 'bg-slate-200 text-slate-600'
+              }`}>
+                {activeCount}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveCensusTab('shredded')}
+              className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-1.5 transition-all ${
+                activeCensusTab === 'shredded'
+                  ? 'bg-white text-rose-800 font-semibold shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <ShieldOff className={`h-3.5 w-3.5 ${activeCensusTab === 'shredded' ? 'text-rose-600' : 'text-slate-400'}`} />
+              <span>Crypto-Shredded (GDPR Art. 17)</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                activeCensusTab === 'shredded' ? 'bg-rose-100 text-rose-800 font-bold' : 'bg-slate-200 text-slate-600'
+              }`}>
+                {shreddedCount}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveCensusTab('all')}
+              className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-1.5 transition-all ${
+                activeCensusTab === 'all'
+                  ? 'bg-white text-slate-900 font-semibold shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span>All Patients</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                activeCensusTab === 'all' ? 'bg-slate-200 text-slate-900 font-bold' : 'bg-slate-200 text-slate-600'
+              }`}>
+                {totalCount}
+              </span>
+            </button>
+          </div>
+        </div>
+
         {/* Patients Table */}
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
@@ -171,7 +236,8 @@ export default function PatientCensusTable() {
                   </tr>
                 ) : (
                   filteredPatients.map((patient) => {
-                    const age = getAge(patient.dateOfBirth);
+                    const isShredded = !!patient.shredded || patient.isActive === false || patient.active === false;
+                    const age = !isShredded ? getAge(patient.dateOfBirth) : null;
                     // Match historical visits
                     const patientVisitsCount = visits.filter(
                       (v) =>
@@ -185,23 +251,45 @@ export default function PatientCensusTable() {
                       <tr
                         key={patient.id}
                         onClick={() => navigate(`/patients/${patient.patientId}`)}
-                        className="hover:bg-blue-50/40 cursor-pointer transition-colors group"
+                        className={`cursor-pointer transition-colors group ${
+                          isShredded
+                            ? 'bg-rose-50/40 hover:bg-rose-50/70 border-l-4 border-l-rose-500'
+                            : 'hover:bg-blue-50/40'
+                        }`}
                       >
                         {/* 1. Patient Details */}
                         <td className="py-3.5 pl-4 pr-2">
                           <div className="flex items-center gap-3">
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 border border-blue-200 text-blue-700 font-bold text-sm group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                              {patient.firstName.charAt(0).toUpperCase()}
+                            <div
+                              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-bold text-sm transition-colors ${
+                                isShredded
+                                  ? 'bg-rose-100 border border-rose-300 text-rose-700 group-hover:bg-rose-600 group-hover:text-white'
+                                  : 'bg-blue-50 border border-blue-200 text-blue-700 group-hover:bg-blue-600 group-hover:text-white'
+                              }`}
+                            >
+                              {isShredded ? '✕' : patient.firstName.charAt(0).toUpperCase()}
                             </div>
                             <div>
                               <div className="flex items-center gap-2">
-                                <span className="font-bold text-slate-900 text-sm group-hover:text-blue-600 transition-colors">
-                                  {patient.firstName} {patient.lastName}
+                                <span
+                                  className={`font-bold text-sm transition-colors ${
+                                    isShredded
+                                      ? 'text-rose-900 font-mono'
+                                      : 'text-slate-900 group-hover:text-blue-600'
+                                  }`}
+                                >
+                                  {isShredded ? '[REDACTED]' : `${patient.firstName} ${patient.lastName}`}
                                 </span>
-                                {patient.nhsNumber && (
-                                  <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 border border-blue-200">
-                                    NHS {patient.nhsNumber}
+                                {isShredded ? (
+                                  <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-rose-100 text-rose-800 border border-rose-200 font-semibold">
+                                    GDPR Art. 17
                                   </span>
+                                ) : (
+                                  patient.nhsNumber && (
+                                    <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                                      NHS {patient.nhsNumber}
+                                    </span>
+                                  )
                                 )}
                               </div>
                               <span className="text-[11px] text-slate-400 font-mono">
@@ -213,21 +301,27 @@ export default function PatientCensusTable() {
 
                         {/* 2. Demographics */}
                         <td className="py-3.5 px-3">
-                          <div className="space-y-0.5">
-                            <span className="text-slate-700 font-medium block">
-                              {patient.gender || 'Unknown'} {age ? `• ${age} yrs` : ''}
-                            </span>
-                            {patient.dateOfBirth && (
-                              <span className="text-[11px] text-slate-400 block">
-                                DOB: {patient.dateOfBirth}
+                          {isShredded ? (
+                            <span className="text-slate-400 font-mono text-[11px] italic">[REDACTED]</span>
+                          ) : (
+                            <div className="space-y-0.5">
+                              <span className="text-slate-700 font-medium block">
+                                {patient.gender || 'Unknown'} {age ? `• ${age} yrs` : ''}
                               </span>
-                            )}
-                          </div>
+                              {patient.dateOfBirth && (
+                                <span className="text-[11px] text-slate-400 block">
+                                  DOB: {patient.dateOfBirth}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </td>
 
                         {/* 3. Assigned GP */}
                         <td className="py-3.5 px-3">
-                          {patient.gp ? (
+                          {isShredded ? (
+                            <span className="text-slate-400 font-mono text-[11px] italic">[REDACTED]</span>
+                          ) : patient.gp ? (
                             <div>
                               <span className="font-medium text-slate-900 flex items-center gap-1">
                                 <Stethoscope className="h-3.5 w-3.5 text-blue-600 shrink-0" />
@@ -245,37 +339,47 @@ export default function PatientCensusTable() {
 
                         {/* 4. Contact */}
                         <td className="py-3.5 px-3">
-                          <div className="space-y-0.5 text-[11px]">
-                            {patient.phoneNumber && (
-                              <div className="text-slate-700 flex items-center gap-1">
-                                <Phone className="h-3 w-3 text-slate-400" />
-                                {patient.phoneNumber}
-                              </div>
-                            )}
-                            {patient.email && (
-                              <div className="text-slate-500 truncate max-w-[150px] flex items-center gap-1">
-                                <Mail className="h-3 w-3 text-slate-400" />
-                                {patient.email}
-                              </div>
-                            )}
-                          </div>
+                          {isShredded ? (
+                            <span className="text-slate-400 font-mono text-[11px] italic">[REDACTED]</span>
+                          ) : (
+                            <div className="space-y-0.5 text-[11px]">
+                              {patient.phoneNumber && (
+                                <div className="text-slate-700 flex items-center gap-1">
+                                  <Phone className="h-3 w-3 text-slate-400" />
+                                  {patient.phoneNumber}
+                                </div>
+                              )}
+                              {patient.email && (
+                                <div className="text-slate-500 truncate max-w-[150px] flex items-center gap-1">
+                                  <Mail className="h-3 w-3 text-slate-400" />
+                                  {patient.email}
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </td>
 
                         {/* 5. Visits Count */}
                         <td className="py-3.5 px-3">
-                          <span className="inline-flex items-center gap-1 font-semibold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md text-[11px]">
+                          <span
+                            className={`inline-flex items-center gap-1 font-semibold px-2 py-0.5 rounded-md text-[11px] border ${
+                              isShredded
+                                ? 'bg-rose-50 border-rose-200 text-rose-700 font-mono'
+                                : 'text-slate-700 bg-slate-100 border-slate-200'
+                            }`}
+                          >
                             {patientVisitsCount} visit(s)
                           </span>
                         </td>
 
                         {/* 6. Status */}
                         <td className="py-3.5 px-3">
-                          {patient.isActive !== false && patient.active !== false && !patient.shredded ? (
+                          {!isShredded ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-semibold">
                               <ShieldCheck className="h-3 w-3" /> Protected
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-50 border border-red-200 text-red-700 text-[10px] font-semibold">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-100 border border-rose-300 text-rose-800 text-[10px] font-bold">
                               <ShieldOff className="h-3 w-3" /> Shredded
                             </span>
                           )}
@@ -286,12 +390,16 @@ export default function PatientCensusTable() {
                           <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
                             <button
                               onClick={() => navigate(`/patients/${patient.patientId}`)}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-xs transition border border-blue-200 shadow-sm"
+                              className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg font-semibold text-xs transition border shadow-sm ${
+                                isShredded
+                                  ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
+                                  : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200'
+                              }`}
                             >
                               Open File <ChevronRight className="h-3.5 w-3.5" />
                             </button>
 
-                            {isDoctor && !patient.shredded && (
+                            {isDoctor && !isShredded && (
                               <button
                                 onClick={() => {
                                   setSelectedPatientForEdit(patient);

@@ -32,7 +32,15 @@ public class PatientService {
 
     @Transactional(readOnly = true)
     public List<PatientResponse> findAll() {
-        return patientRepository.findByIsActiveTrue().stream()
+        return findAll(true);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PatientResponse> findAll(boolean includeDeleted) {
+        List<Patient> patients = includeDeleted
+                ? patientRepository.findAll()
+                : patientRepository.findByIsActiveTrue();
+        return patients.stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
