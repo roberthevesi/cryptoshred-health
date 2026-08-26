@@ -94,10 +94,52 @@ public class KeyManagementService {
                 key.setRotatedAt(LocalDateTime.now());
                 encryptionKeyRepository.save(key);
 
-                // 4. Emit KEY_ROTATED event to Kafka audit log
+                // 4. Emit KEY_ROTATED / PATIENT_KEY_ROTATED event to Kafka audit log
+                String eventType = "KEY_ROTATED";
+                String patientId = null;
+                UUID visitId = null;
+
+                if (key.getVaultKeyName() != null) {
+                    if (key.getVaultKeyName().startsWith("patient_") && !key.getVaultKeyName().contains("_visit_")) {
+                        eventType = "PATIENT_KEY_ROTATED";
+                        Optional<Patient> pOpt = patientRepository.findByEncryptionKey(key);
+                        if (pOpt.isPresent()) {
+                            patientId = pOpt.get().getPatientId();
+                        } else {
+                            try {
+                                UUID pUuid = UUID.fromString(key.getVaultKeyName().substring("patient_".length()));
+                                patientId = patientRepository.findById(pUuid).map(Patient::getPatientId).orElse(null);
+                            } catch (Exception ignored) {}
+                        }
+                        if (patientId == null && "PATIENT".equalsIgnoreCase(scope) && targetId != null) {
+                            patientId = targetId;
+                        }
+                    } else if (key.getVaultKeyName().contains("_visit_")) {
+                        Optional<PatientVisit> vOpt = patientVisitRepository.findByEncryptionKey(key);
+                        if (vOpt.isPresent()) {
+                            PatientVisit v = vOpt.get();
+                            visitId = v.getId();
+                            patientId = v.getPatient() != null ? v.getPatient().getPatientId() : v.getMrn();
+                        } else {
+                            try {
+                                int visitIdx = key.getVaultKeyName().indexOf("_visit_");
+                                UUID vUuid = UUID.fromString(key.getVaultKeyName().substring(visitIdx + "_visit_".length()));
+                                Optional<PatientVisit> vOpt2 = patientVisitRepository.findById(vUuid);
+                                if (vOpt2.isPresent()) {
+                                    PatientVisit v = vOpt2.get();
+                                    visitId = v.getId();
+                                    patientId = v.getPatient() != null ? v.getPatient().getPatientId() : v.getMrn();
+                                }
+                            } catch (Exception ignored) {}
+                        }
+                    }
+                }
+
                 eventLogPublisher.publishEvent(PatientVisitEventDto.builder()
                         .eventId(UUID.randomUUID())
-                        .eventType("KEY_ROTATED")
+                        .visitId(visitId)
+                        .patientId(patientId)
+                        .eventType(eventType)
                         .vaultKeyName(key.getVaultKeyName())
                         .wrappedDek(newWrappedDek)
                         .iv(key.getIv())
