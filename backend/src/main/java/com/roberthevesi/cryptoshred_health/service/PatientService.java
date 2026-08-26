@@ -45,12 +45,7 @@ public class PatientService {
                 ? patientRepository.findAll()
                 : patientRepository.findByIsActiveTrue();
         return patients.stream()
-                .map(this::toResponse)
-                .peek(resp -> {
-                    if (resp.isActive() && !resp.isShredded()) {
-                        patientCacheService.put(resp.getPatientId(), resp);
-                    }
-                })
+                .map(this::resolvePatientResponse)
                 .collect(Collectors.toList());
     }
 
@@ -81,7 +76,7 @@ public class PatientService {
                 .findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCaseOrPatientIdContainingIgnoreCase(q, q, q)
                 .stream()
                 .filter(p -> p.isActive() && !p.isShredded())
-                .map(this::toResponse)
+                .map(this::resolvePatientResponse)
                 .collect(Collectors.toList());
     }
 
@@ -89,8 +84,20 @@ public class PatientService {
     public List<PatientResponse> findByGp(UUID gpId) {
         return patientRepository.findByGpId(gpId).stream()
                 .filter(Patient::isActive)
-                .map(this::toResponse)
+                .map(this::resolvePatientResponse)
                 .collect(Collectors.toList());
+    }
+
+    private PatientResponse resolvePatientResponse(Patient patient) {
+        PatientResponse cached = patientCacheService.get(patient.getPatientId());
+        if (cached != null) {
+            return cached;
+        }
+        PatientResponse resp = toResponse(patient);
+        if (resp.isActive() && !resp.isShredded()) {
+            patientCacheService.put(resp.getPatientId(), resp);
+        }
+        return resp;
     }
 
     @Transactional
