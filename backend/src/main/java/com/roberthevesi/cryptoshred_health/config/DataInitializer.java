@@ -101,6 +101,10 @@ public class DataInitializer implements CommandLineRunner {
             for (int i = 0; i < patientTemplates.size(); i++) {
                 PatientTemplate pt = patientTemplates.get(i);
 
+                if (pt.email() != null && !pt.email().isBlank() && userRepository.findByEmail(pt.email()).isEmpty()) {
+                    createUser(pt.email(), "Password123!", Role.PATIENT);
+                }
+
                 if (patientRepository.findByPatientId(pt.patientId()).isPresent()) {
                     continue;
                 }

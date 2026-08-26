@@ -6,6 +6,7 @@ import com.roberthevesi.cryptoshred_health.model.PatientVisit;
 import com.roberthevesi.cryptoshred_health.model.Role;
 import com.roberthevesi.cryptoshred_health.model.User;
 import com.roberthevesi.cryptoshred_health.repository.PatientAttachmentRepository;
+import com.roberthevesi.cryptoshred_health.repository.PatientRepository;
 import com.roberthevesi.cryptoshred_health.repository.PatientVisitRepository;
 import com.roberthevesi.cryptoshred_health.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class AttachmentService {
 
     private final PatientAttachmentRepository attachmentRepository;
     private final PatientVisitRepository visitRepository;
+    private final PatientRepository patientRepository;
     private final UserRepository userRepository;
     private final VaultKmsService vaultKmsService;
     private final EnvelopeEncryptionService envelopeEncryptionService;
@@ -134,8 +136,13 @@ public class AttachmentService {
     }
 
     private void checkReadAccess(PatientVisit visit, User user) {
-        if (user.getRole() == Role.PATIENT && !visit.getOwner().getId().equals(user.getId())) {
-            throw new AccessDeniedException("Not authorized to access attachments on this visit");
+        if (user.getRole() == Role.PATIENT) {
+            boolean hasAccess = (visit.getPatient() != null && visit.getPatient().getEmail() != null && visit.getPatient().getEmail().equalsIgnoreCase(user.getEmail()))
+                    || (visit.getOwner() != null && visit.getOwner().getId().equals(user.getId()))
+                    || (visit.getMrn() != null && patientRepository.findByEmailIgnoreCase(user.getEmail()).map(p -> p.getPatientId().equalsIgnoreCase(visit.getMrn())).orElse(false));
+            if (!hasAccess) {
+                throw new AccessDeniedException("Not authorized to access attachments on this visit");
+            }
         }
     }
 }

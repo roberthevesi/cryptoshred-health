@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { X, UserPlus, UserCog, AlertCircle } from 'lucide-react';
+import { X, UserPlus, UserCog, AlertCircle, KeyRound, Copy, Check, ShieldCheck } from 'lucide-react';
 import apiClient from '../lib/axios';
 import GpSelector from './GpSelector';
 import type { Patient, PatientRequest } from '../types';
@@ -29,18 +29,34 @@ export default function PatientFormModal({ isOpen, onClose, patient, onSuccess }
   });
 
   const [error, setError] = useState('');
+  const [provisionedCredentials, setProvisionedCredentials] = useState<{
+    patientName: string;
+    patientId: string;
+    email: string;
+    temporaryPassword: string;
+  } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const mutation = useMutation({
     mutationFn: (data: PatientRequest) => {
       if (isEdit) {
-        return apiClient.put(`/patients/${patient!.patientId}`, data);
+        return apiClient.put<Patient>(`/patients/${patient!.patientId}`, data);
       }
-      return apiClient.post('/patients', data);
+      return apiClient.post<Patient>('/patients', data);
     },
-    onSuccess: () => {
+    onSuccess: (response) => {
       setError('');
-      onSuccess();
-      onClose();
+      if (!isEdit && response?.data?.temporaryPassword) {
+        setProvisionedCredentials({
+          patientName: `${response.data.firstName} ${response.data.lastName}`,
+          patientId: response.data.patientId,
+          email: response.data.email,
+          temporaryPassword: response.data.temporaryPassword,
+        });
+      } else {
+        onSuccess();
+        onClose();
+      }
     },
     onError: (err: unknown) => {
       const msg =
@@ -49,6 +65,28 @@ export default function PatientFormModal({ isOpen, onClose, patient, onSuccess }
       setError(msg);
     },
   });
+
+  const handleCopyPassword = async () => {
+    if (!provisionedCredentials?.temporaryPassword) return;
+    try {
+      await navigator.clipboard.writeText(provisionedCredentials.temporaryPassword);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      // Fallback
+    }
+  };
+
+  const handleFinishProvisioning = () => {
+    setProvisionedCredentials(null);
+    onSuccess();
+    onClose();
+  };
+
+  const handleClose = () => {
+    setProvisionedCredentials(null);
+    onClose();
+  };
 
   const handleChange = (field: keyof PatientRequest, value: string | undefined) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -61,6 +99,111 @@ export default function PatientFormModal({ isOpen, onClose, patient, onSuccess }
   };
 
   if (!isOpen) return null;
+
+  if (provisionedCredentials) {
+    return (
+      <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4">
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-xl max-w-lg w-full overflow-hidden animate-fade-in">
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-5 border-b border-slate-200 bg-emerald-50/50">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                <KeyRound className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">Account Provisioned Successfully</h2>
+                <p className="text-xs text-slate-500">Zero-Knowledge Patient Portal Access</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleClose}
+              className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="p-6 space-y-5">
+            <div className="rounded-xl bg-emerald-50 border border-emerald-200/80 p-4 text-xs text-emerald-800 flex items-start gap-2.5">
+              <ShieldCheck className="h-4 w-4 shrink-0 mt-0.5 text-emerald-600" />
+              <span>
+                A secure patient user account has been provisioned. The patient can use these credentials to log in, view clinical visits, and export HL7 FHIR records.
+              </span>
+            </div>
+
+            <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="text-slate-400 font-medium">Patient Name</span>
+                  <p className="text-slate-900 font-semibold mt-0.5">{provisionedCredentials.patientName}</p>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-medium">Clinic ID</span>
+                  <p className="text-slate-900 font-mono font-semibold mt-0.5">{provisionedCredentials.patientId}</p>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-200/60">
+                <span className="text-xs text-slate-400 font-medium">Login Email</span>
+                <p className="text-sm text-slate-900 font-medium mt-0.5">{provisionedCredentials.email}</p>
+              </div>
+
+              <div className="pt-2 border-t border-slate-200/60">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-semibold text-slate-700">Temporary Password</span>
+                  <span className="text-[10px] text-amber-600 font-medium bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                    One-Time Handover
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={provisionedCredentials.temporaryPassword}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-mono font-bold text-slate-900 focus:outline-none select-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCopyPassword}
+                    className={`inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                      copied
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-slate-900 hover:bg-slate-800 text-white shadow-sm'
+                    }`}
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="h-3.5 w-3.5" />
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3.5 w-3.5" />
+                        Copy
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex justify-end">
+            <button
+              type="button"
+              onClick={handleFinishProvisioning}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-semibold transition-colors"
+            >
+              Done &amp; Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4">

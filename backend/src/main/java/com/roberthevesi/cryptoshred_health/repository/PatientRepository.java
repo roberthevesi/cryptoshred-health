@@ -11,6 +11,7 @@ import java.util.UUID;
 @Repository
 public interface PatientRepository extends JpaRepository<Patient, UUID> {
     Optional<Patient> findByPatientId(String patientId);
+    Optional<Patient> findByEmailIgnoreCase(String email);
     Optional<Patient> findByEncryptionKey(com.roberthevesi.cryptoshred_health.model.EncryptionKey encryptionKey);
     List<Patient> findByIsActiveTrue();
     List<Patient> findByGpId(UUID gpId);

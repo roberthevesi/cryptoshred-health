@@ -32,6 +32,8 @@ public class PatientResponse {
 
     private boolean shredded;
 
+    private String temporaryPassword;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
