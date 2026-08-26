@@ -179,6 +179,11 @@ class SyntheticMedicalDataGeneratorTest {
                 assertNotNull(visit.getAttendingDoctor(), "Attending doctor required");
                 assertNotNull(visit.getDepartment(), "Department required");
 
+                // Timestamps & Visit Dates
+                assertNotNull(visit.getCreatedAt(), "Visit createdAt timestamp must not be null");
+                assertNotNull(visit.getVisitDate(), "Visit date must not be null");
+                assertTrue(visit.getCreatedAt().getYear() >= 2024, "Visit must be recent (2024-2026)");
+
                 // Verify Chronological ordering of Follow-up dates
                 assertNotNull(visit.getFollowUpDate());
                 LocalDate currentFollowUp = LocalDate.parse(visit.getFollowUpDate());

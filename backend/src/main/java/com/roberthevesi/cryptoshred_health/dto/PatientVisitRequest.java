@@ -87,6 +87,12 @@ public class PatientVisitRequest {
 
     private String emergencyContactRelationship;
 
+    /** Optional visit encounter timestamp (e.g. 2025-06-15T09:30:00 or 2025-06-15). */
+    private String visitDate;
+
+    /** Optional explicit creation timestamp. */
+    private java.time.LocalDateTime createdAt;
+
     /** Optional pre-encrypted data blob (Base64). */
     private String encryptedDataBlob;
 }

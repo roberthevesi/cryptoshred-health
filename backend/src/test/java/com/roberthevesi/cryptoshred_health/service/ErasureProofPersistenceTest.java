@@ -40,6 +40,7 @@ class ErasureProofPersistenceTest {
         vaultKmsService = mock(VaultKmsService.class);
         eventLogPublisher = mock(EventLogPublisher.class);
         patientVisitCacheService = mock(PatientVisitCacheService.class);
+        PatientCacheService patientCacheService = mock(PatientCacheService.class);
         proofSigningService = mock(ProofSigningService.class);
         merkleTreeService = mock(MerkleTreeService.class);
         objectMapper = new ObjectMapper();
@@ -56,6 +57,7 @@ class ErasureProofPersistenceTest {
                 vaultKmsService,
                 eventLogPublisher,
                 patientVisitCacheService,
+                patientCacheService,
                 proofSigningService,
                 merkleTreeService,
                 objectMapper

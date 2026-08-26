@@ -6,7 +6,10 @@ import {
   UserPlus,
   Stethoscope,
   Building2,
+  ChevronLeft,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   ShieldCheck,
   ShieldOff,
   UserCog,
@@ -28,6 +31,8 @@ export default function PatientCensusTable() {
   const [activeCensusTab, setActiveCensusTab] = useState<'active' | 'shredded' | 'all'>('active');
   const [selectedPatientForEdit, setSelectedPatientForEdit] = useState<Patient | null>(null);
   const [showPatientModal, setShowPatientModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // 1. Fetch Patients from /api/patients (includes shredded records)
   const {
@@ -88,6 +93,26 @@ export default function PatientCensusTable() {
     );
   });
 
+  // Pagination calculation
+  const totalPages = Math.max(1, Math.ceil(filteredPatients.length / pageSize));
+  const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (validCurrentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, filteredPatients.length);
+  const paginatedPatients = filteredPatients.slice(startIndex, endIndex);
+
+  const getPageNumbers = (current: number, total: number): (number | string)[] => {
+    if (total <= 7) {
+      return Array.from({ length: total }, (_, i) => i + 1);
+    }
+    if (current <= 4) {
+      return [1, 2, 3, 4, 5, '...', total];
+    }
+    if (current >= total - 3) {
+      return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
+    }
+    return [1, '...', current - 1, current, current + 1, '...', total];
+  };
+
   if (isPatientsLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3">
@@ -134,7 +159,10 @@ export default function PatientCensusTable() {
                 type="text"
                 placeholder="Search by name, NHS #, GP..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-white border border-slate-300 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               />
             </div>
@@ -159,7 +187,10 @@ export default function PatientCensusTable() {
         <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
           <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200 text-xs font-medium">
             <button
-              onClick={() => setActiveCensusTab('active')}
+              onClick={() => {
+                setActiveCensusTab('active');
+                setCurrentPage(1);
+              }}
               className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-1.5 transition-all ${
                 activeCensusTab === 'active'
                   ? 'bg-white text-emerald-800 font-semibold shadow-sm'
@@ -176,7 +207,10 @@ export default function PatientCensusTable() {
             </button>
 
             <button
-              onClick={() => setActiveCensusTab('shredded')}
+              onClick={() => {
+                setActiveCensusTab('shredded');
+                setCurrentPage(1);
+              }}
               className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-1.5 transition-all ${
                 activeCensusTab === 'shredded'
                   ? 'bg-white text-rose-800 font-semibold shadow-sm'
@@ -193,7 +227,10 @@ export default function PatientCensusTable() {
             </button>
 
             <button
-              onClick={() => setActiveCensusTab('all')}
+              onClick={() => {
+                setActiveCensusTab('all');
+                setCurrentPage(1);
+              }}
               className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-1.5 transition-all ${
                 activeCensusTab === 'all'
                   ? 'bg-white text-slate-900 font-semibold shadow-sm'
@@ -235,7 +272,7 @@ export default function PatientCensusTable() {
                     </td>
                   </tr>
                 ) : (
-                  filteredPatients.map((patient) => {
+                  paginatedPatients.map((patient) => {
                     const isShredded = !!patient.shredded || patient.isActive === false || patient.active === false;
                     const age = !isShredded ? getAge(patient.dateOfBirth) : null;
                     // Match historical visits
@@ -420,6 +457,92 @@ export default function PatientCensusTable() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Control Bar */}
+          {filteredPatients.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-3.5 border-t border-slate-200 bg-slate-50/70">
+              {/* Left: Range and Page Size */}
+              <div className="flex items-center gap-4 text-xs text-slate-600">
+                <span>
+                  Showing <strong className="font-semibold text-slate-900">{filteredPatients.length === 0 ? 0 : startIndex + 1}</strong>–<strong className="font-semibold text-slate-900">{endIndex}</strong> of <strong className="font-semibold text-slate-900">{filteredPatients.length}</strong> patients
+                </span>
+                <div className="flex items-center gap-1.5 border-l border-slate-200 pl-4">
+                  <span className="text-slate-500">Per page:</span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Right: Page Navigation Buttons */}
+              {totalPages > 1 && (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setCurrentPage(1)}
+                    disabled={validCurrentPage === 1}
+                    className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                    title="First Page"
+                  >
+                    <ChevronsLeft className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={validCurrentPage === 1}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" /> Previous
+                  </button>
+
+                  {/* Page Number Pills */}
+                  <div className="flex items-center gap-1">
+                    {getPageNumbers(validCurrentPage, totalPages).map((page, idx) =>
+                      page === '...' ? (
+                        <span key={`dots-${idx}`} className="px-2 text-xs text-slate-400">...</span>
+                      ) : (
+                        <button
+                          key={`page-${page}`}
+                          onClick={() => setCurrentPage(Number(page))}
+                          className={`min-w-[32px] h-8 px-2 rounded-lg text-xs font-bold transition ${
+                            validCurrentPage === page
+                              ? 'bg-blue-600 text-white shadow-sm'
+                              : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      )
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={validCurrentPage === totalPages}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                  >
+                    Next <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={validCurrentPage === totalPages}
+                    className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                    title="Last Page"
+                  >
+                    <ChevronsRight className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

@@ -314,6 +314,13 @@ public class SyntheticMedicalDataGenerator {
         req.setLifestyleFactors("Non-smoker, 2-4 units alcohol/week, moderate aerobic exercise 3x/week");
         req.setFollowUpDate(followUpDate);
 
+        // Realistic clinical appointment time between 08:30 and 16:45
+        int hour = 8 + ((patientIndex * 7 + visitIdx * 3) % 9);
+        int minute = ((patientIndex + visitIdx) % 4) * 15;
+        java.time.LocalDateTime appointmentTime = java.time.LocalDate.parse(visitDate).atTime(hour, minute);
+        req.setCreatedAt(appointmentTime);
+        req.setVisitDate(appointmentTime.toString());
+
         req.setPhone(pt.phoneNumber());
         req.setEmail(pt.email());
         req.setAddress(pt.address());

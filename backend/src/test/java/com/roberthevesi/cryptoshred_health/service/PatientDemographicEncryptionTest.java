@@ -31,12 +31,14 @@ class PatientDemographicEncryptionTest {
         vaultKmsService = Mockito.mock(VaultKmsService.class);
         envelopeEncryptionService = new EnvelopeEncryptionService();
 
+        PatientCacheService patientCacheService = Mockito.mock(PatientCacheService.class);
         patientService = new PatientService(
                 patientRepository,
                 gpRepository,
                 vaultKmsService,
                 envelopeEncryptionService,
-                new com.fasterxml.jackson.databind.ObjectMapper()
+                new com.fasterxml.jackson.databind.ObjectMapper(),
+                patientCacheService
         );
 
         when(patientRepository.save(any(Patient.class))).thenAnswer(invocation -> {

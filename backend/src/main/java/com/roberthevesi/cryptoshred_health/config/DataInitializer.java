@@ -158,6 +158,14 @@ public class DataInitializer implements CommandLineRunner {
             log.info("Database already contains {} patients. Skipping synthetic data seeding.", currentPatientCount);
         }
 
+        // 4. Warm Redis cache for active patient demographics
+        try {
+            patientService.findAll(false);
+            log.info("Redis L2 cache warmed for all active patient demographic profiles (patient:*).");
+        } catch (Exception e) {
+            log.warn("Redis cache pre-warming skipped: {}", e.getMessage());
+        }
+
         log.info("CryptoShred Health EHR readiness verified. Demo accounts: doctor@hospital.com, auditor@health.gov, patient@health.org, admin@cryptoshred.health");
     }
 
