@@ -1,11 +1,14 @@
 package com.roberthevesi.cryptoshred_health.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.roberthevesi.cryptoshred_health.dto.PatientResponse;
 import com.roberthevesi.cryptoshred_health.dto.PatientVisitResponse;
 import com.roberthevesi.cryptoshred_health.model.EncryptionKey;
+import com.roberthevesi.cryptoshred_health.model.Patient;
 import com.roberthevesi.cryptoshred_health.model.PatientVisit;
 import com.roberthevesi.cryptoshred_health.model.Role;
 import com.roberthevesi.cryptoshred_health.model.User;
+import com.roberthevesi.cryptoshred_health.repository.GpRepository;
 import com.roberthevesi.cryptoshred_health.repository.PatientRepository;
 import com.roberthevesi.cryptoshred_health.repository.PatientVisitRepository;
 import com.roberthevesi.cryptoshred_health.repository.UserRepository;
@@ -13,6 +16,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -26,12 +32,15 @@ class RedisCryptoShreddingTest {
     private PatientVisitRepository patientVisitRepository;
     private PatientRepository patientRepository;
     private UserRepository userRepository;
+    private GpRepository gpRepository;
     private VaultKmsService vaultKmsService;
     private EnvelopeEncryptionService envelopeEncryptionService;
     private EventLogPublisher eventLogPublisher;
     private PatientVisitCacheService patientVisitCacheService;
+    private PatientCacheService patientCacheService;
     private ObjectMapper objectMapper;
     private PatientVisitService patientVisitService;
+    private PatientService patientService;
 
     private User testDoctor;
 
@@ -40,10 +49,12 @@ class RedisCryptoShreddingTest {
         patientVisitRepository = Mockito.mock(PatientVisitRepository.class);
         patientRepository = Mockito.mock(PatientRepository.class);
         userRepository = Mockito.mock(UserRepository.class);
+        gpRepository = Mockito.mock(GpRepository.class);
         vaultKmsService = Mockito.mock(VaultKmsService.class);
         envelopeEncryptionService = new EnvelopeEncryptionService();
         eventLogPublisher = Mockito.mock(EventLogPublisher.class);
         patientVisitCacheService = Mockito.mock(PatientVisitCacheService.class);
+        patientCacheService = Mockito.mock(PatientCacheService.class);
         objectMapper = new ObjectMapper();
 
         patientVisitService = new PatientVisitService(
@@ -55,6 +66,16 @@ class RedisCryptoShreddingTest {
                 eventLogPublisher,
                 patientVisitCacheService,
                 objectMapper
+        );
+
+        patientService = new PatientService(
+                patientRepository,
+                gpRepository,
+                vaultKmsService,
+                envelopeEncryptionService,
+                objectMapper,
+                patientCacheService,
+                eventLogPublisher
         );
 
         testDoctor = new User();
@@ -157,5 +178,83 @@ class RedisCryptoShreddingTest {
         assertEquals("[SHREDDED]", response.getMedicalNotes());
         assertEquals("[SHREDDED]", response.getDiagnosis());
         assertNull(response.getEncryptedDataBlob());
+    }
+
+    @Test
+    void testPatientServiceFindAllReturnsCachedPatientDirectlyWithoutVaultUnwrap() {
+        // Arrange
+        String patientId = "PAT-10001";
+        Patient patient = new Patient();
+        patient.setId(UUID.randomUUID());
+        patient.setPatientId(patientId);
+        patient.setActive(true);
+        patient.setEncryptedDataBlob("encrypted_blob_data");
+        patient.setEncryptionKey(new EncryptionKey("keyId", "patient_key_name", "wrapped_dek", "iv"));
+
+        PatientResponse cachedResponse = PatientResponse.builder()
+                .patientId(patientId)
+                .firstName("Eleanor")
+                .lastName("Vance")
+                .isActive(true)
+                .shredded(false)
+                .build();
+
+        when(patientRepository.findAll()).thenReturn(List.of(patient));
+        when(patientCacheService.get(patientId)).thenReturn(cachedResponse);
+
+        // Act
+        List<PatientResponse> responses = patientService.findAll();
+
+        // Assert
+        assertNotNull(responses);
+        assertEquals(1, responses.size());
+        assertEquals("Eleanor", responses.get(0).getFirstName());
+        assertEquals(patientId, responses.get(0).getPatientId());
+        verify(patientCacheService, times(1)).get(patientId);
+        verify(vaultKmsService, never()).unwrapDek(anyString(), anyString());
+    }
+
+    @Test
+    void testPatientServiceFindAllCacheMissDecryptsAndHydratesCache() throws Exception {
+        // Arrange
+        String patientId = "PAT-10002";
+        UUID patientUuid = UUID.randomUUID();
+        String vaultKeyName = "patient_" + patientUuid;
+        String wrappedDek = "wrapped_dek_base64";
+
+        byte[] rawDek = envelopeEncryptionService.generateDek();
+        Map<String, Object> piiPayload = Map.of(
+                "firstName", "Eleanor",
+                "lastName", "Vance",
+                "gender", "Female",
+                "email", "eleanor@example.com"
+        );
+        String piiJson = objectMapper.writeValueAsString(piiPayload);
+        EnvelopeEncryptionService.EncryptedPayload encryptedPayload =
+                envelopeEncryptionService.encrypt(piiJson.getBytes(StandardCharsets.UTF_8), rawDek);
+
+        Patient patient = new Patient();
+        patient.setId(patientUuid);
+        patient.setPatientId(patientId);
+        patient.setActive(true);
+        patient.setEncryptedDataBlob(encryptedPayload.ciphertextBase64());
+        patient.setEncryptionKey(new EncryptionKey(patientUuid.toString(), vaultKeyName, wrappedDek, encryptedPayload.ivBase64()));
+
+        when(patientRepository.findAll()).thenReturn(List.of(patient));
+        when(patientCacheService.get(patientId)).thenReturn(null);
+        when(vaultKmsService.unwrapDek(eq(vaultKeyName), eq(wrappedDek))).thenReturn(rawDek);
+
+        // Act
+        List<PatientResponse> responses = patientService.findAll();
+
+        // Assert
+        assertNotNull(responses);
+        assertEquals(1, responses.size());
+        assertEquals("Eleanor", responses.get(0).getFirstName());
+        assertEquals("Vance", responses.get(0).getLastName());
+        assertEquals("eleanor@example.com", responses.get(0).getEmail());
+        verify(patientCacheService, times(1)).get(patientId);
+        verify(vaultKmsService, times(1)).unwrapDek(eq(vaultKeyName), eq(wrappedDek));
+        verify(patientCacheService, times(1)).put(eq(patientId), any(PatientResponse.class));
     }
 }
