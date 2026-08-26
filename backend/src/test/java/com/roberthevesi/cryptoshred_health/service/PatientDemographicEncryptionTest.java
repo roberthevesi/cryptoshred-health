@@ -24,12 +24,16 @@ class PatientDemographicEncryptionTest {
     private VaultKmsService vaultKmsService;
     private EnvelopeEncryptionService envelopeEncryptionService;
     private EventLogPublisher eventLogPublisher;
+    private com.roberthevesi.cryptoshred_health.repository.UserRepository userRepository;
+    private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
     private PatientService patientService;
 
     @BeforeEach
     void setUp() {
         patientRepository = Mockito.mock(PatientRepository.class);
         gpRepository = Mockito.mock(GpRepository.class);
+        userRepository = Mockito.mock(com.roberthevesi.cryptoshred_health.repository.UserRepository.class);
+        passwordEncoder = Mockito.mock(org.springframework.security.crypto.password.PasswordEncoder.class);
         vaultKmsService = Mockito.mock(VaultKmsService.class);
         envelopeEncryptionService = new EnvelopeEncryptionService();
         eventLogPublisher = Mockito.mock(EventLogPublisher.class);
@@ -38,6 +42,8 @@ class PatientDemographicEncryptionTest {
         patientService = new PatientService(
                 patientRepository,
                 gpRepository,
+                userRepository,
+                passwordEncoder,
                 vaultKmsService,
                 envelopeEncryptionService,
                 new com.fasterxml.jackson.databind.ObjectMapper(),

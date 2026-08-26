@@ -189,6 +189,7 @@ export interface Patient {
   isActive?: boolean;
   active?: boolean;
   shredded?: boolean;
+  temporaryPassword?: string;
   createdAt: string;
   updatedAt: string;
 }

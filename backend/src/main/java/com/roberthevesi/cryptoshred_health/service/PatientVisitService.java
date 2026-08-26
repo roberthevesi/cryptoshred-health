@@ -185,7 +185,12 @@ public class PatientVisitService {
         List<PatientVisit> visits;
 
         if (user.getRole() == Role.PATIENT) {
-            visits = patientVisitRepository.findByOwnerId(user.getId());
+            Optional<Patient> patientOpt = patientRepository.findByEmailIgnoreCase(currentUserEmail);
+            if (patientOpt.isPresent()) {
+                visits = patientVisitRepository.findByPatientIdentifier(patientOpt.get().getPatientId());
+            } else {
+                visits = Collections.emptyList();
+            }
         } else {
             visits = patientVisitRepository.findAll();
         }
@@ -209,13 +214,16 @@ public class PatientVisitService {
     @Transactional(readOnly = true)
     public List<PatientVisitResponse> findByPatientIdentifier(String patientId, String currentUserEmail) {
         User user = findUser(currentUserEmail);
-        List<PatientVisit> visits = patientVisitRepository.findByPatientIdentifier(patientId);
 
         if (user.getRole() == Role.PATIENT) {
-            visits = visits.stream()
-                    .filter(v -> v.getOwner() != null && v.getOwner().getId().equals(user.getId()))
-                    .collect(Collectors.toList());
+            Patient patient = patientRepository.findByEmailIgnoreCase(currentUserEmail)
+                    .orElseThrow(() -> new AccessDeniedException("Not authorized to view visits: no patient profile found"));
+            if (!patient.getPatientId().equalsIgnoreCase(patientId.trim())) {
+                throw new AccessDeniedException("Not authorized to view visits for patient: " + patientId);
+            }
         }
+
+        List<PatientVisit> visits = patientVisitRepository.findByPatientIdentifier(patientId);
 
         return visits.stream().map(visit -> {
             if (visit.isShredded()) {
@@ -383,8 +391,13 @@ public class PatientVisitService {
     }
 
     private void checkReadAccess(PatientVisit visit, User user) {
-        if (user.getRole() == Role.PATIENT && !visit.getOwner().getId().equals(user.getId())) {
-            throw new AccessDeniedException("Not authorized to view this visit");
+        if (user.getRole() == Role.PATIENT) {
+            boolean hasAccess = (visit.getPatient() != null && visit.getPatient().getEmail() != null && visit.getPatient().getEmail().equalsIgnoreCase(user.getEmail()))
+                    || (visit.getOwner() != null && visit.getOwner().getId().equals(user.getId()))
+                    || (visit.getMrn() != null && patientRepository.findByEmailIgnoreCase(user.getEmail()).map(p -> p.getPatientId().equalsIgnoreCase(visit.getMrn())).orElse(false));
+            if (!hasAccess) {
+                throw new AccessDeniedException("Not authorized to view this visit");
+            }
         }
     }
 

@@ -69,9 +69,13 @@ class RedisCryptoShreddingTest {
                 objectMapper
         );
 
+        org.springframework.security.crypto.password.PasswordEncoder passwordEncoder = Mockito.mock(org.springframework.security.crypto.password.PasswordEncoder.class);
+
         patientService = new PatientService(
                 patientRepository,
                 gpRepository,
+                userRepository,
+                passwordEncoder,
                 vaultKmsService,
                 envelopeEncryptionService,
                 objectMapper,

@@ -8,10 +8,15 @@ import com.roberthevesi.cryptoshred_health.dto.PatientVisitEventDto;
 import com.roberthevesi.cryptoshred_health.model.EncryptionKey;
 import com.roberthevesi.cryptoshred_health.model.GP;
 import com.roberthevesi.cryptoshred_health.model.Patient;
+import com.roberthevesi.cryptoshred_health.model.Role;
+import com.roberthevesi.cryptoshred_health.model.User;
 import com.roberthevesi.cryptoshred_health.repository.GpRepository;
 import com.roberthevesi.cryptoshred_health.repository.PatientRepository;
+import com.roberthevesi.cryptoshred_health.repository.UserRepository;
+import com.roberthevesi.cryptoshred_health.util.TemporaryPasswordGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +33,8 @@ public class PatientService {
 
     private final PatientRepository patientRepository;
     private final GpRepository gpRepository;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
     private final VaultKmsService vaultKmsService;
     private final EnvelopeEncryptionService envelopeEncryptionService;
     private final ObjectMapper objectMapper;
@@ -84,6 +91,16 @@ public class PatientService {
                 .filter(p -> p.isActive() && !p.isShredded())
                 .map(this::resolvePatientResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public PatientResponse getPatientForCurrentUser(String email) {
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("User email cannot be null or empty");
+        }
+        Patient patient = patientRepository.findByEmailIgnoreCase(email.trim())
+                .orElseThrow(() -> new IllegalArgumentException("Patient profile not found for user: " + email));
+        return resolvePatientResponse(patient);
     }
 
     @Transactional(readOnly = true)
@@ -177,6 +194,21 @@ public class PatientService {
 
         Patient saved = patientRepository.save(patient);
 
+        // 3. Auto-provision User account for patient if email provided and user doesn't exist
+        String temporaryPassword = null;
+        if (saved.getEmail() != null && !saved.getEmail().trim().isBlank() && userRepository != null && passwordEncoder != null) {
+            String email = saved.getEmail().trim();
+            if (userRepository.findByEmail(email).isEmpty()) {
+                temporaryPassword = TemporaryPasswordGenerator.generate();
+                User user = new User();
+                user.setEmail(email);
+                user.setPassword(passwordEncoder.encode(temporaryPassword));
+                user.setRole(Role.PATIENT);
+                userRepository.save(user);
+                log.info("Auto-provisioned User account for patient {} with email: {}", saved.getPatientId(), email);
+            }
+        }
+
         eventLogPublisher.publishEvent(PatientVisitEventDto.builder()
                 .eventId(UUID.randomUUID())
                 .patientId(saved.getPatientId())
@@ -189,6 +221,9 @@ public class PatientService {
                 .build());
 
         PatientResponse resp = toResponse(saved);
+        if (temporaryPassword != null) {
+            resp.setTemporaryPassword(temporaryPassword);
+        }
         if (resp.isActive() && !resp.isShredded()) {
             patientCacheService.put(resp.getPatientId(), resp);
         }

@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,7 +22,7 @@ public class PatientController {
 
     private final PatientService patientService;
 
-    @PreAuthorize("hasAnyRole('DOCTOR', 'AUDITOR')")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'AUDITOR', 'ADMIN')")
     @GetMapping
     public ResponseEntity<List<PatientResponse>> getAll(
             @RequestParam(required = false) String search,
@@ -35,7 +37,13 @@ public class PatientController {
         return ResponseEntity.ok(patientService.findAll(includeDeleted));
     }
 
-    @PreAuthorize("hasAnyRole('DOCTOR', 'AUDITOR')")
+    @PreAuthorize("hasRole('PATIENT')")
+    @GetMapping("/me")
+    public ResponseEntity<PatientResponse> getMyProfile(@AuthenticationPrincipal UserDetails currentUser) {
+        return ResponseEntity.ok(patientService.getPatientForCurrentUser(currentUser.getUsername()));
+    }
+
+    @PreAuthorize("hasAnyRole('DOCTOR', 'AUDITOR', 'ADMIN') or (hasRole('PATIENT') and @patientSecurityService.isSelf(authentication, #patientId))")
     @GetMapping("/{patientId}")
     public ResponseEntity<PatientResponse> getById(@PathVariable String patientId) {
         return ResponseEntity.ok(patientService.findByPatientId(patientId));

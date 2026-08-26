@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import PatientCensusTable from '../components/PatientCensusTable';
 import VerifyProofModal from '../components/VerifyProofModal';
 import GpManagementPanel from '../components/GpManagementPanel';
+import PatientPortalView from '../components/PatientPortalView';
 import apiClient from '../lib/axios';
 import type { Patient } from '../types';
 
@@ -22,6 +23,7 @@ const ROLE_BADGE: Record<string, string> = {
   DOCTOR: 'badge-role-doctor',
   PATIENT: 'badge-role-patient',
   AUDITOR: 'badge-role-auditor',
+  ADMIN: 'badge-role-admin',
 };
 
 export default function DashboardPage() {
@@ -31,10 +33,13 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<Tab>('patients');
   const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
 
-  // Fetch Patients
+  const isPatientUser = user?.role === 'PATIENT';
+
+  // Fetch Patients (Only for Clinicians / Auditors / Admins)
   const { data: patients = [] } = useQuery<Patient[]>({
     queryKey: ['patients'],
     queryFn: () => apiClient.get<Patient[]>('/patients?includeDeleted=true').then((r) => r.data),
+    enabled: !isPatientUser,
   });
 
   const activePatientsCount = patients.filter((p) => p.isActive !== false && !p.shredded).length;
@@ -85,78 +90,86 @@ export default function DashboardPage() {
         </div>
       </nav>
 
-      {/* Hero Stats */}
-      <div className="border-b border-slate-200 bg-white py-6">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900">Clinical Dashboard &amp; Patient Census</h1>
-              <p className="text-xs text-slate-500 mt-1">
-                Zero-Knowledge EHR with Cryptographic Right-to-be-Forgotten (GDPR Article 17 Compliance)
-              </p>
+      {isPatientUser ? (
+        <main className="mx-auto max-w-7xl px-6 py-8">
+          <PatientPortalView />
+        </main>
+      ) : (
+        <>
+          {/* Hero Stats */}
+          <div className="border-b border-slate-200 bg-white py-6">
+            <div className="mx-auto max-w-7xl px-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h1 className="text-2xl font-bold text-slate-900">Clinical Dashboard &amp; Patient Census</h1>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Zero-Knowledge EHR with Cryptographic Right-to-be-Forgotten (GDPR Article 17 Compliance)
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-center">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                      Active Patients
+                    </span>
+                    <span className="text-lg font-bold text-emerald-600">{activePatientsCount}</span>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-center">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                      Crypto-Shredded
+                    </span>
+                    <span className="text-lg font-bold text-rose-600">{shreddedPatientsCount}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <main className="mx-auto max-w-7xl px-6 py-6 space-y-6">
+            {/* Navigation Tabs */}
+            <div className="flex gap-1 rounded-xl bg-slate-100 p-1 w-fit border border-slate-200 text-xs font-medium">
+              <button
+                onClick={() => setActiveTab('patients')}
+                className={`flex items-center gap-2 rounded-lg px-4 py-2 transition-all ${
+                  activeTab === 'patients'
+                    ? 'bg-white text-slate-900 font-semibold shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Users className="h-3.5 w-3.5 text-blue-600" />
+                Patient Census Explorer ({patients.length})
+              </button>
+              {(user?.role === 'DOCTOR' || user?.role === 'AUDITOR' || user?.role === 'ADMIN') && (
+                <button
+                  onClick={() => setActiveTab('gp-directory')}
+                  className={`flex items-center gap-2 rounded-lg px-4 py-2 transition-all ${
+                    activeTab === 'gp-directory'
+                      ? 'bg-white text-slate-900 font-semibold shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Stethoscope className="h-3.5 w-3.5 text-emerald-600" />
+                  General Practitioner Directory
+                </button>
+              )}
             </div>
 
-            <div className="flex items-center gap-3">
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-center">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                  Active Patients
-                </span>
-                <span className="text-lg font-bold text-emerald-600">{activePatientsCount}</span>
+            {/* Patients Census Tab */}
+            {activeTab === 'patients' && (
+              <div className="bg-white border border-slate-200 rounded-2xl shadow-card p-6 animate-fade-in">
+                <PatientCensusTable />
               </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-center">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                  Crypto-Shredded
-                </span>
-                <span className="text-lg font-bold text-rose-600">{shreddedPatientsCount}</span>
+            )}
+
+            {/* GP Directory Tab */}
+            {activeTab === 'gp-directory' && (user?.role === 'DOCTOR' || user?.role === 'AUDITOR' || user?.role === 'ADMIN') && (
+              <div className="bg-white border border-slate-200 rounded-2xl shadow-card p-6 animate-fade-in">
+                <GpManagementPanel />
               </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <main className="mx-auto max-w-7xl px-6 py-6 space-y-6">
-        {/* Navigation Tabs */}
-        <div className="flex gap-1 rounded-xl bg-slate-100 p-1 w-fit border border-slate-200 text-xs font-medium">
-          <button
-            onClick={() => setActiveTab('patients')}
-            className={`flex items-center gap-2 rounded-lg px-4 py-2 transition-all ${
-              activeTab === 'patients'
-                ? 'bg-white text-slate-900 font-semibold shadow-sm'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Users className="h-3.5 w-3.5 text-blue-600" />
-            Patient Census Explorer ({patients.length})
-          </button>
-          {(user?.role === 'DOCTOR' || user?.role === 'AUDITOR') && (
-            <button
-              onClick={() => setActiveTab('gp-directory')}
-              className={`flex items-center gap-2 rounded-lg px-4 py-2 transition-all ${
-                activeTab === 'gp-directory'
-                  ? 'bg-white text-slate-900 font-semibold shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Stethoscope className="h-3.5 w-3.5 text-emerald-600" />
-              General Practitioner Directory
-            </button>
-          )}
-        </div>
-
-        {/* Patients Census Tab */}
-        {activeTab === 'patients' && (
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-card p-6 animate-fade-in">
-            <PatientCensusTable />
-          </div>
-        )}
-
-        {/* GP Directory Tab */}
-        {activeTab === 'gp-directory' && (user?.role === 'DOCTOR' || user?.role === 'AUDITOR') && (
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-card p-6 animate-fade-in">
-            <GpManagementPanel />
-          </div>
-        )}
-      </main>
+            )}
+          </main>
+        </>
+      )}
 
       <VerifyProofModal
         isOpen={isVerifyModalOpen}
