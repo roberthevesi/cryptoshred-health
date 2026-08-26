@@ -1,0 +1,3556 @@
+[
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.cryptoShredMemory",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "10"
+        },
+        "primaryMetric" : {
+            "score" : 31.49095510285558,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 9.965692500476097,
+                "50.0" : 31.49095510285558,
+                "90.0" : 53.016217705235064,
+                "95.0" : 53.016217705235064,
+                "99.0" : 53.016217705235064,
+                "99.9" : 53.016217705235064,
+                "99.99" : 53.016217705235064,
+                "99.999" : 53.016217705235064,
+                "99.9999" : 53.016217705235064,
+                "100.0" : 53.016217705235064
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    9.965692500476097,
+                    53.016217705235064
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.cryptoShredMemory",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "100"
+        },
+        "primaryMetric" : {
+            "score" : 61.72929291957684,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 58.1815556307114,
+                "50.0" : 61.72929291957684,
+                "90.0" : 65.27703020844228,
+                "95.0" : 65.27703020844228,
+                "99.0" : 65.27703020844228,
+                "99.9" : 65.27703020844228,
+                "99.99" : 65.27703020844228,
+                "99.999" : 65.27703020844228,
+                "99.9999" : 65.27703020844228,
+                "100.0" : 65.27703020844228
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    58.1815556307114,
+                    65.27703020844228
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.cryptoShredMemory",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "1000"
+        },
+        "primaryMetric" : {
+            "score" : 65.17360973901236,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 64.82738672396967,
+                "50.0" : 65.17360973901236,
+                "90.0" : 65.51983275405507,
+                "95.0" : 65.51983275405507,
+                "99.0" : 65.51983275405507,
+                "99.9" : 65.51983275405507,
+                "99.99" : 65.51983275405507,
+                "99.999" : 65.51983275405507,
+                "99.9999" : 65.51983275405507,
+                "100.0" : 65.51983275405507
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    64.82738672396967,
+                    65.51983275405507
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.cryptoShredMemory",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "5000"
+        },
+        "primaryMetric" : {
+            "score" : 62.10498890076559,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 59.32955156273122,
+                "50.0" : 62.10498890076559,
+                "90.0" : 64.88042623879997,
+                "95.0" : 64.88042623879997,
+                "99.0" : 64.88042623879997,
+                "99.9" : 64.88042623879997,
+                "99.99" : 64.88042623879997,
+                "99.999" : 64.88042623879997,
+                "99.9999" : 64.88042623879997,
+                "100.0" : 64.88042623879997
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    64.88042623879997,
+                    59.32955156273122
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.cryptoShredMemory",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "10000"
+        },
+        "primaryMetric" : {
+            "score" : 59.503363174691685,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 58.688547319816394,
+                "50.0" : 59.503363174691685,
+                "90.0" : 60.31817902956697,
+                "95.0" : 60.31817902956697,
+                "99.0" : 60.31817902956697,
+                "99.9" : 60.31817902956697,
+                "99.99" : 60.31817902956697,
+                "99.999" : 60.31817902956697,
+                "99.9999" : 60.31817902956697,
+                "100.0" : 60.31817902956697
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    60.31817902956697,
+                    58.688547319816394
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.physicalDeleteH2Jdbc",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "10"
+        },
+        "primaryMetric" : {
+            "score" : 0.051886909409728156,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 0.020206162273368227,
+                "50.0" : 0.05188690940972815,
+                "90.0" : 0.08356765654608808,
+                "95.0" : 0.08356765654608808,
+                "99.0" : 0.08356765654608808,
+                "99.9" : 0.08356765654608808,
+                "99.99" : 0.08356765654608808,
+                "99.999" : 0.08356765654608808,
+                "99.9999" : 0.08356765654608808,
+                "100.0" : 0.08356765654608808
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    0.020206162273368227,
+                    0.08356765654608808
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.physicalDeleteH2Jdbc",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "100"
+        },
+        "primaryMetric" : {
+            "score" : 0.11093147801739409,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 0.10718637574653668,
+                "50.0" : 0.11093147801739409,
+                "90.0" : 0.11467658028825148,
+                "95.0" : 0.11467658028825148,
+                "99.0" : 0.11467658028825148,
+                "99.9" : 0.11467658028825148,
+                "99.99" : 0.11467658028825148,
+                "99.999" : 0.11467658028825148,
+                "99.9999" : 0.11467658028825148,
+                "100.0" : 0.11467658028825148
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    0.11467658028825148,
+                    0.10718637574653668
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.physicalDeleteH2Jdbc",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "1000"
+        },
+        "primaryMetric" : {
+            "score" : 0.11680771755050362,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 0.11679003192441655,
+                "50.0" : 0.11680771755050362,
+                "90.0" : 0.11682540317659068,
+                "95.0" : 0.11682540317659068,
+                "99.0" : 0.11682540317659068,
+                "99.9" : 0.11682540317659068,
+                "99.99" : 0.11682540317659068,
+                "99.999" : 0.11682540317659068,
+                "99.9999" : 0.11682540317659068,
+                "100.0" : 0.11682540317659068
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    0.11679003192441655,
+                    0.11682540317659068
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.physicalDeleteH2Jdbc",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "5000"
+        },
+        "primaryMetric" : {
+            "score" : 0.11248139714536351,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 0.11180411240920561,
+                "50.0" : 0.11248139714536351,
+                "90.0" : 0.11315868188152142,
+                "95.0" : 0.11315868188152142,
+                "99.0" : 0.11315868188152142,
+                "99.9" : 0.11315868188152142,
+                "99.99" : 0.11315868188152142,
+                "99.999" : 0.11315868188152142,
+                "99.9999" : 0.11315868188152142,
+                "100.0" : 0.11315868188152142
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    0.11180411240920561,
+                    0.11315868188152142
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.physicalDeleteH2Jdbc",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "10000"
+        },
+        "primaryMetric" : {
+            "score" : 0.10909024684740257,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 0.10722155826862484,
+                "50.0" : 0.10909024684740257,
+                "90.0" : 0.11095893542618031,
+                "95.0" : 0.11095893542618031,
+                "99.0" : 0.11095893542618031,
+                "99.9" : 0.11095893542618031,
+                "99.99" : 0.11095893542618031,
+                "99.999" : 0.11095893542618031,
+                "99.9999" : 0.11095893542618031,
+                "100.0" : 0.11095893542618031
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    0.10722155826862484,
+                    0.11095893542618031
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.physicalDeleteMemory",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "10"
+        },
+        "primaryMetric" : {
+            "score" : 45.51385086485631,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 44.91756445041472,
+                "50.0" : 45.51385086485631,
+                "90.0" : 46.11013727929789,
+                "95.0" : 46.11013727929789,
+                "99.0" : 46.11013727929789,
+                "99.9" : 46.11013727929789,
+                "99.99" : 46.11013727929789,
+                "99.999" : 46.11013727929789,
+                "99.9999" : 46.11013727929789,
+                "100.0" : 46.11013727929789
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    46.11013727929789,
+                    44.91756445041472
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.physicalDeleteMemory",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "100"
+        },
+        "primaryMetric" : {
+            "score" : 6.125017387300117,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 6.078967981932919,
+                "50.0" : 6.125017387300117,
+                "90.0" : 6.171066792667314,
+                "95.0" : 6.171066792667314,
+                "99.0" : 6.171066792667314,
+                "99.9" : 6.171066792667314,
+                "99.99" : 6.171066792667314,
+                "99.999" : 6.171066792667314,
+                "99.9999" : 6.171066792667314,
+                "100.0" : 6.171066792667314
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    6.171066792667314,
+                    6.078967981932919
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.physicalDeleteMemory",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "1000"
+        },
+        "primaryMetric" : {
+            "score" : 0.3629081522583347,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 0.3551034710755039,
+                "50.0" : 0.3629081522583347,
+                "90.0" : 0.37071283344116557,
+                "95.0" : 0.37071283344116557,
+                "99.0" : 0.37071283344116557,
+                "99.9" : 0.37071283344116557,
+                "99.99" : 0.37071283344116557,
+                "99.999" : 0.37071283344116557,
+                "99.9999" : 0.37071283344116557,
+                "100.0" : 0.37071283344116557
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    0.37071283344116557,
+                    0.3551034710755039
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.physicalDeleteMemory",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "5000"
+        },
+        "primaryMetric" : {
+            "score" : 0.05988477042527897,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 0.05972007635581284,
+                "50.0" : 0.05988477042527897,
+                "90.0" : 0.06004946449474509,
+                "95.0" : 0.06004946449474509,
+                "99.0" : 0.06004946449474509,
+                "99.9" : 0.06004946449474509,
+                "99.99" : 0.06004946449474509,
+                "99.999" : 0.06004946449474509,
+                "99.9999" : 0.06004946449474509,
+                "100.0" : 0.06004946449474509
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    0.06004946449474509,
+                    0.05972007635581284
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.physicalDeleteMemory",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "10000"
+        },
+        "primaryMetric" : {
+            "score" : 0.026466223073865848,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 0.02572719016892236,
+                "50.0" : 0.026466223073865848,
+                "90.0" : 0.027205255978809337,
+                "95.0" : 0.027205255978809337,
+                "99.0" : 0.027205255978809337,
+                "99.9" : 0.027205255978809337,
+                "99.99" : 0.027205255978809337,
+                "99.999" : 0.027205255978809337,
+                "99.9999" : 0.027205255978809337,
+                "100.0" : 0.027205255978809337
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    0.027205255978809337,
+                    0.02572719016892236
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.physicalDeletePostgresJdbc",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "10"
+        },
+        "primaryMetric" : {
+            "score" : 839.5800224083273,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 806.2089237830368,
+                "50.0" : 839.5800224083273,
+                "90.0" : 872.9511210336177,
+                "95.0" : 872.9511210336177,
+                "99.0" : 872.9511210336177,
+                "99.9" : 872.9511210336177,
+                "99.99" : 872.9511210336177,
+                "99.999" : 872.9511210336177,
+                "99.9999" : 872.9511210336177,
+                "100.0" : 872.9511210336177
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    806.2089237830368,
+                    872.9511210336177
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.physicalDeletePostgresJdbc",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "100"
+        },
+        "primaryMetric" : {
+            "score" : 869.8726942469634,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 868.3223707324129,
+                "50.0" : 869.8726942469634,
+                "90.0" : 871.4230177615141,
+                "95.0" : 871.4230177615141,
+                "99.0" : 871.4230177615141,
+                "99.9" : 871.4230177615141,
+                "99.99" : 871.4230177615141,
+                "99.999" : 871.4230177615141,
+                "99.9999" : 871.4230177615141,
+                "100.0" : 871.4230177615141
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    868.3223707324129,
+                    871.4230177615141
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.physicalDeletePostgresJdbc",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "1000"
+        },
+        "primaryMetric" : {
+            "score" : 856.7459929645858,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 843.635608817504,
+                "50.0" : 856.7459929645858,
+                "90.0" : 869.8563771116675,
+                "95.0" : 869.8563771116675,
+                "99.0" : 869.8563771116675,
+                "99.9" : 869.8563771116675,
+                "99.99" : 869.8563771116675,
+                "99.999" : 869.8563771116675,
+                "99.9999" : 869.8563771116675,
+                "100.0" : 869.8563771116675
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    869.8563771116675,
+                    843.635608817504
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.physicalDeletePostgresJdbc",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "5000"
+        },
+        "primaryMetric" : {
+            "score" : 852.4316531516779,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 828.5798726198863,
+                "50.0" : 852.4316531516779,
+                "90.0" : 876.2834336834695,
+                "95.0" : 876.2834336834695,
+                "99.0" : 876.2834336834695,
+                "99.9" : 876.2834336834695,
+                "99.99" : 876.2834336834695,
+                "99.999" : 876.2834336834695,
+                "99.9999" : 876.2834336834695,
+                "100.0" : 876.2834336834695
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    828.5798726198863,
+                    876.2834336834695
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.physicalDeletePostgresJdbc",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "10000"
+        },
+        "primaryMetric" : {
+            "score" : 881.1787421041583,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 874.8862180869207,
+                "50.0" : 881.1787421041583,
+                "90.0" : 887.4712661213958,
+                "95.0" : 887.4712661213958,
+                "99.0" : 887.4712661213958,
+                "99.9" : 887.4712661213958,
+                "99.99" : 887.4712661213958,
+                "99.999" : 887.4712661213958,
+                "99.9999" : 887.4712661213958,
+                "100.0" : 887.4712661213958
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    874.8862180869207,
+                    887.4712661213958
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.EnvelopeEncryptionBenchmark.localAesGcmEncryption",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 0.13113528478338027,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 0.12974382935388787,
+                "50.0" : 0.13113528478338027,
+                "90.0" : 0.13252674021287264,
+                "95.0" : 0.13252674021287264,
+                "99.0" : 0.13252674021287264,
+                "99.9" : 0.13252674021287264,
+                "99.99" : 0.13252674021287264,
+                "99.999" : 0.13252674021287264,
+                "99.9999" : 0.13252674021287264,
+                "100.0" : 0.13252674021287264
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    0.13252674021287264,
+                    0.12974382935388787
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.EnvelopeEncryptionBenchmark.plaintextBaseline",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 1.628150081409949,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1.6160462511795486,
+                "50.0" : 1.628150081409949,
+                "90.0" : 1.6402539116403494,
+                "95.0" : 1.6402539116403494,
+                "99.0" : 1.6402539116403494,
+                "99.9" : 1.6402539116403494,
+                "99.99" : 1.6402539116403494,
+                "99.999" : 1.6402539116403494,
+                "99.9999" : 1.6402539116403494,
+                "100.0" : 1.6402539116403494
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    1.6402539116403494,
+                    1.6160462511795486
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.EnvelopeEncryptionBenchmark.vaultEnvelopeEncryption",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 8.003537865687105E-4,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 7.986723277025406E-4,
+                "50.0" : 8.003537865687105E-4,
+                "90.0" : 8.020352454348803E-4,
+                "95.0" : 8.020352454348803E-4,
+                "99.0" : 8.020352454348803E-4,
+                "99.9" : 8.020352454348803E-4,
+                "99.99" : 8.020352454348803E-4,
+                "99.999" : 8.020352454348803E-4,
+                "99.9999" : 8.020352454348803E-4,
+                "100.0" : 8.020352454348803E-4
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    8.020352454348803E-4,
+                    7.986723277025406E-4
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.MerkleTreeBenchmark.addLeaf",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "leafCount" : "100"
+        },
+        "primaryMetric" : {
+            "score" : 7.448983429307441,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 6.801938568124657,
+                "50.0" : 7.448983429307441,
+                "90.0" : 8.096028290490226,
+                "95.0" : 8.096028290490226,
+                "99.0" : 8.096028290490226,
+                "99.9" : 8.096028290490226,
+                "99.99" : 8.096028290490226,
+                "99.999" : 8.096028290490226,
+                "99.9999" : 8.096028290490226,
+                "100.0" : 8.096028290490226
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    6.801938568124657,
+                    8.096028290490226
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.MerkleTreeBenchmark.addLeaf",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "leafCount" : "1000"
+        },
+        "primaryMetric" : {
+            "score" : 7.853561168818819,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 6.556650119246992,
+                "50.0" : 7.853561168818819,
+                "90.0" : 9.150472218390647,
+                "95.0" : 9.150472218390647,
+                "99.0" : 9.150472218390647,
+                "99.9" : 9.150472218390647,
+                "99.99" : 9.150472218390647,
+                "99.999" : 9.150472218390647,
+                "99.9999" : 9.150472218390647,
+                "100.0" : 9.150472218390647
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    9.150472218390647,
+                    6.556650119246992
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.MerkleTreeBenchmark.addLeaf",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "leafCount" : "10000"
+        },
+        "primaryMetric" : {
+            "score" : 4.126958302435494,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 2.5078207383437223,
+                "50.0" : 4.126958302435494,
+                "90.0" : 5.7460958665272654,
+                "95.0" : 5.7460958665272654,
+                "99.0" : 5.7460958665272654,
+                "99.9" : 5.7460958665272654,
+                "99.99" : 5.7460958665272654,
+                "99.999" : 5.7460958665272654,
+                "99.9999" : 5.7460958665272654,
+                "100.0" : 5.7460958665272654
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    5.7460958665272654,
+                    2.5078207383437223
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.MerkleTreeBenchmark.addLeaf",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "leafCount" : "100000"
+        },
+        "primaryMetric" : {
+            "score" : 8.011742118416445,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 7.493645245370059,
+                "50.0" : 8.011742118416445,
+                "90.0" : 8.52983899146283,
+                "95.0" : 8.52983899146283,
+                "99.0" : 8.52983899146283,
+                "99.9" : 8.52983899146283,
+                "99.99" : 8.52983899146283,
+                "99.999" : 8.52983899146283,
+                "99.9999" : 8.52983899146283,
+                "100.0" : 8.52983899146283
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    7.493645245370059,
+                    8.52983899146283
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.MerkleTreeBenchmark.computeRoot",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "leafCount" : "100"
+        },
+        "primaryMetric" : {
+            "score" : 1.577325551208444E-4,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1.1713254455193271E-4,
+                "50.0" : 1.577325551208444E-4,
+                "90.0" : 1.983325656897561E-4,
+                "95.0" : 1.983325656897561E-4,
+                "99.0" : 1.983325656897561E-4,
+                "99.9" : 1.983325656897561E-4,
+                "99.99" : 1.983325656897561E-4,
+                "99.999" : 1.983325656897561E-4,
+                "99.9999" : 1.983325656897561E-4,
+                "100.0" : 1.983325656897561E-4
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    1.1713254455193271E-4,
+                    1.983325656897561E-4
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.MerkleTreeBenchmark.computeRoot",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "leafCount" : "1000"
+        },
+        "primaryMetric" : {
+            "score" : 2.9260232199320916E-5,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 2.0771261570909445E-5,
+                "50.0" : 2.9260232199320916E-5,
+                "90.0" : 3.7749202827732387E-5,
+                "95.0" : 3.7749202827732387E-5,
+                "99.0" : 3.7749202827732387E-5,
+                "99.9" : 3.7749202827732387E-5,
+                "99.99" : 3.7749202827732387E-5,
+                "99.999" : 3.7749202827732387E-5,
+                "99.9999" : 3.7749202827732387E-5,
+                "100.0" : 3.7749202827732387E-5
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    2.0771261570909445E-5,
+                    3.7749202827732387E-5
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.MerkleTreeBenchmark.computeRoot",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "leafCount" : "10000"
+        },
+        "primaryMetric" : {
+            "score" : 4.925620868541081E-6,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 3.1174402172152536E-6,
+                "50.0" : 4.925620868541081E-6,
+                "90.0" : 6.733801519866909E-6,
+                "95.0" : 6.733801519866909E-6,
+                "99.0" : 6.733801519866909E-6,
+                "99.9" : 6.733801519866909E-6,
+                "99.99" : 6.733801519866909E-6,
+                "99.999" : 6.733801519866909E-6,
+                "99.9999" : 6.733801519866909E-6,
+                "100.0" : 6.733801519866909E-6
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    3.1174402172152536E-6,
+                    6.733801519866909E-6
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.MerkleTreeBenchmark.computeRoot",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "leafCount" : "100000"
+        },
+        "primaryMetric" : {
+            "score" : 6.960501078568048E-7,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 6.880968854286717E-7,
+                "50.0" : 6.960501078568048E-7,
+                "90.0" : 7.040033302849379E-7,
+                "95.0" : 7.040033302849379E-7,
+                "99.0" : 7.040033302849379E-7,
+                "99.9" : 7.040033302849379E-7,
+                "99.99" : 7.040033302849379E-7,
+                "99.999" : 7.040033302849379E-7,
+                "99.9999" : 7.040033302849379E-7,
+                "100.0" : 7.040033302849379E-7
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    7.040033302849379E-7,
+                    6.880968854286717E-7
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.MerkleTreeBenchmark.generateAndVerifyInclusionProof",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "leafCount" : "100"
+        },
+        "primaryMetric" : {
+            "score" : 3.370033909182533E-4,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 3.3547727068124146E-4,
+                "50.0" : 3.370033909182533E-4,
+                "90.0" : 3.3852951115526515E-4,
+                "95.0" : 3.3852951115526515E-4,
+                "99.0" : 3.3852951115526515E-4,
+                "99.9" : 3.3852951115526515E-4,
+                "99.99" : 3.3852951115526515E-4,
+                "99.999" : 3.3852951115526515E-4,
+                "99.9999" : 3.3852951115526515E-4,
+                "100.0" : 3.3852951115526515E-4
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    3.3852951115526515E-4,
+                    3.3547727068124146E-4
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.MerkleTreeBenchmark.generateAndVerifyInclusionProof",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "leafCount" : "1000"
+        },
+        "primaryMetric" : {
+            "score" : 3.446462291186444E-5,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 3.404734255355085E-5,
+                "50.0" : 3.446462291186444E-5,
+                "90.0" : 3.4881903270178035E-5,
+                "95.0" : 3.4881903270178035E-5,
+                "99.0" : 3.4881903270178035E-5,
+                "99.9" : 3.4881903270178035E-5,
+                "99.99" : 3.4881903270178035E-5,
+                "99.999" : 3.4881903270178035E-5,
+                "99.9999" : 3.4881903270178035E-5,
+                "100.0" : 3.4881903270178035E-5
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    3.4881903270178035E-5,
+                    3.404734255355085E-5
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.MerkleTreeBenchmark.generateAndVerifyInclusionProof",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "leafCount" : "10000"
+        },
+        "primaryMetric" : {
+            "score" : 3.55643465863326E-6,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 3.455300637199765E-6,
+                "50.0" : 3.55643465863326E-6,
+                "90.0" : 3.6575686800667553E-6,
+                "95.0" : 3.6575686800667553E-6,
+                "99.0" : 3.6575686800667553E-6,
+                "99.9" : 3.6575686800667553E-6,
+                "99.99" : 3.6575686800667553E-6,
+                "99.999" : 3.6575686800667553E-6,
+                "99.9999" : 3.6575686800667553E-6,
+                "100.0" : 3.6575686800667553E-6
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    3.455300637199765E-6,
+                    3.6575686800667553E-6
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.MerkleTreeBenchmark.generateAndVerifyInclusionProof",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "leafCount" : "100000"
+        },
+        "primaryMetric" : {
+            "score" : 3.528137155877303E-7,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 3.4918826844843045E-7,
+                "50.0" : 3.528137155877303E-7,
+                "90.0" : 3.5643916272703015E-7,
+                "95.0" : 3.5643916272703015E-7,
+                "99.0" : 3.5643916272703015E-7,
+                "99.9" : 3.5643916272703015E-7,
+                "99.99" : 3.5643916272703015E-7,
+                "99.999" : 3.5643916272703015E-7,
+                "99.9999" : 3.5643916272703015E-7,
+                "100.0" : 3.5643916272703015E-7
+            },
+            "scoreUnit" : "ops/us",
+            "rawData" : [
+                [
+                    3.5643916272703015E-7,
+                    3.4918826844843045E-7
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.cryptoShredMemory",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "10"
+        },
+        "primaryMetric" : {
+            "score" : 0.01753127219830637,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 0.017311453173210485,
+                "50.0" : 0.01753127219830637,
+                "90.0" : 0.01775109122340225,
+                "95.0" : 0.01775109122340225,
+                "99.0" : 0.01775109122340225,
+                "99.9" : 0.01775109122340225,
+                "99.99" : 0.01775109122340225,
+                "99.999" : 0.01775109122340225,
+                "99.9999" : 0.01775109122340225,
+                "100.0" : 0.01775109122340225
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    0.01775109122340225,
+                    0.017311453173210485
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.cryptoShredMemory",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "100"
+        },
+        "primaryMetric" : {
+            "score" : 0.015727153265370046,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 0.015629816738229642,
+                "50.0" : 0.015727153265370046,
+                "90.0" : 0.015824489792510454,
+                "95.0" : 0.015824489792510454,
+                "99.0" : 0.015824489792510454,
+                "99.9" : 0.015824489792510454,
+                "99.99" : 0.015824489792510454,
+                "99.999" : 0.015824489792510454,
+                "99.9999" : 0.015824489792510454,
+                "100.0" : 0.015824489792510454
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    0.015629816738229642,
+                    0.015824489792510454
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.cryptoShredMemory",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "1000"
+        },
+        "primaryMetric" : {
+            "score" : 0.01605035037367049,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 0.01595187884191627,
+                "50.0" : 0.01605035037367049,
+                "90.0" : 0.016148821905424708,
+                "95.0" : 0.016148821905424708,
+                "99.0" : 0.016148821905424708,
+                "99.9" : 0.016148821905424708,
+                "99.99" : 0.016148821905424708,
+                "99.999" : 0.016148821905424708,
+                "99.9999" : 0.016148821905424708,
+                "100.0" : 0.016148821905424708
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    0.01595187884191627,
+                    0.016148821905424708
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.cryptoShredMemory",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "5000"
+        },
+        "primaryMetric" : {
+            "score" : 0.016068717549371704,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 0.016029115880159293,
+                "50.0" : 0.016068717549371704,
+                "90.0" : 0.016108319218584116,
+                "95.0" : 0.016108319218584116,
+                "99.0" : 0.016108319218584116,
+                "99.9" : 0.016108319218584116,
+                "99.99" : 0.016108319218584116,
+                "99.999" : 0.016108319218584116,
+                "99.9999" : 0.016108319218584116,
+                "100.0" : 0.016108319218584116
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    0.016108319218584116,
+                    0.016029115880159293
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.cryptoShredMemory",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "10000"
+        },
+        "primaryMetric" : {
+            "score" : 0.016804608342766002,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 0.016144124210582797,
+                "50.0" : 0.016804608342766002,
+                "90.0" : 0.01746509247494921,
+                "95.0" : 0.01746509247494921,
+                "99.0" : 0.01746509247494921,
+                "99.9" : 0.01746509247494921,
+                "99.99" : 0.01746509247494921,
+                "99.999" : 0.01746509247494921,
+                "99.9999" : 0.01746509247494921,
+                "100.0" : 0.01746509247494921
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    0.016144124210582797,
+                    0.01746509247494921
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.physicalDeleteH2Jdbc",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "10"
+        },
+        "primaryMetric" : {
+            "score" : 8.9807057081578,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 8.978086846196458,
+                "50.0" : 8.9807057081578,
+                "90.0" : 8.98332457011914,
+                "95.0" : 8.98332457011914,
+                "99.0" : 8.98332457011914,
+                "99.9" : 8.98332457011914,
+                "99.99" : 8.98332457011914,
+                "99.999" : 8.98332457011914,
+                "99.9999" : 8.98332457011914,
+                "100.0" : 8.98332457011914
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    8.978086846196458,
+                    8.98332457011914
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.physicalDeleteH2Jdbc",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "100"
+        },
+        "primaryMetric" : {
+            "score" : 8.923963340503711,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 8.828376371040804,
+                "50.0" : 8.923963340503711,
+                "90.0" : 9.019550309966618,
+                "95.0" : 9.019550309966618,
+                "99.0" : 9.019550309966618,
+                "99.9" : 9.019550309966618,
+                "99.99" : 9.019550309966618,
+                "99.999" : 9.019550309966618,
+                "99.9999" : 9.019550309966618,
+                "100.0" : 9.019550309966618
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    8.828376371040804,
+                    9.019550309966618
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.physicalDeleteH2Jdbc",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "1000"
+        },
+        "primaryMetric" : {
+            "score" : 9.001827858956206,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 8.618484540164584,
+                "50.0" : 9.001827858956206,
+                "90.0" : 9.385171177747829,
+                "95.0" : 9.385171177747829,
+                "99.0" : 9.385171177747829,
+                "99.9" : 9.385171177747829,
+                "99.99" : 9.385171177747829,
+                "99.999" : 9.385171177747829,
+                "99.9999" : 9.385171177747829,
+                "100.0" : 9.385171177747829
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    9.385171177747829,
+                    8.618484540164584
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.physicalDeleteH2Jdbc",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "5000"
+        },
+        "primaryMetric" : {
+            "score" : 9.57463728876715,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 9.254070129414265,
+                "50.0" : 9.57463728876715,
+                "90.0" : 9.895204448120035,
+                "95.0" : 9.895204448120035,
+                "99.0" : 9.895204448120035,
+                "99.9" : 9.895204448120035,
+                "99.99" : 9.895204448120035,
+                "99.999" : 9.895204448120035,
+                "99.9999" : 9.895204448120035,
+                "100.0" : 9.895204448120035
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    9.254070129414265,
+                    9.895204448120035
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.physicalDeleteH2Jdbc",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "10000"
+        },
+        "primaryMetric" : {
+            "score" : 10.0461575593162,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 9.863570226594408,
+                "50.0" : 10.0461575593162,
+                "90.0" : 10.228744892037993,
+                "95.0" : 10.228744892037993,
+                "99.0" : 10.228744892037993,
+                "99.9" : 10.228744892037993,
+                "99.99" : 10.228744892037993,
+                "99.999" : 10.228744892037993,
+                "99.9999" : 10.228744892037993,
+                "100.0" : 10.228744892037993
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    10.228744892037993,
+                    9.863570226594408
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.physicalDeleteMemory",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "10"
+        },
+        "primaryMetric" : {
+            "score" : 0.022319368556244362,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 0.02111823177500737,
+                "50.0" : 0.022319368556244362,
+                "90.0" : 0.02352050533748136,
+                "95.0" : 0.02352050533748136,
+                "99.0" : 0.02352050533748136,
+                "99.9" : 0.02352050533748136,
+                "99.99" : 0.02352050533748136,
+                "99.999" : 0.02352050533748136,
+                "99.9999" : 0.02352050533748136,
+                "100.0" : 0.02352050533748136
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    0.02352050533748136,
+                    0.02111823177500737
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.physicalDeleteMemory",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "100"
+        },
+        "primaryMetric" : {
+            "score" : 0.18535761868773165,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 0.1673031839107617,
+                "50.0" : 0.18535761868773165,
+                "90.0" : 0.20341205346470156,
+                "95.0" : 0.20341205346470156,
+                "99.0" : 0.20341205346470156,
+                "99.9" : 0.20341205346470156,
+                "99.99" : 0.20341205346470156,
+                "99.999" : 0.20341205346470156,
+                "99.9999" : 0.20341205346470156,
+                "100.0" : 0.20341205346470156
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    0.20341205346470156,
+                    0.1673031839107617
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.physicalDeleteMemory",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "1000"
+        },
+        "primaryMetric" : {
+            "score" : 2.6116934220059003,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 2.5572442726916442,
+                "50.0" : 2.6116934220059003,
+                "90.0" : 2.666142571320156,
+                "95.0" : 2.666142571320156,
+                "99.0" : 2.666142571320156,
+                "99.9" : 2.666142571320156,
+                "99.99" : 2.666142571320156,
+                "99.999" : 2.666142571320156,
+                "99.9999" : 2.666142571320156,
+                "100.0" : 2.666142571320156
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    2.5572442726916442,
+                    2.666142571320156
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.physicalDeleteMemory",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "5000"
+        },
+        "primaryMetric" : {
+            "score" : 13.85670693295491,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 11.057784141066142,
+                "50.0" : 13.85670693295491,
+                "90.0" : 16.65562972484368,
+                "95.0" : 16.65562972484368,
+                "99.0" : 16.65562972484368,
+                "99.9" : 16.65562972484368,
+                "99.99" : 16.65562972484368,
+                "99.999" : 16.65562972484368,
+                "99.9999" : 16.65562972484368,
+                "100.0" : 16.65562972484368
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    16.65562972484368,
+                    11.057784141066142
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.physicalDeleteMemory",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "10000"
+        },
+        "primaryMetric" : {
+            "score" : 35.90803919013007,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 35.728490024538566,
+                "50.0" : 35.90803919013007,
+                "90.0" : 36.08758835572157,
+                "95.0" : 36.08758835572157,
+                "99.0" : 36.08758835572157,
+                "99.9" : 36.08758835572157,
+                "99.99" : 36.08758835572157,
+                "99.999" : 36.08758835572157,
+                "99.9999" : 36.08758835572157,
+                "100.0" : 36.08758835572157
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    36.08758835572157,
+                    35.728490024538566
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.physicalDeletePostgresJdbc",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "10"
+        },
+        "primaryMetric" : {
+            "score" : 0.0011749999864614378,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 0.0011338759159820941,
+                "50.0" : 0.0011749999864614378,
+                "90.0" : 0.0012161240569407816,
+                "95.0" : 0.0012161240569407816,
+                "99.0" : 0.0012161240569407816,
+                "99.9" : 0.0012161240569407816,
+                "99.99" : 0.0012161240569407816,
+                "99.999" : 0.0012161240569407816,
+                "99.9999" : 0.0012161240569407816,
+                "100.0" : 0.0012161240569407816
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    0.0012161240569407816,
+                    0.0011338759159820941
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.physicalDeletePostgresJdbc",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "100"
+        },
+        "primaryMetric" : {
+            "score" : 0.0011826219861666755,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 0.0011299240171768826,
+                "50.0" : 0.0011826219861666755,
+                "90.0" : 0.0012353199551564684,
+                "95.0" : 0.0012353199551564684,
+                "99.0" : 0.0012353199551564684,
+                "99.9" : 0.0012353199551564684,
+                "99.99" : 0.0012353199551564684,
+                "99.999" : 0.0012353199551564684,
+                "99.9999" : 0.0012353199551564684,
+                "100.0" : 0.0012353199551564684
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    0.0011299240171768826,
+                    0.0012353199551564684
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.physicalDeletePostgresJdbc",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "1000"
+        },
+        "primaryMetric" : {
+            "score" : 0.0011312604124363562,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 0.0011245328004489629,
+                "50.0" : 0.0011312604124363562,
+                "90.0" : 0.0011379880244237494,
+                "95.0" : 0.0011379880244237494,
+                "99.0" : 0.0011379880244237494,
+                "99.9" : 0.0011379880244237494,
+                "99.99" : 0.0011379880244237494,
+                "99.999" : 0.0011379880244237494,
+                "99.9999" : 0.0011379880244237494,
+                "100.0" : 0.0011379880244237494
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    0.0011379880244237494,
+                    0.0011245328004489629
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.physicalDeletePostgresJdbc",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "5000"
+        },
+        "primaryMetric" : {
+            "score" : 0.0011535662140822397,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 0.0011255270816782684,
+                "50.0" : 0.0011535662140822397,
+                "90.0" : 0.001181605346486211,
+                "95.0" : 0.001181605346486211,
+                "99.0" : 0.001181605346486211,
+                "99.9" : 0.001181605346486211,
+                "99.99" : 0.001181605346486211,
+                "99.999" : 0.001181605346486211,
+                "99.9999" : 0.001181605346486211,
+                "100.0" : 0.001181605346486211
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    0.001181605346486211,
+                    0.0011255270816782684
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.CryptoShredVsPhysicalDeleteBenchmark.physicalDeletePostgresJdbc",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "recordCount" : "10000"
+        },
+        "primaryMetric" : {
+            "score" : 0.0011812214196969548,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 0.0011456701633051954,
+                "50.0" : 0.0011812214196969548,
+                "90.0" : 0.0012167726760887142,
+                "95.0" : 0.0012167726760887142,
+                "99.0" : 0.0012167726760887142,
+                "99.9" : 0.0012167726760887142,
+                "99.99" : 0.0012167726760887142,
+                "99.999" : 0.0012167726760887142,
+                "99.9999" : 0.0012167726760887142,
+                "100.0" : 0.0012167726760887142
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    0.0012167726760887142,
+                    0.0011456701633051954
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.EnvelopeEncryptionBenchmark.localAesGcmEncryption",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 7.989622626998311,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 7.660721680075866,
+                "50.0" : 7.989622626998311,
+                "90.0" : 8.318523573920755,
+                "95.0" : 8.318523573920755,
+                "99.0" : 8.318523573920755,
+                "99.9" : 8.318523573920755,
+                "99.99" : 8.318523573920755,
+                "99.999" : 8.318523573920755,
+                "99.9999" : 8.318523573920755,
+                "100.0" : 8.318523573920755
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    7.660721680075866,
+                    8.318523573920755
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.EnvelopeEncryptionBenchmark.plaintextBaseline",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 0.604999785454618,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 0.6044795391894523,
+                "50.0" : 0.604999785454618,
+                "90.0" : 0.6055200317197836,
+                "95.0" : 0.6055200317197836,
+                "99.0" : 0.6055200317197836,
+                "99.9" : 0.6055200317197836,
+                "99.99" : 0.6055200317197836,
+                "99.999" : 0.6055200317197836,
+                "99.9999" : 0.6055200317197836,
+                "100.0" : 0.6055200317197836
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    0.6055200317197836,
+                    0.6044795391894523
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.EnvelopeEncryptionBenchmark.vaultEnvelopeEncryption",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 1253.9653874083565,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1249.7859738154614,
+                "50.0" : 1253.9653874083565,
+                "90.0" : 1258.1448010012516,
+                "95.0" : 1258.1448010012516,
+                "99.0" : 1258.1448010012516,
+                "99.9" : 1258.1448010012516,
+                "99.99" : 1258.1448010012516,
+                "99.999" : 1258.1448010012516,
+                "99.9999" : 1258.1448010012516,
+                "100.0" : 1258.1448010012516
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    1258.1448010012516,
+                    1249.7859738154614
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.MerkleTreeBenchmark.addLeaf",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "leafCount" : "100"
+        },
+        "primaryMetric" : {
+            "score" : 0.07525648200758367,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 0.07354802239090032,
+                "50.0" : 0.07525648200758367,
+                "90.0" : 0.07696494162426704,
+                "95.0" : 0.07696494162426704,
+                "99.0" : 0.07696494162426704,
+                "99.9" : 0.07696494162426704,
+                "99.99" : 0.07696494162426704,
+                "99.999" : 0.07696494162426704,
+                "99.9999" : 0.07696494162426704,
+                "100.0" : 0.07696494162426704
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    0.07696494162426704,
+                    0.07354802239090032
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.MerkleTreeBenchmark.addLeaf",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "leafCount" : "1000"
+        },
+        "primaryMetric" : {
+            "score" : 0.3994577141691963,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 0.2685425101816634,
+                "50.0" : 0.3994577141691963,
+                "90.0" : 0.5303729181567292,
+                "95.0" : 0.5303729181567292,
+                "99.0" : 0.5303729181567292,
+                "99.9" : 0.5303729181567292,
+                "99.99" : 0.5303729181567292,
+                "99.999" : 0.5303729181567292,
+                "99.9999" : 0.5303729181567292,
+                "100.0" : 0.5303729181567292
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    0.5303729181567292,
+                    0.2685425101816634
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.MerkleTreeBenchmark.addLeaf",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "leafCount" : "10000"
+        },
+        "primaryMetric" : {
+            "score" : 0.3149422817915382,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 0.29825017772838064,
+                "50.0" : 0.3149422817915382,
+                "90.0" : 0.3316343858546958,
+                "95.0" : 0.3316343858546958,
+                "99.0" : 0.3316343858546958,
+                "99.9" : 0.3316343858546958,
+                "99.99" : 0.3316343858546958,
+                "99.999" : 0.3316343858546958,
+                "99.9999" : 0.3316343858546958,
+                "100.0" : 0.3316343858546958
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    0.29825017772838064,
+                    0.3316343858546958
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.MerkleTreeBenchmark.addLeaf",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "leafCount" : "100000"
+        },
+        "primaryMetric" : {
+            "score" : 0.11812418075680811,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 0.11793350555137859,
+                "50.0" : 0.11812418075680811,
+                "90.0" : 0.11831485596223763,
+                "95.0" : 0.11831485596223763,
+                "99.0" : 0.11831485596223763,
+                "99.9" : 0.11831485596223763,
+                "99.99" : 0.11831485596223763,
+                "99.999" : 0.11831485596223763,
+                "99.9999" : 0.11831485596223763,
+                "100.0" : 0.11831485596223763
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    0.11793350555137859,
+                    0.11831485596223763
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.MerkleTreeBenchmark.computeRoot",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "leafCount" : "100"
+        },
+        "primaryMetric" : {
+            "score" : 3594.403240407343,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 3375.5634610778443,
+                "50.0" : 3594.403240407343,
+                "90.0" : 3813.243019736842,
+                "95.0" : 3813.243019736842,
+                "99.0" : 3813.243019736842,
+                "99.9" : 3813.243019736842,
+                "99.99" : 3813.243019736842,
+                "99.999" : 3813.243019736842,
+                "99.9999" : 3813.243019736842,
+                "100.0" : 3813.243019736842
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    3813.243019736842,
+                    3375.5634610778443
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.MerkleTreeBenchmark.computeRoot",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "leafCount" : "1000"
+        },
+        "primaryMetric" : {
+            "score" : 26352.533585591133,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 17932.696964285715,
+                "50.0" : 26352.533585591133,
+                "90.0" : 34772.37020689655,
+                "95.0" : 34772.37020689655,
+                "99.0" : 34772.37020689655,
+                "99.9" : 34772.37020689655,
+                "99.99" : 34772.37020689655,
+                "99.999" : 34772.37020689655,
+                "99.9999" : 34772.37020689655,
+                "100.0" : 34772.37020689655
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    17932.696964285715,
+                    34772.37020689655
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.MerkleTreeBenchmark.computeRoot",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "leafCount" : "10000"
+        },
+        "primaryMetric" : {
+            "score" : 147534.95398214285,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 131545.07325,
+                "50.0" : 147534.95398214285,
+                "90.0" : 163524.8347142857,
+                "95.0" : 163524.8347142857,
+                "99.0" : 163524.8347142857,
+                "99.9" : 163524.8347142857,
+                "99.99" : 163524.8347142857,
+                "99.999" : 163524.8347142857,
+                "99.9999" : 163524.8347142857,
+                "100.0" : 163524.8347142857
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    163524.8347142857,
+                    131545.07325
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.MerkleTreeBenchmark.computeRoot",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "leafCount" : "100000"
+        },
+        "primaryMetric" : {
+            "score" : 1419085.449,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1407750.32,
+                "50.0" : 1419085.449,
+                "90.0" : 1430420.578,
+                "95.0" : 1430420.578,
+                "99.0" : 1430420.578,
+                "99.9" : 1430420.578,
+                "99.99" : 1430420.578,
+                "99.999" : 1430420.578,
+                "99.9999" : 1430420.578,
+                "100.0" : 1430420.578
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    1407750.32,
+                    1430420.578
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.MerkleTreeBenchmark.generateAndVerifyInclusionProof",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "leafCount" : "100"
+        },
+        "primaryMetric" : {
+            "score" : 3132.412631773208,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 2967.859352071006,
+                "50.0" : 3132.412631773208,
+                "90.0" : 3296.96591147541,
+                "95.0" : 3296.96591147541,
+                "99.0" : 3296.96591147541,
+                "99.9" : 3296.96591147541,
+                "99.99" : 3296.96591147541,
+                "99.999" : 3296.96591147541,
+                "99.9999" : 3296.96591147541,
+                "100.0" : 3296.96591147541
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    3296.96591147541,
+                    2967.859352071006
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.MerkleTreeBenchmark.generateAndVerifyInclusionProof",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "leafCount" : "1000"
+        },
+        "primaryMetric" : {
+            "score" : 28134.58645833333,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 28132.10411111111,
+                "50.0" : 28134.58645833333,
+                "90.0" : 28137.068805555555,
+                "95.0" : 28137.068805555555,
+                "99.0" : 28137.068805555555,
+                "99.9" : 28137.068805555555,
+                "99.99" : 28137.068805555555,
+                "99.999" : 28137.068805555555,
+                "99.9999" : 28137.068805555555,
+                "100.0" : 28137.068805555555
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    28137.068805555555,
+                    28132.10411111111
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.MerkleTreeBenchmark.generateAndVerifyInclusionProof",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "leafCount" : "10000"
+        },
+        "primaryMetric" : {
+            "score" : 286462.947125,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 274297.858,
+                "50.0" : 286462.947125,
+                "90.0" : 298628.03625,
+                "95.0" : 298628.03625,
+                "99.0" : 298628.03625,
+                "99.9" : 298628.03625,
+                "99.99" : 298628.03625,
+                "99.999" : 298628.03625,
+                "99.9999" : 298628.03625,
+                "100.0" : 298628.03625
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    298628.03625,
+                    274297.858
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.roberthevesi.cryptoshred_health.benchmarks.MerkleTreeBenchmark.generateAndVerifyInclusionProof",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 0,
+        "jvm" : "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21",
+        "vmName" : "Java HotSpot(TM) 64-Bit Server VM",
+        "vmVersion" : "21+35-LTS-2513",
+        "warmupIterations" : 1,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 2,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "leafCount" : "100000"
+        },
+        "primaryMetric" : {
+            "score" : 2810802.5445,
+            "scoreError" : "NaN",
+            "scoreConfidence" : [
+                "NaN",
+                "NaN"
+            ],
+            "scorePercentiles" : {
+                "0.0" : 2779365.014,
+                "50.0" : 2810802.5445,
+                "90.0" : 2842240.075,
+                "95.0" : 2842240.075,
+                "99.0" : 2842240.075,
+                "99.9" : 2842240.075,
+                "99.99" : 2842240.075,
+                "99.999" : 2842240.075,
+                "99.9999" : 2842240.075,
+                "100.0" : 2842240.075
+            },
+            "scoreUnit" : "us/op",
+            "rawData" : [
+                [
+                    2779365.014,
+                    2842240.075
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    }
+]
+
+

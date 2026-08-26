@@ -72,9 +72,11 @@ npm run dev
 cd backend
 ./mvnw test
 
-# Run JMH Empirical Benchmarking Suite (Chapter 5 Evidence)
-cd backend
-./run-benchmarks.sh
+# Run JMH Algorithmic Microbenchmarks (Tier 1)
+./benchmarks/micro-jmh/run-benchmarks.sh
+
+# Run Multi-User System Load Tests (Tier 2)
+./benchmarks/macro-system/run-load-tests.sh
 
 # Frontend type check and production bundle
 cd frontend/cryptoshred-health
