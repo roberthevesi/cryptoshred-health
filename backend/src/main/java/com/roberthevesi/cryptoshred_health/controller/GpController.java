@@ -38,32 +38,46 @@ public class GpController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR','AUDITOR')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<GpResponse> create(@Valid @RequestBody GpRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(gpService.create(request));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR','AUDITOR')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<GpResponse> update(@PathVariable UUID id, @Valid @RequestBody GpRequest request) {
         return ResponseEntity.ok(gpService.update(id, request));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR','AUDITOR')")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> deletePermanently(@PathVariable UUID id) {
+        gpService.deletePermanently(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/deactivate")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> deactivatePatch(@PathVariable UUID id) {
+        gpService.deactivate(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}/deactivate")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> deactivatePut(@PathVariable UUID id) {
         gpService.deactivate(id);
         return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/{id}/activate")
-    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR','AUDITOR')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<GpResponse> reactivatePatch(@PathVariable UUID id) {
         return ResponseEntity.ok(gpService.reactivate(id));
     }
 
     @PutMapping("/{id}/activate")
-    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR','AUDITOR')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<GpResponse> reactivatePut(@PathVariable UUID id) {
         return ResponseEntity.ok(gpService.reactivate(id));
     }
