@@ -17,6 +17,7 @@ import apiClient from '../lib/axios';
 import { useAuth } from '../contexts/AuthContext';
 import StaffProvisionModal from './StaffProvisionModal';
 import StaffEditModal from './StaffEditModal';
+import ConfirmationModal from './ConfirmationModal';
 import type { AdminUser, Role } from '../types';
 
 export default function StaffManagementPanel() {
@@ -27,6 +28,7 @@ export default function StaffManagementPanel() {
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<'ALL' | Role>('ALL');
   const [isProvisionModalOpen, setIsProvisionModalOpen] = useState(false);
   const [editingStaffUser, setEditingStaffUser] = useState<AdminUser | null>(null);
+  const [deletingStaffUser, setDeletingStaffUser] = useState<AdminUser | null>(null);
   const [error, setError] = useState('');
 
   const { data: staffList = [], isLoading } = useQuery<AdminUser[]>({
@@ -38,6 +40,7 @@ export default function StaffManagementPanel() {
     mutationFn: (id: string) => apiClient.delete(`/admin/users/${id}`),
     onSuccess: () => {
       setError('');
+      setDeletingStaffUser(null);
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
     },
     onError: (err: unknown) => {
@@ -47,17 +50,6 @@ export default function StaffManagementPanel() {
       setError(msg);
     },
   });
-
-  const handleDeleteUser = (user: AdminUser) => {
-    const isSelf = user.email.toLowerCase() === currentUser?.email?.toLowerCase();
-    const promptMsg = isSelf
-      ? `Warning: You are attempting to delete your own administrator account (${user.email}). Are you sure?`
-      : `Are you sure you want to permanently revoke and delete the staff account for ${user.email} (${user.role})?`;
-
-    if (window.confirm(promptMsg)) {
-      deleteMutation.mutate(user.id);
-    }
-  };
 
   const filteredStaff = staffList.filter((u) => {
     const matchesSearch =
@@ -70,6 +62,9 @@ export default function StaffManagementPanel() {
   const doctorCount = staffList.filter((u) => u.role === 'DOCTOR').length;
   const auditorCount = staffList.filter((u) => u.role === 'AUDITOR').length;
   const adminCount = staffList.filter((u) => u.role === 'ADMIN').length;
+
+  const isDeletingSelf =
+    deletingStaffUser?.email.toLowerCase() === currentUser?.email?.toLowerCase();
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -295,7 +290,7 @@ export default function StaffManagementPanel() {
 
                         <button
                           type="button"
-                          onClick={() => handleDeleteUser(staff)}
+                          onClick={() => setDeletingStaffUser(staff)}
                           disabled={deleteMutation.isPending}
                           title="Revoke & Delete Staff Account"
                           className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-rose-600 hover:bg-rose-50 hover:text-rose-700 border border-transparent hover:border-rose-200 transition text-xs font-medium"
@@ -328,6 +323,41 @@ export default function StaffManagementPanel() {
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ['admin-users'] });
         }}
+      />
+
+      {/* Staff Revocation Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={!!deletingStaffUser}
+        onClose={() => setDeletingStaffUser(null)}
+        onConfirm={() => {
+          if (deletingStaffUser) {
+            deleteMutation.mutate(deletingStaffUser.id);
+          }
+        }}
+        title="Revoke Staff Account"
+        message={
+          isDeletingSelf ? (
+            <p className="text-amber-800 font-semibold">
+              Warning: You are attempting to permanently revoke and delete your own active administrator account ({deletingStaffUser?.email}).
+            </p>
+          ) : (
+            <p>
+              Are you sure you want to permanently revoke and delete the staff account for{' '}
+              <strong className="text-slate-900">{deletingStaffUser?.email}</strong>?
+            </p>
+          )
+        }
+        detail={
+          deletingStaffUser && (
+            <span>
+              Role: {deletingStaffUser.role} | ID: {deletingStaffUser.id}
+            </span>
+          )
+        }
+        confirmLabel="Revoke Account"
+        cancelLabel="Cancel"
+        variant={isDeletingSelf ? 'warning' : 'danger'}
+        isLoading={deleteMutation.isPending}
       />
     </div>
   );

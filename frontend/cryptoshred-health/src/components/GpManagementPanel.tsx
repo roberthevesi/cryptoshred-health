@@ -9,11 +9,11 @@ import {
   Building2,
   AlertCircle,
   Hash,
-  Phone,
   Mail,
 } from 'lucide-react';
 import apiClient from '../lib/axios';
 import GpFormModal from './GpFormModal';
+import ConfirmationModal from './ConfirmationModal';
 import type { GP } from '../types';
 
 export default function GpManagementPanel() {
@@ -21,6 +21,7 @@ export default function GpManagementPanel() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingGp, setEditingGp] = useState<GP | null>(null);
+  const [deactivatingGp, setDeactivatingGp] = useState<GP | null>(null);
   const [error, setError] = useState('');
 
   const { data: gps = [], isLoading } = useQuery<GP[]>({
@@ -53,6 +54,7 @@ export default function GpManagementPanel() {
     mutationFn: (id: string) => apiClient.delete(`/gps/${id}`),
     onSuccess: () => {
       setError('');
+      setDeactivatingGp(null);
       queryClient.invalidateQueries({ queryKey: ['gps-management'] });
       queryClient.invalidateQueries({ queryKey: ['gps'] });
     },
@@ -63,12 +65,6 @@ export default function GpManagementPanel() {
       setError(msg);
     },
   });
-
-  const handleDeactivate = (gp: GP) => {
-    if (window.confirm(`Are you sure you want to deactivate Dr. ${gp.firstName} ${gp.lastName} (GMC: ${gp.gmcNumber})?`)) {
-      deactivateMutation.mutate(gp.id);
-    }
-  };
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -216,7 +212,7 @@ export default function GpManagementPanel() {
                       {gp.isActive && (
                         <button
                           type="button"
-                          onClick={() => handleDeactivate(gp)}
+                          onClick={() => setDeactivatingGp(gp)}
                           disabled={deactivateMutation.isPending}
                           className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-rose-600 hover:bg-rose-50 hover:text-rose-700 border border-transparent hover:border-rose-200 transition text-xs font-medium"
                           title="Deactivate GP"
@@ -234,6 +230,7 @@ export default function GpManagementPanel() {
         )}
       </div>
 
+      {/* GP Create / Edit Modal */}
       <GpFormModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -242,6 +239,38 @@ export default function GpManagementPanel() {
           queryClient.invalidateQueries({ queryKey: ['gps-management'] });
           queryClient.invalidateQueries({ queryKey: ['gps'] });
         }}
+      />
+
+      {/* GP Deactivation Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={!!deactivatingGp}
+        onClose={() => setDeactivatingGp(null)}
+        onConfirm={() => {
+          if (deactivatingGp) {
+            deactivateMutation.mutate(deactivatingGp.id);
+          }
+        }}
+        title="Deactivate General Practitioner"
+        message={
+          <>
+            Are you sure you want to deactivate{' '}
+            <strong className="text-slate-900">
+              Dr. {deactivatingGp?.firstName} {deactivatingGp?.lastName}
+            </strong>
+            ?
+          </>
+        }
+        detail={
+          deactivatingGp && (
+            <span>
+              GMC Licence: {deactivatingGp.gmcNumber} | Practice: {deactivatingGp.practiceName || 'N/A'}
+            </span>
+          )
+        }
+        confirmLabel="Deactivate Practitioner"
+        cancelLabel="Cancel"
+        variant="warning"
+        isLoading={deactivateMutation.isPending}
       />
     </div>
   );
