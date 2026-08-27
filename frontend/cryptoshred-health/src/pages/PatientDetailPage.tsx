@@ -38,6 +38,7 @@ import PatientFormModal from '../components/PatientFormModal';
 import VitalsCard from '../components/VitalsCard';
 import VerifyProofModal from '../components/VerifyProofModal';
 import ProofViewerModal from '../components/ProofViewerModal';
+import ConfirmationModal from '../components/ConfirmationModal';
 import type { Patient, PatientVisit, DeletionProof, ErasureProofBundle } from '../types';
 
 type DetailTab = 'visits' | 'clinical' | 'demographics' | 'compliance';
@@ -59,6 +60,9 @@ export default function PatientDetailPage() {
   const [showEditPatientModal, setShowEditPatientModal] = useState(false);
   const [selectedVisitForEdit, setSelectedVisitForEdit] = useState<PatientVisit | null>(null);
   const [selectedVisitForView, setSelectedVisitForView] = useState<string | null>(null);
+  const [visitToDelete, setVisitToDelete] = useState<PatientVisit | null>(null);
+  const [visitToShred, setVisitToShred] = useState<PatientVisit | null>(null);
+  const [isFullPatientShredOpen, setIsFullPatientShredOpen] = useState(false);
   const [deletionProof, setDeletionProof] = useState<DeletionProof | null>(null);
   const [selectedProofForViewer, setSelectedProofForViewer] = useState<{
     proof?: DeletionProof | null;
@@ -201,7 +205,7 @@ export default function PatientDetailPage() {
         URL.revokeObjectURL(url);
       } catch (err) {
         console.error('Failed to download patient proof:', err);
-        alert('Could not download deletion proof for patient ' + patientId);
+        setErasureError('Could not download deletion proof for patient ' + patientId);
       }
     }
   };
@@ -221,7 +225,7 @@ export default function PatientDetailPage() {
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Failed to download visit proof:', err);
-      alert('Could not download deletion proof for visit ' + visitId);
+      setErasureError('Could not download deletion proof for visit ' + visitId);
     }
   };
 
@@ -242,7 +246,7 @@ export default function PatientDetailPage() {
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Failed to export FHIR bundle:', err);
-      alert('Failed to export FHIR R4 bundle. Please try again.');
+      setErasureError('Failed to export FHIR R4 bundle. Please try again.');
     } finally {
       setIsExportingFhir(false);
     }
@@ -793,11 +797,7 @@ export default function PatientDetailPage() {
                             )}
                             {isDoctor && !isShredded && !visit.shredded && (
                               <button
-                                onClick={() => {
-                                  if (confirm('Delete this clinical visit?')) {
-                                    deleteVisitMutation.mutate(visit.id);
-                                  }
-                                }}
+                                onClick={() => setVisitToDelete(visit)}
                                 className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-slate-100 transition"
                                 title="Delete visit"
                               >
@@ -806,11 +806,7 @@ export default function PatientDetailPage() {
                             )}
                             {isAuditor && !visit.shredded && !isShredded && (
                               <button
-                                onClick={() => {
-                                  if (confirm(`Permanently crypto-shred visit ${visit.id}? This destroys the Vault KMS key and is irreversible.`)) {
-                                    visitErasureMutation.mutate(visit.id);
-                                  }
-                                }}
+                                onClick={() => setVisitToShred(visit)}
                                 disabled={visitErasureMutation.isPending}
                                 className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition"
                                 title="Crypto-Shred Visit (GDPR Art. 17)"
@@ -1070,11 +1066,7 @@ export default function PatientDetailPage() {
 
                   {isAuditor ? (
                     <button
-                      onClick={() => {
-                        if (confirm(`Are you certain you want to crypto-shred patient ${patient.patientId} (${patient.firstName} ${patient.lastName})? This will permanently destroy all encryption keys across Postgres, Kafka, Redis, and WORM backups.`)) {
-                          patientErasureMutation.mutate(patient.patientId);
-                        }
-                      }}
+                      onClick={() => setIsFullPatientShredOpen(true)}
                       disabled={patientErasureMutation.isPending}
                       className="btn-danger shrink-0 cursor-pointer"
                     >
@@ -1316,6 +1308,111 @@ export default function PatientDetailPage() {
           patientId={selectedProofForViewer.patientId}
         />
       )}
+
+      {/* 1. Visit Deletion Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={!!visitToDelete}
+        onClose={() => setVisitToDelete(null)}
+        onConfirm={() => {
+          if (visitToDelete) {
+            deleteVisitMutation.mutate(visitToDelete.id);
+          }
+        }}
+        title="Delete Clinical Visit"
+        message={
+          <p>
+            Are you sure you want to delete the clinical visit recorded on{' '}
+            <strong className="text-slate-900">
+              {visitToDelete &&
+                new Date(visitToDelete.createdAt).toLocaleDateString(undefined, {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                })}
+            </strong>
+            ?
+          </p>
+        }
+        detail={
+          visitToDelete && (
+            <span>
+              Attending: {visitToDelete.attendingDoctor || 'Unassigned'} | Diagnosis:{' '}
+              {visitToDelete.diagnosis || 'None specified'}
+            </span>
+          )
+        }
+        confirmLabel="Delete Visit"
+        cancelLabel="Cancel"
+        variant="danger"
+        isLoading={deleteVisitMutation.isPending}
+      />
+
+      {/* 2. Single Visit Crypto-Shredding Confirmation Modal (Auditor) */}
+      <ConfirmationModal
+        isOpen={!!visitToShred}
+        onClose={() => setVisitToShred(null)}
+        onConfirm={() => {
+          if (visitToShred) {
+            visitErasureMutation.mutate(visitToShred.id);
+          }
+        }}
+        title="Crypto-Shred Clinical Visit"
+        message={
+          <p>
+            Are you sure you want to permanently crypto-shred the visit encounter from{' '}
+            <strong className="text-slate-900">
+              {visitToShred &&
+                new Date(visitToShred.createdAt).toLocaleDateString(undefined, {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                })}
+            </strong>
+            ?
+          </p>
+        }
+        detail={
+          visitToShred && (
+            <span>
+              Visit ID: {visitToShred.id} | Attending: {visitToShred.attendingDoctor || 'N/A'}
+            </span>
+          )
+        }
+        confirmLabel="Destroy Visit Key & Shred"
+        cancelLabel="Cancel"
+        variant="shred"
+        isLoading={visitErasureMutation.isPending}
+      />
+
+      {/* 3. Full Patient Profile Crypto-Shredding Confirmation Modal (Auditor) */}
+      <ConfirmationModal
+        isOpen={isFullPatientShredOpen}
+        onClose={() => setIsFullPatientShredOpen(false)}
+        onConfirm={() => {
+          if (patient) {
+            patientErasureMutation.mutate(patient.patientId);
+          }
+        }}
+        title="GDPR Article 17 — Full Patient Cryptographic Erasure"
+        message={
+          <p>
+            Are you certain you want to execute full cryptographic erasure for patient{' '}
+            <strong className="text-slate-900">
+              {patient.firstName} {patient.lastName} ({patient.patientId})
+            </strong>
+            ?
+          </p>
+        }
+        detail={
+          <span>
+            Patient ID: {patient.patientId} | NHS: {patient.nhsNumber || 'N/A'} | Total Linked Visits: {patientVisits.length}
+          </span>
+        }
+        confirmLabel="Destroy All Keys & Crypto-Shred"
+        cancelLabel="Cancel"
+        variant="shred"
+        isLoading={patientErasureMutation.isPending}
+      />
     </div>
   );
 }
