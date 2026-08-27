@@ -209,3 +209,18 @@ export interface GpRequest {
   specialisation?: string;
   practiceName?: string;
 }
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  role: Role;
+  temporaryPassword?: string;
+  createdAt?: string;
+}
+
+export interface AdminUserRequest {
+  email: string;
+  role: Role;
+  password?: string;
+}
+

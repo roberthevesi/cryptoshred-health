@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { ShieldCheck, Mail, Lock, AlertCircle } from 'lucide-react';
+import { ShieldCheck, Mail, Lock, AlertCircle, Info } from 'lucide-react';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -100,12 +100,12 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-slate-500">
-            Don't have an account?{' '}
-            <Link to="/register" className="text-blue-600 hover:text-blue-500 font-medium transition-colors">
-              Create one
-            </Link>
-          </p>
+          <div className="mt-6 flex items-start gap-2.5 rounded-xl bg-slate-50 border border-slate-200/80 p-3.5 text-xs text-slate-600">
+            <Info className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
+            <p className="leading-relaxed">
+              Staff and patient accounts are administratively provisioned by healthcare administrators and clinicians.
+            </p>
+          </div>
         </div>
 
         <p className="mt-6 text-center text-xs text-slate-400">
@@ -115,3 +115,4 @@ export default function LoginPage() {
     </div>
   );
 }
+
