@@ -10,12 +10,13 @@ import {
   FileCheck2,
   ShieldAlert,
   Calendar,
-  ShieldCheck,
   CheckCircle2,
+  Pencil,
 } from 'lucide-react';
 import apiClient from '../lib/axios';
 import { useAuth } from '../contexts/AuthContext';
 import StaffProvisionModal from './StaffProvisionModal';
+import StaffEditModal from './StaffEditModal';
 import type { AdminUser, Role } from '../types';
 
 export default function StaffManagementPanel() {
@@ -25,6 +26,7 @@ export default function StaffManagementPanel() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<'ALL' | Role>('ALL');
   const [isProvisionModalOpen, setIsProvisionModalOpen] = useState(false);
+  const [editingStaffUser, setEditingStaffUser] = useState<AdminUser | null>(null);
   const [error, setError] = useState('');
 
   const { data: staffList = [], isLoading } = useQuery<AdminUser[]>({
@@ -280,16 +282,28 @@ export default function StaffManagementPanel() {
                     </td>
 
                     <td className="px-6 py-4 text-right">
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteUser(staff)}
-                        disabled={deleteMutation.isPending}
-                        title="Revoke & Delete Staff Account"
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-rose-600 hover:bg-rose-50 hover:text-rose-700 border border-transparent hover:border-rose-200 transition text-xs font-medium"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        <span>Revoke</span>
-                      </button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setEditingStaffUser(staff)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-transparent hover:border-slate-200 transition text-xs font-medium"
+                          title="Edit Staff Account (Opens Popup Modal)"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          <span>Edit</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteUser(staff)}
+                          disabled={deleteMutation.isPending}
+                          title="Revoke & Delete Staff Account"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-rose-600 hover:bg-rose-50 hover:text-rose-700 border border-transparent hover:border-rose-200 transition text-xs font-medium"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          <span>Revoke</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -302,6 +316,15 @@ export default function StaffManagementPanel() {
       <StaffProvisionModal
         isOpen={isProvisionModalOpen}
         onClose={() => setIsProvisionModalOpen(false)}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+        }}
+      />
+
+      <StaffEditModal
+        isOpen={!!editingStaffUser}
+        staffUser={editingStaffUser}
+        onClose={() => setEditingStaffUser(null)}
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ['admin-users'] });
         }}

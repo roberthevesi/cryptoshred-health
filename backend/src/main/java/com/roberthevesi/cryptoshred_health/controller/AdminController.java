@@ -76,6 +76,45 @@ public class AdminController {
                         .build());
     }
 
+    /** Update an existing staff user account (role, email, or password). */
+    @PutMapping("/users/{id}")
+    public ResponseEntity<AdminUserResponse> updateUser(
+            @PathVariable UUID id,
+            @Valid @RequestBody AdminUserRequest request) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + id));
+
+        // Check if email changed and is already taken
+        if (!user.getEmail().equalsIgnoreCase(request.getEmail().trim())
+                && userRepository.existsByEmail(request.getEmail().trim())) {
+            throw new IllegalArgumentException("Email already registered: " + request.getEmail());
+        }
+
+        user.setEmail(request.getEmail().trim());
+        user.setRole(request.getRole());
+
+        String temporaryPassword = null;
+        if (request.getPassword() != null && !request.getPassword().trim().isBlank()) {
+            String rawPassword = request.getPassword().trim();
+            if ("AUTO_GENERATE".equalsIgnoreCase(rawPassword)) {
+                rawPassword = TemporaryPasswordGenerator.generate();
+                temporaryPassword = rawPassword;
+            }
+            user.setPassword(passwordEncoder.encode(rawPassword));
+        }
+
+        User saved = userRepository.save(user);
+
+        return ResponseEntity.ok(
+                AdminUserResponse.builder()
+                        .id(saved.getId())
+                        .email(saved.getEmail())
+                        .role(saved.getRole())
+                        .temporaryPassword(temporaryPassword)
+                        .createdAt(saved.getCreatedAt())
+                        .build());
+    }
+
     /** Delete (permanently remove) a user account by ID. */
     @DeleteMapping("/users/{id}")
     public ResponseEntity<Void> deleteUser(@PathVariable UUID id) {
