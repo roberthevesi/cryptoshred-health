@@ -74,7 +74,7 @@ export default function ViewVisitModal({ visitId, onClose }: Props) {
       {createPortal(
         <div
           id="view-visit-modal-overlay"
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 overflow-y-auto"
+          className="fixed inset-0 z-[100] !m-0 flex items-center justify-center bg-black/40 p-4 overflow-y-auto"
           onClick={(e) => e.target === e.currentTarget && onClose()}
         >
           <div className="w-full max-w-5xl rounded-2xl border border-slate-200 bg-white shadow-2xl my-auto max-h-[92vh] flex flex-col overflow-hidden">
@@ -139,7 +139,7 @@ export default function ViewVisitModal({ visitId, onClose }: Props) {
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
-                <Building className="h-3.5 w-3.5" /> 4. Admin &amp; Insurance
+                <Building className="h-3.5 w-3.5" /> 4. Attending Care &amp; Admin
               </button>
               <button
                 onClick={() => setActiveTab('documents')}
@@ -333,87 +333,70 @@ export default function ViewVisitModal({ visitId, onClose }: Props) {
                 </div>
               )}
 
-              {/* TAB 4: Admin & Insurance */}
+              {/* TAB 4: Attending Care & Practice */}
               {activeTab === 'admin' && (
                 <div className="space-y-4 animate-fade-in">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
                       <h4 className="text-xs font-semibold text-blue-700 uppercase tracking-wider flex items-center gap-1.5">
-                        <User className="h-3.5 w-3.5" /> Patient Contact Details
+                        <Building className="h-3.5 w-3.5" /> Attending Care Team
                       </h4>
                       <div className="space-y-2 text-xs">
                         <div>
-                          <span className="text-slate-500 block">Phone:</span>
+                          <span className="text-slate-500 block">Attending Doctor:</span>
                           <span className="text-slate-800 font-medium">
-                            {visit.shredded ? '[SHREDDED]' : (visit.phone || 'Not provided')}
+                            {visit.shredded ? '[SHREDDED]' : (visit.attendingDoctor || 'Not assigned')}
                           </span>
                         </div>
                         <div>
-                          <span className="text-slate-500 block">Email:</span>
+                          <span className="text-slate-500 block">Department / Practice:</span>
                           <span className="text-slate-800 font-medium">
-                            {visit.shredded ? '[SHREDDED]' : (visit.email || visit.ownerEmail)}
+                            {visit.shredded ? '[SHREDDED]' : (visit.department || 'Outpatients / General Practice')}
                           </span>
                         </div>
                         <div>
-                          <span className="text-slate-500 block">Residential Address:</span>
+                          <span className="text-slate-500 block">Record Author / Owner:</span>
                           <span className="text-slate-800 font-medium">
-                            {visit.shredded ? '[SHREDDED]' : (visit.address || 'Not provided')}
+                            {visit.ownerEmail || 'System Authenticated Clinician'}
                           </span>
                         </div>
                       </div>
                     </div>
 
                     <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
-                      <h4 className="text-xs font-semibold text-rose-600 uppercase tracking-wider flex items-center gap-1.5">
-                        <Heart className="h-3.5 w-3.5" /> Emergency Contact
+                      <h4 className="text-xs font-semibold text-blue-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <Calendar className="h-3.5 w-3.5" /> Encounter &amp; Scheduling
                       </h4>
                       <div className="space-y-2 text-xs">
                         <div>
-                          <span className="text-slate-500 block">Name:</span>
+                          <span className="text-slate-500 block">Encounter Date:</span>
                           <span className="text-slate-800 font-medium">
-                            {visit.shredded ? '[SHREDDED]' : (visit.emergencyContactName || 'Not recorded')}
+                            {visit.createdAt ? new Date(visit.createdAt).toLocaleString() : '—'}
                           </span>
                         </div>
                         <div>
-                          <span className="text-slate-500 block">Relationship:</span>
+                          <span className="text-slate-500 block">Follow-Up Appointment:</span>
                           <span className="text-slate-800 font-medium">
-                            {visit.shredded ? '[SHREDDED]' : (visit.emergencyContactRelationship || '—')}
+                            {visit.shredded ? '[SHREDDED]' : (visit.followUpDate || 'None scheduled')}
                           </span>
                         </div>
                         <div>
-                          <span className="text-slate-500 block">Emergency Phone:</span>
+                          <span className="text-slate-500 block">Last Chart Update:</span>
                           <span className="text-slate-800 font-medium">
-                            {visit.shredded ? '[SHREDDED]' : (visit.emergencyContactPhone || '—')}
+                            {visit.updatedAt ? new Date(visit.updatedAt).toLocaleString() : '—'}
                           </span>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
-                    <h4 className="text-xs font-semibold text-blue-700 uppercase tracking-wider flex items-center gap-1.5">
-                      <Building className="h-3.5 w-3.5" /> Insurance &amp; Billing Policy
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+                    <h4 className="text-xs font-semibold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <Lock className="h-3.5 w-3.5 text-blue-600" /> Encounter Encryption Isolation
                     </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                      <div>
-                        <span className="text-slate-500 block">Provider:</span>
-                        <span className="text-slate-800 font-medium">
-                          {visit.shredded ? '[SHREDDED]' : (visit.insuranceProvider || 'None')}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-slate-500 block">Policy / Member ID:</span>
-                        <span className="font-mono text-slate-800 font-medium">
-                          {visit.shredded ? '[SHREDDED]' : (visit.insurancePolicyNumber || '—')}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-slate-500 block">Group Number:</span>
-                        <span className="font-mono text-slate-800 font-medium">
-                          {visit.shredded ? '[SHREDDED]' : (visit.insuranceGroupNumber || '—')}
-                        </span>
-                      </div>
-                    </div>
+                    <p className="text-xs text-slate-600">
+                      This visit chart is envelope-encrypted under a dedicated per-visit cryptographic key in HashiCorp Vault KMS. Patient demographic identifiers are isolated in the master patient record.
+                    </p>
                   </div>
                 </div>
               )}

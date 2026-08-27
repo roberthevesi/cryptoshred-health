@@ -140,8 +140,6 @@ class FhirExportIntegrationTest {
                 .patientId(patientId)
                 .patientName("John Smith")
                 .mrn(patientId)
-                .dateOfBirth("1985-05-12")
-                .gender("Male")
                 .bloodPressure("135/85")
                 .heartRate(72)
                 .respiratoryRate("16")

@@ -69,6 +69,13 @@ class PatientDemographicEncryptionTest {
         request.setPhoneNumber("+44 7700 900077");
         request.setAddress("42 Hill House Lane, London");
         request.setNhsNumber("943 476 5919");
+        request.setBloodType("O+");
+        request.setEmergencyContactName("John Vance");
+        request.setEmergencyContactPhone("+44 7700 900088");
+        request.setEmergencyContactRelationship("Spouse");
+        request.setInsuranceProvider("NHS Standard Care");
+        request.setInsurancePolicyNumber("NHS-POL-12345");
+        request.setInsuranceGroupNumber("GRP-UK-8001");
 
         final byte[][] capturedDek = new byte[1][];
         when(vaultKmsService.wrapDek(anyString(), any())).thenAnswer(invocation -> {
@@ -83,6 +90,9 @@ class PatientDemographicEncryptionTest {
         assertEquals("Eleanor", response.getFirstName());
         assertEquals("Vance", response.getLastName());
         assertEquals("eleanor.vance@example.com", response.getEmail());
+        assertEquals("O+", response.getBloodType());
+        assertEquals("John Vance", response.getEmergencyContactName());
+        assertEquals("NHS Standard Care", response.getInsuranceProvider());
         assertTrue(response.isActive());
         assertFalse(response.isShredded());
 
@@ -187,5 +197,8 @@ class PatientDemographicEncryptionTest {
         assertEquals("[SHREDDED]", postShredResponse.getFirstName());
         assertEquals("[SHREDDED]", postShredResponse.getLastName());
         assertNull(postShredResponse.getEmail());
+        assertNull(postShredResponse.getBloodType());
+        assertNull(postShredResponse.getEmergencyContactName());
+        assertNull(postShredResponse.getInsuranceProvider());
     }
 }

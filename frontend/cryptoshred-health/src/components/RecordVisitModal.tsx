@@ -24,11 +24,13 @@ interface Props {
   defaultPatient?: Patient | null;
 }
 
-type ModalTab = 'demographics' | 'vitals' | 'clinical' | 'soap' | 'attachments';
+type ModalTab = 'soap' | 'vitals' | 'clinical' | 'care' | 'attachments';
 
 export default function RecordVisitModal({ onClose, editVisit, defaultPatient }: Props) {
   const queryClient = useQueryClient();
   const isEditing = !!editVisit && !!editVisit.id && editVisit.id.trim() !== '';
+
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(defaultPatient ?? null);
 
   // Fetch registered patients for quick intake auto-fill if not locked to defaultPatient
   const { data: registeredPatients = [] } = useQuery<Patient[]>({
@@ -37,33 +39,20 @@ export default function RecordVisitModal({ onClose, editVisit, defaultPatient }:
     enabled: !isEditing && !defaultPatient,
   });
 
-  const [activeTab, setActiveTab] = useState<ModalTab>(defaultPatient ? 'soap' : 'demographics');
+  const [activeTab, setActiveTab] = useState<ModalTab>('soap');
 
   const [form, setForm] = useState<PatientVisitRequest>({
+    patientId: editVisit?.patientId ?? defaultPatient?.patientId ?? '',
     patientName: editVisit?.patientName ?? (defaultPatient ? `${defaultPatient.firstName} ${defaultPatient.lastName}` : ''),
     mrn: editVisit?.mrn ?? defaultPatient?.patientId ?? '',
-    dateOfBirth: editVisit?.dateOfBirth ?? defaultPatient?.dateOfBirth ?? '',
-    gender: editVisit?.gender ?? defaultPatient?.gender ?? '',
-    bloodType: editVisit?.bloodType ?? '',
 
-    // Contact & Admin
-    phone: editVisit?.phone ?? defaultPatient?.phoneNumber ?? '',
-    email: editVisit?.email ?? defaultPatient?.email ?? '',
-    address: editVisit?.address ?? defaultPatient?.address ?? '',
-    emergencyContactName: editVisit?.emergencyContactName ?? '',
-    emergencyContactPhone: editVisit?.emergencyContactPhone ?? '',
-    emergencyContactRelationship: editVisit?.emergencyContactRelationship ?? '',
-
-    // Provider & Insurance
+    // Provider
     attendingDoctor:
       editVisit?.attendingDoctor ??
       (defaultPatient?.gp ? `Dr. ${defaultPatient.gp.firstName} ${defaultPatient.gp.lastName}` : ''),
     department:
       editVisit?.department ??
       (defaultPatient?.gp?.practiceName || ''),
-    insuranceProvider: editVisit?.insuranceProvider ?? '',
-    insurancePolicyNumber: editVisit?.insurancePolicyNumber ?? '',
-    insuranceGroupNumber: editVisit?.insuranceGroupNumber ?? '',
 
     // Biometrics & Vitals
     bloodPressure: editVisit?.bloodPressure ?? '',
@@ -92,6 +81,7 @@ export default function RecordVisitModal({ onClose, editVisit, defaultPatient }:
     soapObjective: editVisit?.soapObjective ?? '',
     soapAssessment: editVisit?.soapAssessment ?? '',
     soapPlan: editVisit?.soapPlan ?? '',
+    visitDate: editVisit?.createdAt ? new Date(editVisit.createdAt).toISOString().slice(0, 16) : '',
   });
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -178,7 +168,7 @@ export default function RecordVisitModal({ onClose, editVisit, defaultPatient }:
   return createPortal(
     <div
       id="record-visit-modal-overlay"
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 overflow-y-auto"
+      className="fixed inset-0 z-[100] !m-0 flex items-center justify-center bg-black/40 p-4 overflow-y-auto"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div className="w-full max-w-4xl rounded-2xl border border-slate-200 bg-white shadow-2xl my-auto max-h-[92vh] flex flex-col overflow-hidden">
@@ -191,9 +181,9 @@ export default function RecordVisitModal({ onClose, editVisit, defaultPatient }:
             <div>
               <h2 className="text-lg font-bold text-slate-900">
                 {isEditing
-                  ? `Edit Clinical Visit: ${editVisit?.patientName}`
+                  ? `Edit Clinical Visit Chart`
                   : defaultPatient
-                  ? `Record Clinical Visit: ${defaultPatient.firstName} ${defaultPatient.lastName}`
+                  ? `Record Clinical Visit`
                   : 'Record New Clinical Visit'}
               </h2>
               <p className="text-xs text-slate-500">AES-256-GCM envelope-encrypted clinical encounter chart</p>
@@ -202,6 +192,76 @@ export default function RecordVisitModal({ onClose, editVisit, defaultPatient }:
           <button onClick={onClose} id="modal-close" className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition">
             <X className="h-5 w-5" />
           </button>
+        </div>
+
+        {/* Read-Only Master Patient Demographic Header Banner */}
+        <div className="bg-slate-50 border-b border-slate-200 px-6 py-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white font-bold text-sm shadow-xs">
+              {selectedPatient ? selectedPatient.firstName.charAt(0) : (form.patientName ? form.patientName.charAt(0) : 'P')}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-slate-900 text-sm">
+                  {selectedPatient ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : (form.patientName || 'Clinical Patient')}
+                </span>
+                {(selectedPatient?.patientId || form.mrn) && (
+                  <span className="font-mono font-semibold px-2 py-0.5 rounded-md bg-blue-100/70 border border-blue-200 text-blue-800 text-[11px]">
+                    {selectedPatient?.patientId || form.mrn}
+                  </span>
+                )}
+                {selectedPatient?.nhsNumber && (
+                  <span className="font-mono text-slate-600 text-[11px] bg-slate-200/60 px-1.5 py-0.5 rounded">
+                    NHS: {selectedPatient.nhsNumber}
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-slate-500 text-[11px] mt-0.5">
+                {selectedPatient?.dateOfBirth && (
+                  <span>DOB: {selectedPatient.dateOfBirth}</span>
+                )}
+                {selectedPatient?.gender && (
+                  <span>Sex: {selectedPatient.gender}</span>
+                )}
+                {selectedPatient?.bloodType && (
+                  <span className="font-semibold text-rose-600">Blood: {selectedPatient.bloodType}</span>
+                )}
+                {selectedPatient?.emergencyContactName && (
+                  <span>ICE: {selectedPatient.emergencyContactName} ({selectedPatient.emergencyContactRelationship || 'Contact'})</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {!defaultPatient && !isEditing && (
+            <div className="flex items-center gap-2">
+              <select
+                className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={form.patientId ?? ''}
+                onChange={(e) => {
+                  const sel = registeredPatients.find((p) => p.patientId === e.target.value);
+                  if (sel) {
+                    setSelectedPatient(sel);
+                    setForm((prev) => ({
+                      ...prev,
+                      patientId: sel.patientId,
+                      patientName: `${sel.firstName} ${sel.lastName}`,
+                      mrn: sel.patientId,
+                      attendingDoctor: sel.gp ? `Dr. ${sel.gp.firstName} ${sel.gp.lastName}` : prev.attendingDoctor,
+                      department: sel.gp?.practiceName || prev.department || '',
+                    }));
+                  }
+                }}
+              >
+                <option value="">— Select Patient from Registry —</option>
+                {registeredPatients.map((p) => (
+                  <option key={p.id} value={p.patientId}>
+                    {p.firstName} {p.lastName} ({p.patientId})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {/* Tab Navigation */}
@@ -241,14 +301,14 @@ export default function RecordVisitModal({ onClose, editVisit, defaultPatient }:
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('demographics')}
+            onClick={() => setActiveTab('care')}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
-              activeTab === 'demographics'
+              activeTab === 'care'
                 ? 'bg-blue-600 text-white font-semibold shadow-sm'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            <User className="h-3.5 w-3.5" /> 4. Patient &amp; Attending Care
+            <Building className="h-3.5 w-3.5" /> 4. Attending Care &amp; Practice
           </button>
           <button
             type="button"
@@ -563,232 +623,82 @@ export default function RecordVisitModal({ onClose, editVisit, defaultPatient }:
             </div>
           )}
 
-          {/* TAB 4: Patient Demographics & Attending Care */}
-          {activeTab === 'demographics' && (
+          {/* TAB 4: Attending Care & Practice */}
+          {activeTab === 'care' && (
             <div className="space-y-4 animate-fade-in">
               <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 space-y-4">
                 <h3 className="text-xs font-semibold text-blue-700 uppercase tracking-wider flex items-center gap-1.5">
-                  <User className="h-3.5 w-3.5" /> Patient Identification &amp; Demographics
+                  <Building className="h-3.5 w-3.5" /> Attending Clinician, Department &amp; Scheduling
                 </h3>
 
-                {!isEditing && !defaultPatient && registeredPatients.length > 0 && (
-                  <div className="bg-white border border-blue-200 rounded-xl p-3 shadow-sm">
-                    <label className="text-xs font-semibold text-blue-900 block mb-1">
-                      Choose Patient from Census (Auto-fills Demographics &amp; GP)
-                    </label>
-                    <select
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      onChange={(e) => {
-                        const sel = registeredPatients.find((p) => p.patientId === e.target.value);
-                        if (sel) {
-                          setForm((prev) => ({
-                            ...prev,
-                            patientName: `${sel.firstName} ${sel.lastName}`,
-                            mrn: sel.patientId,
-                            dateOfBirth: sel.dateOfBirth ?? prev.dateOfBirth,
-                            gender: sel.gender ?? prev.gender,
-                            phone: sel.phoneNumber ?? prev.phone,
-                            email: sel.email ?? prev.email,
-                            address: sel.address ?? prev.address,
-                            attendingDoctor: sel.gp ? `Dr. ${sel.gp.firstName} ${sel.gp.lastName}` : prev.attendingDoctor,
-                            department: sel.gp?.practiceName || prev.department || '',
-                          }));
-                        }
-                      }}
-                      defaultValue=""
-                    >
-                      <option value="">— Select an existing patient from registry —</option>
-                      {registeredPatients.map((p) => (
-                        <option key={p.id} value={p.patientId}>
-                          {p.firstName} {p.lastName} (ID: {p.patientId}{p.nhsNumber ? ` • NHS: ${p.nhsNumber}` : ''}{p.gp ? ` • GP: Dr. ${p.gp.lastName}` : ''})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="sm:col-span-2">
-                    <label className="text-xs font-medium text-slate-700 block mb-1">
-                      Patient Full Name <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      id="input-patient-name"
-                      type="text"
-                      required
-                      value={form.patientName}
-                      onChange={handleChange('patientName')}
-                      placeholder="e.g. Eleanor Vance"
-                      className="input-field"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-slate-700 block mb-1">Patient ID / MRN</label>
-                    <input
-                      type="text"
-                      value={form.mrn ?? ''}
-                      onChange={handleChange('mrn')}
-                      placeholder="Auto-assigned"
-                      className="input-field font-mono"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className="text-xs font-medium text-slate-700 block mb-1">Date of Birth</label>
-                    <input
-                      type="date"
-                      value={form.dateOfBirth ?? ''}
-                      onChange={handleChange('dateOfBirth')}
-                      className="input-field"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-slate-700 block mb-1">Biological Sex / Gender</label>
-                    <select value={form.gender ?? ''} onChange={handleChange('gender')} className="input-field">
-                      <option value="">— Select Gender —</option>
-                      <option value="Female">Female</option>
-                      <option value="Male">Male</option>
-                      <option value="Non-Binary">Non-Binary</option>
-                      <option value="Other">Other / Undisclosed</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-slate-700 block mb-1">Blood Type</label>
-                    <select value={form.bloodType ?? ''} onChange={handleChange('bloodType')} className="input-field">
-                      <option value="">— Select Blood Type —</option>
-                      <option value="A+">A+</option>
-                      <option value="A-">A-</option>
-                      <option value="B+">B+</option>
-                      <option value="B-">B-</option>
-                      <option value="AB+">AB+</option>
-                      <option value="AB-">AB-</option>
-                      <option value="O+">O+</option>
-                      <option value="O-">O-</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-medium text-slate-700 block mb-1">Phone Number</label>
-                    <input
-                      type="tel"
-                      value={form.phone ?? ''}
-                      onChange={handleChange('phone')}
-                      placeholder="+44 7700 900142"
-                      className="input-field"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-slate-700 block mb-1">Email Address</label>
-                    <input
-                      type="email"
-                      value={form.email ?? ''}
-                      onChange={handleChange('email')}
-                      placeholder="patient@example.com"
-                      className="input-field"
-                    />
-                  </div>
-                </div>
-
                 <div>
-                  <label className="text-xs font-medium text-slate-700 block mb-1">Residential Address</label>
-                  <input
-                    type="text"
-                    value={form.address ?? ''}
-                    onChange={handleChange('address')}
-                    placeholder="Street Address, City, Postcode"
-                    className="input-field"
+                  <label className="text-xs font-medium text-slate-700 block mb-1">
+                    Search Registered General Practice / Clinician Directory
+                  </label>
+                  <GpSelector
+                    placeholder="Search GP by name, GMC number, practice..."
+                    compact
+                    onChange={(_gpId, gp) => {
+                      if (gp) {
+                        setForm((prev) => ({
+                          ...prev,
+                          attendingDoctor: `Dr. ${gp.firstName} ${gp.lastName}${gp.specialisation ? `, ${gp.specialisation}` : ''}`,
+                          department: gp.practiceName || prev.department || '',
+                        }));
+                      }
+                    }}
                   />
                 </div>
-              </div>
 
-              {/* Emergency Contact & Attending Care */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 space-y-3">
-                  <h3 className="text-xs font-semibold text-rose-600 uppercase tracking-wider flex items-center gap-1.5">
-                    <Heart className="h-3.5 w-3.5" /> Emergency Contact
-                  </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs font-medium text-slate-700 block mb-1">Contact Name</label>
+                    <label className="text-xs font-medium text-slate-700 block mb-1">
+                      Attending Clinician / Doctor
+                    </label>
                     <input
                       type="text"
-                      value={form.emergencyContactName ?? ''}
-                      onChange={handleChange('emergencyContactName')}
-                      placeholder="Next of Kin Name"
+                      value={form.attendingDoctor ?? ''}
+                      onChange={handleChange('attendingDoctor')}
+                      placeholder="e.g. Dr. Alistair Finch, MD"
                       className="input-field"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-xs font-medium text-slate-700 block mb-1">Relationship</label>
-                      <input
-                        type="text"
-                        value={form.emergencyContactRelationship ?? ''}
-                        onChange={handleChange('emergencyContactRelationship')}
-                        placeholder="Spouse / Parent"
-                        className="input-field"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-slate-700 block mb-1">Emergency Phone</label>
-                      <input
-                        type="tel"
-                        value={form.emergencyContactPhone ?? ''}
-                        onChange={handleChange('emergencyContactPhone')}
-                        placeholder="+44 7700 900881"
-                        className="input-field"
-                      />
-                    </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-700 block mb-1">
+                      Department / Clinical Practice
+                    </label>
+                    <input
+                      type="text"
+                      value={form.department ?? ''}
+                      onChange={handleChange('department')}
+                      placeholder="e.g. Cardiology Outpatients / Saint Jude General Practice"
+                      className="input-field"
+                    />
                   </div>
                 </div>
 
-                <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 space-y-3">
-                  <h3 className="text-xs font-semibold text-blue-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <Building className="h-3.5 w-3.5" /> Attending Clinician &amp; Practice
-                  </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-200/60">
                   <div>
                     <label className="text-xs font-medium text-slate-700 block mb-1">
-                      Search GP Practice Directory
+                      Encounter Date &amp; Time
                     </label>
-                    <GpSelector
-                      placeholder="Search GP by name, GMC number, practice..."
-                      compact
-                      onChange={(_gpId, gp) => {
-                        if (gp) {
-                          setForm((prev) => ({
-                            ...prev,
-                            attendingDoctor: `Dr. ${gp.firstName} ${gp.lastName}${gp.specialisation ? `, ${gp.specialisation}` : ''}`,
-                            department: gp.practiceName || prev.department || '',
-                          }));
-                        }
-                      }}
+                    <input
+                      type="datetime-local"
+                      value={form.visitDate ?? ''}
+                      onChange={handleChange('visitDate')}
+                      className="input-field"
                     />
                   </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-xs font-medium text-slate-700 block mb-1">Clinician Name</label>
-                      <input
-                        type="text"
-                        value={form.attendingDoctor ?? ''}
-                        onChange={handleChange('attendingDoctor')}
-                        placeholder="e.g. Dr. Sarah Jenkins, MD"
-                        className="input-field"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-slate-700 block mb-1">Department / Clinic</label>
-                      <input
-                        type="text"
-                        value={form.department ?? ''}
-                        onChange={handleChange('department')}
-                        placeholder="e.g. General Practice, Cardiology"
-                        className="input-field"
-                      />
-                    </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-700 block mb-1">
+                      Scheduled Follow-up Date
+                    </label>
+                    <input
+                      type="date"
+                      value={form.followUpDate ?? ''}
+                      onChange={handleChange('followUpDate')}
+                      className="input-field"
+                    />
                   </div>
                 </div>
               </div>

@@ -147,9 +147,6 @@ class SyntheticMedicalDataGeneratorTest {
                 // Demographic linkage
                 assertEquals(pt.firstName() + " " + pt.lastName(), visit.getPatientName());
                 assertEquals(pt.patientId(), visit.getMrn());
-                assertEquals(pt.dateOfBirth(), visit.getDateOfBirth());
-                assertEquals(pt.gender(), visit.getGender());
-                assertEquals(pt.bloodType(), visit.getBloodType());
 
                 // Biometrics & LOINC Vitals
                 assertNotNull(visit.getBloodPressure(), "Blood pressure must not be null");
@@ -230,6 +227,13 @@ class SyntheticMedicalDataGeneratorTest {
         assertEquals(pt.firstName(), req.getFirstName());
         assertEquals(pt.lastName(), req.getLastName());
         assertEquals(pt.nhsNumber(), req.getNhsNumber());
+        assertEquals(pt.bloodType(), req.getBloodType());
+        assertEquals(pt.emergencyContactName(), req.getEmergencyContactName());
+        assertEquals(pt.emergencyContactPhone(), req.getEmergencyContactPhone());
+        assertEquals(pt.emergencyContactRelationship(), req.getEmergencyContactRelationship());
+        assertNotNull(req.getInsuranceProvider());
+        assertNotNull(req.getInsurancePolicyNumber());
+        assertNotNull(req.getInsuranceGroupNumber());
         assertEquals(gpUuid, req.getGpId());
     }
 }
