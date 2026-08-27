@@ -3,7 +3,9 @@ package com.roberthevesi.cryptoshred_health.service;
 import com.roberthevesi.cryptoshred_health.dto.GpRequest;
 import com.roberthevesi.cryptoshred_health.dto.GpResponse;
 import com.roberthevesi.cryptoshred_health.model.GP;
+import com.roberthevesi.cryptoshred_health.model.Patient;
 import com.roberthevesi.cryptoshred_health.repository.GpRepository;
+import com.roberthevesi.cryptoshred_health.repository.PatientRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +20,7 @@ import java.util.stream.Collectors;
 public class GpService {
 
     private final GpRepository gpRepository;
+    private final PatientRepository patientRepository;
 
     public List<GpResponse> findAll(boolean includeInactive) {
         List<GP> list = includeInactive ? gpRepository.findAll() : gpRepository.findByIsActiveTrue();
@@ -83,6 +86,20 @@ public class GpService {
                 .orElseThrow(() -> new RuntimeException("GP not found"));
         gp.setActive(true);
         return toResponse(gpRepository.save(gp));
+    }
+
+    public void deletePermanently(UUID id) {
+        GP gp = gpRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("GP not found"));
+        
+        // Unlink any patients assigned to this GP to prevent foreign key violation
+        List<Patient> linkedPatients = patientRepository.findByGpId(id);
+        for (Patient patient : linkedPatients) {
+            patient.setGp(null);
+            patientRepository.save(patient);
+        }
+
+        gpRepository.delete(gp);
     }
 
     private GpResponse toResponse(GP gp) {
