@@ -36,88 +36,88 @@ public class PatientVisit {
     @JsonIgnore
     private Patient patient;
 
-    /** Patient Full Name snapshot at visit time */
-    @Column(nullable = false)
+    /** Patient Full Name snapshot at visit time (Transient, encrypted in encryptedDataBlob) */
+    @Transient
     private String patientName;
 
     /** Medical Record Number or Patient ID pseudonym */
     @Column(nullable = false)
     private String mrn;
 
-    // ── Vitals & Biometrics ──────────────────────────────────────────────────
-    @Column
+    // ── Vitals & Biometrics (Transient, encrypted in encryptedDataBlob) ─────
+    @Transient
     private String bloodPressure;
 
-    @Column
+    @Transient
     private Integer heartRate;
 
-    @Column
+    @Transient
     private String respiratoryRate;
 
-    @Column
+    @Transient
     private String temperature;
 
-    @Column
+    @Transient
     private String oxygenSaturation;
 
-    @Column
+    @Transient
     private String heightCm;
 
-    @Column
+    @Transient
     private String weightKg;
 
-    @Column
+    @Transient
     private String bmi;
 
-    @Column
+    @Transient
     private Integer painScore;
 
-    // ── Clinical Profile ─────────────────────────────────────────────────────
-    @Column(columnDefinition = "TEXT")
+    // ── Clinical Profile (Transient, encrypted in encryptedDataBlob) ─────────
+    @Transient
     private String allergies;
 
-    @Column(columnDefinition = "TEXT")
+    @Transient
     private String prescriptions;
 
-    @Column(columnDefinition = "TEXT")
+    @Transient
     private String chiefComplaint;
 
-    @Column(columnDefinition = "TEXT")
+    @Transient
     private String chronicConditions;
 
-    @Column(columnDefinition = "TEXT")
+    @Transient
     private String immunizationStatus;
 
-    @Column(columnDefinition = "TEXT")
+    @Transient
     private String lifestyleFactors;
 
-    @Column
+    @Transient
     private String followUpDate;
 
-    // ── SOAP Encounter Notes ─────────────────────────────────────────────────
-    @Column(columnDefinition = "TEXT")
+    // ── SOAP Encounter Notes (Transient, encrypted in encryptedDataBlob) ─────
+    @Transient
     private String diagnosis;
 
-    @Column(columnDefinition = "TEXT")
+    @Transient
     private String medicalNotes;
 
-    @Column(columnDefinition = "TEXT")
+    @Transient
     private String soapSubjective;
 
-    @Column(columnDefinition = "TEXT")
+    @Transient
     private String soapObjective;
 
-    @Column(columnDefinition = "TEXT")
+    @Transient
     private String soapAssessment;
 
-    @Column(columnDefinition = "TEXT")
+    @Transient
     private String soapPlan;
 
-    // ── Care Provider & Department ───────────────────────────────────────────
-    @Column
+    // ── Care Provider & Department (Transient, encrypted in encryptedDataBlob)
+    @Transient
     private String attendingDoctor;
 
-    @Column
+    @Transient
     private String department;
 
     // ── Encryption & Lifecycle Fields ────────────────────────────────────────

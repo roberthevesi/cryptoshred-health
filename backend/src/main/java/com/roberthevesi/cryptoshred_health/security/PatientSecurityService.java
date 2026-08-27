@@ -1,7 +1,9 @@
 package com.roberthevesi.cryptoshred_health.security;
 
 import com.roberthevesi.cryptoshred_health.model.Patient;
+import com.roberthevesi.cryptoshred_health.model.User;
 import com.roberthevesi.cryptoshred_health.repository.PatientRepository;
+import com.roberthevesi.cryptoshred_health.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -18,6 +20,7 @@ import java.util.Optional;
 public class PatientSecurityService {
 
     private final PatientRepository patientRepository;
+    private final UserRepository userRepository;
 
     /**
      * Determines whether the currently authenticated principal owns the patient record identified by patientId.
@@ -32,7 +35,14 @@ public class PatientSecurityService {
         }
 
         String currentUserEmail = authentication.getName();
-        Optional<Patient> patientOpt = patientRepository.findByEmailIgnoreCase(currentUserEmail);
+        Optional<User> userOpt = userRepository.findByEmail(currentUserEmail);
+        if (userOpt.isEmpty()) {
+            log.debug("No user record found for email: {}", currentUserEmail);
+            return false;
+        }
+
+        User user = userOpt.get();
+        Optional<Patient> patientOpt = patientRepository.findByUser(user);
 
         if (patientOpt.isEmpty()) {
             log.debug("No patient record found for user email: {}", currentUserEmail);

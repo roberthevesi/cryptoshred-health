@@ -137,9 +137,10 @@ public class AttachmentService {
 
     private void checkReadAccess(PatientVisit visit, User user) {
         if (user.getRole() == Role.PATIENT) {
-            boolean hasAccess = (visit.getPatient() != null && visit.getPatient().getEmail() != null && visit.getPatient().getEmail().equalsIgnoreCase(user.getEmail()))
+            boolean hasAccess = (visit.getPatient() != null && visit.getPatient().getUser() != null && visit.getPatient().getUser().getId().equals(user.getId()))
                     || (visit.getOwner() != null && visit.getOwner().getId().equals(user.getId()))
-                    || (visit.getMrn() != null && patientRepository.findByEmailIgnoreCase(user.getEmail()).map(p -> p.getPatientId().equalsIgnoreCase(visit.getMrn())).orElse(false));
+                    || (visit.getPatient() != null && patientRepository.findByUser(user).map(p -> p.getId().equals(visit.getPatient().getId())).orElse(false))
+                    || (visit.getMrn() != null && patientRepository.findByUser(user).map(p -> p.getPatientId().equalsIgnoreCase(visit.getMrn())).orElse(false));
             if (!hasAccess) {
                 throw new AccessDeniedException("Not authorized to access attachments on this visit");
             }
