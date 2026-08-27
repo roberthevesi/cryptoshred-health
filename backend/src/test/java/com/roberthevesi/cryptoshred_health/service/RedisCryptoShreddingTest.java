@@ -57,18 +57,6 @@ class RedisCryptoShreddingTest {
         patientCacheService = Mockito.mock(PatientCacheService.class);
         objectMapper = new ObjectMapper();
 
-        patientVisitService = new PatientVisitService(
-                patientVisitRepository,
-                patientRepository,
-                userRepository,
-                vaultKmsService,
-                envelopeEncryptionService,
-                eventLogPublisher,
-                patientVisitCacheService,
-                patientCacheService,
-                objectMapper
-        );
-
         org.springframework.security.crypto.password.PasswordEncoder passwordEncoder = Mockito.mock(org.springframework.security.crypto.password.PasswordEncoder.class);
 
         patientService = new PatientService(
@@ -81,6 +69,19 @@ class RedisCryptoShreddingTest {
                 objectMapper,
                 patientCacheService,
                 eventLogPublisher
+        );
+
+        patientVisitService = new PatientVisitService(
+                patientVisitRepository,
+                patientRepository,
+                userRepository,
+                vaultKmsService,
+                envelopeEncryptionService,
+                eventLogPublisher,
+                patientVisitCacheService,
+                patientCacheService,
+                patientService,
+                objectMapper
         );
 
         testDoctor = new User();

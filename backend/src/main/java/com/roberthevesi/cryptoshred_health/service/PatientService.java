@@ -82,14 +82,15 @@ public class PatientService {
     @Transactional(readOnly = true)
     public List<PatientResponse> search(String query) {
         if (query == null || query.isBlank()) {
-            return findAll();
+            return findAll(false);
         }
-        String q = query.trim();
-        return patientRepository
-                .findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCaseOrPatientIdContainingIgnoreCase(q, q, q)
-                .stream()
+        String q = query.trim().toLowerCase();
+        return findAll(false).stream()
                 .filter(p -> p.isActive() && !p.isShredded())
-                .map(this::resolvePatientResponse)
+                .filter(p -> (p.getPatientId() != null && p.getPatientId().toLowerCase().contains(q))
+                        || (p.getFirstName() != null && p.getFirstName().toLowerCase().contains(q))
+                        || (p.getLastName() != null && p.getLastName().toLowerCase().contains(q))
+                        || (p.getNhsNumber() != null && p.getNhsNumber().toLowerCase().contains(q)))
                 .collect(Collectors.toList());
     }
 
@@ -98,8 +99,11 @@ public class PatientService {
         if (email == null || email.isBlank()) {
             throw new IllegalArgumentException("User email cannot be null or empty");
         }
-        Patient patient = patientRepository.findByEmailIgnoreCase(email.trim())
-                .orElseThrow(() -> new IllegalArgumentException("Patient profile not found for user: " + email));
+        String trimmedEmail = email.trim();
+        User user = userRepository.findByEmail(trimmedEmail)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + trimmedEmail));
+        Patient patient = patientRepository.findByUser(user)
+                .orElseThrow(() -> new IllegalArgumentException("Patient profile not found for user: " + trimmedEmail));
         return resolvePatientResponse(patient);
     }
 
@@ -206,22 +210,31 @@ public class PatientService {
             patient.setGp(gp);
         }
 
-        Patient saved = patientRepository.save(patient);
-
-        // 3. Auto-provision User account for patient if email provided and user doesn't exist
+        // 3. Auto-provision or link User account for patient if email provided
         String temporaryPassword = null;
-        if (saved.getEmail() != null && !saved.getEmail().trim().isBlank() && userRepository != null && passwordEncoder != null) {
-            String email = saved.getEmail().trim();
-            if (userRepository.findByEmail(email).isEmpty()) {
+        if (request.getEmail() != null && !request.getEmail().trim().isBlank() && userRepository != null) {
+            String email = request.getEmail().trim();
+            Optional<User> existingUser = userRepository.findByEmail(email);
+            User patientUser;
+            if (existingUser.isPresent()) {
+                patientUser = existingUser.get();
+            } else if (passwordEncoder != null) {
                 temporaryPassword = TemporaryPasswordGenerator.generate();
-                User user = new User();
-                user.setEmail(email);
-                user.setPassword(passwordEncoder.encode(temporaryPassword));
-                user.setRole(Role.PATIENT);
-                userRepository.save(user);
-                log.info("Auto-provisioned User account for patient {} with email: {}", saved.getPatientId(), email);
+                patientUser = new User();
+                patientUser.setEmail(email);
+                patientUser.setPassword(passwordEncoder.encode(temporaryPassword));
+                patientUser.setRole(Role.PATIENT);
+                patientUser = userRepository.save(patientUser);
+                log.info("Auto-provisioned User account for patient {} with email: {}", patientId, email);
+            } else {
+                patientUser = null;
+            }
+            if (patientUser != null) {
+                patient.setUser(patientUser);
             }
         }
+
+        Patient saved = patientRepository.save(patient);
 
         eventLogPublisher.publishEvent(PatientVisitEventDto.builder()
                 .eventId(UUID.randomUUID())
@@ -283,6 +296,10 @@ public class PatientService {
             patient.setGp(gp);
         } else {
             patient.setGp(null);
+        }
+
+        if (request.getEmail() != null && !request.getEmail().trim().isBlank() && userRepository != null) {
+            userRepository.findByEmail(request.getEmail().trim()).ifPresent(patient::setUser);
         }
 
         // Re-encrypt demographic PII

@@ -3,6 +3,7 @@ package com.roberthevesi.cryptoshred_health.service;
 import com.roberthevesi.cryptoshred_health.dto.PatientRequest;
 import com.roberthevesi.cryptoshred_health.dto.PatientResponse;
 import com.roberthevesi.cryptoshred_health.model.Patient;
+import com.roberthevesi.cryptoshred_health.model.User;
 import com.roberthevesi.cryptoshred_health.repository.GpRepository;
 import com.roberthevesi.cryptoshred_health.repository.PatientRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -56,6 +57,8 @@ class PatientDemographicEncryptionTest {
             if (p.getId() == null) p.setId(UUID.randomUUID());
             return p;
         });
+
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test

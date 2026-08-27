@@ -83,6 +83,7 @@ class PatientIsolationIntegrationTest {
                 eventLogPublisher,
                 patientVisitCacheService,
                 patientCacheService,
+                patientService,
                 objectMapper
         );
 
@@ -95,7 +96,7 @@ class PatientIsolationIntegrationTest {
                 envelopeEncryptionService
         );
 
-        patientSecurityService = new PatientSecurityService(patientRepository);
+        patientSecurityService = new PatientSecurityService(patientRepository, userRepository);
 
         fhirExportService = new FhirExportService(
                 patientService,
@@ -129,6 +130,12 @@ class PatientIsolationIntegrationTest {
                 new EnvelopeEncryptionService.EncryptedPayload("cipher", "iv")
         );
 
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> {
+            User u = inv.getArgument(0);
+            if (u.getId() == null) u.setId(UUID.randomUUID());
+            return u;
+        });
+
         when(patientRepository.save(any(Patient.class))).thenAnswer(inv -> {
             Patient p = inv.getArgument(0);
             if (p.getId() == null) p.setId(UUID.randomUUID());
@@ -155,16 +162,22 @@ class PatientIsolationIntegrationTest {
     @DisplayName("Data Access: Patient can retrieve own profile via getPatientForCurrentUser")
     void testPatientCanRetrieveOwnProfile() {
         String patientEmail = "patient@health.org";
+        User patientUser = new User();
+        patientUser.setId(UUID.randomUUID());
+        patientUser.setEmail(patientEmail);
+        patientUser.setRole(Role.PATIENT);
+
         Patient patient = new Patient();
         patient.setId(UUID.randomUUID());
         patient.setPatientId("PAT-49201");
         patient.setFirstName("Oliver");
         patient.setLastName("Smith");
-        patient.setEmail(patientEmail);
+        patient.setUser(patientUser);
         patient.setActive(true);
         patient.setShredded(false);
 
-        when(patientRepository.findByEmailIgnoreCase(patientEmail)).thenReturn(Optional.of(patient));
+        when(userRepository.findByEmail(patientEmail)).thenReturn(Optional.of(patientUser));
+        when(patientRepository.findByUser(patientUser)).thenReturn(Optional.of(patient));
 
         PatientResponse response = patientService.getPatientForCurrentUser(patientEmail);
 
@@ -177,11 +190,16 @@ class PatientIsolationIntegrationTest {
     @DisplayName("Patient Security Service: isSelf verifies ownership correctly")
     void testPatientSecurityServiceIsSelf() {
         String selfEmail = "oliver.smith@example.com";
+        User selfUser = new User();
+        selfUser.setId(UUID.randomUUID());
+        selfUser.setEmail(selfEmail);
+
         Patient selfPatient = new Patient();
         selfPatient.setPatientId("PAT-49201");
-        selfPatient.setEmail(selfEmail);
+        selfPatient.setUser(selfUser);
 
-        when(patientRepository.findByEmailIgnoreCase(selfEmail)).thenReturn(Optional.of(selfPatient));
+        when(userRepository.findByEmail(selfEmail)).thenReturn(Optional.of(selfUser));
+        when(patientRepository.findByUser(selfUser)).thenReturn(Optional.of(selfPatient));
 
         Authentication auth = new UsernamePasswordAuthenticationToken(
                 selfEmail, "credentials", List.of(new SimpleGrantedAuthority("ROLE_PATIENT"))
@@ -203,10 +221,10 @@ class PatientIsolationIntegrationTest {
 
         Patient selfPatient = new Patient();
         selfPatient.setPatientId("PAT-49201");
-        selfPatient.setEmail(selfEmail);
+        selfPatient.setUser(patientUser);
 
         when(userRepository.findByEmail(selfEmail)).thenReturn(Optional.of(patientUser));
-        when(patientRepository.findByEmailIgnoreCase(selfEmail)).thenReturn(Optional.of(selfPatient));
+        when(patientRepository.findByUser(patientUser)).thenReturn(Optional.of(selfPatient));
 
         // Attempting to fetch visits of another patient (PAT-88888) should throw AccessDeniedException
         assertThrows(AccessDeniedException.class, () ->
@@ -226,10 +244,10 @@ class PatientIsolationIntegrationTest {
         Patient selfPatient = new Patient();
         selfPatient.setId(UUID.randomUUID());
         selfPatient.setPatientId("PAT-49201");
-        selfPatient.setEmail(selfEmail);
+        selfPatient.setUser(patientUser);
 
         when(userRepository.findByEmail(selfEmail)).thenReturn(Optional.of(patientUser));
-        when(patientRepository.findByEmailIgnoreCase(selfEmail)).thenReturn(Optional.of(selfPatient));
+        when(patientRepository.findByUser(patientUser)).thenReturn(Optional.of(selfPatient));
 
         UUID visitId = UUID.randomUUID();
         PatientVisit visit = new PatientVisit();

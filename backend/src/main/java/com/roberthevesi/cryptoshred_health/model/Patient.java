@@ -28,50 +28,56 @@ public class Patient {
     @Column(nullable = false, unique = true)
     private String patientId;
 
-    @Column(nullable = false)
+    /** Transient in-memory demographic PII fields (persisted only in AES-256-GCM encryptedDataBlob) */
+    @Transient
     private String firstName;
 
-    @Column(nullable = false)
+    @Transient
     private String lastName;
 
-    @Column
+    @Transient
     private LocalDate dateOfBirth;
 
-    @Column
+    @Transient
     private String gender;
 
-    @Column
+    @Transient
     private String email;
 
-    @Column
+    @Transient
     private String phoneNumber;
 
-    @Column(columnDefinition = "TEXT")
+    @Transient
     private String address;
 
-    @Column
+    @Transient
     private String nhsNumber;
 
-    @Column
+    @Transient
     private String bloodType;
 
-    @Column
+    @Transient
     private String emergencyContactName;
 
-    @Column
+    @Transient
     private String emergencyContactPhone;
 
-    @Column
+    @Transient
     private String emergencyContactRelationship;
 
-    @Column
+    @Transient
     private String insuranceProvider;
 
-    @Column
+    @Transient
     private String insurancePolicyNumber;
 
-    @Column
+    @Transient
     private String insuranceGroupNumber;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    @JsonIgnore
+    private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "gp_id")

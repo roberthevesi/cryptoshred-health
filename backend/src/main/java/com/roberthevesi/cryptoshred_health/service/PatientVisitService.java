@@ -2,6 +2,7 @@ package com.roberthevesi.cryptoshred_health.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.roberthevesi.cryptoshred_health.dto.AttachmentResponse;
+import com.roberthevesi.cryptoshred_health.dto.PatientResponse;
 import com.roberthevesi.cryptoshred_health.dto.PatientVisitEventDto;
 import com.roberthevesi.cryptoshred_health.dto.PatientVisitRequest;
 import com.roberthevesi.cryptoshred_health.dto.PatientVisitResponse;
@@ -38,6 +39,7 @@ public class PatientVisitService {
     private final EventLogPublisher eventLogPublisher;
     private final PatientVisitCacheService patientVisitCacheService;
     private final PatientCacheService patientCacheService;
+    private final PatientService patientService;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -67,8 +69,21 @@ public class PatientVisitService {
         vaultKmsService.ensureKeyExists(vaultKeyName);
         String wrappedDek = vaultKmsService.wrapDek(vaultKeyName, dek);
 
+        String resolvedPatientName = request.getPatientName();
+        if (linkedPatient != null) {
+            PatientResponse pResp = patientService.toResponse(linkedPatient);
+            if (pResp != null && pResp.getFirstName() != null && !pResp.getFirstName().isBlank()) {
+                resolvedPatientName = (pResp.getFirstName() + " " + (pResp.getLastName() != null ? pResp.getLastName() : "")).trim();
+            } else if (linkedPatient.getFirstName() != null && !linkedPatient.getFirstName().isBlank()) {
+                resolvedPatientName = (linkedPatient.getFirstName() + " " + (linkedPatient.getLastName() != null ? linkedPatient.getLastName() : "")).trim();
+            }
+        }
+        if (resolvedPatientName == null || resolvedPatientName.isBlank()) {
+            resolvedPatientName = "Unknown Patient";
+        }
+
         // 4. Build comprehensive clinical payload to encrypt under AES-256-GCM
-        Map<String, Object> clinicalPayload = buildClinicalPayload(request);
+        Map<String, Object> clinicalPayload = buildClinicalPayload(request, resolvedPatientName);
 
         String ciphertextBase64;
         String ivBase64;
@@ -88,13 +103,6 @@ public class PatientVisitService {
         PatientVisit visit = new PatientVisit();
         visit.setId(visitUuid);
         visit.setPatient(linkedPatient);
-
-        String resolvedPatientName = request.getPatientName();
-        if (linkedPatient != null) {
-            resolvedPatientName = linkedPatient.getFirstName() + " " + linkedPatient.getLastName();
-        } else if (resolvedPatientName == null || resolvedPatientName.isBlank()) {
-            resolvedPatientName = "Unknown Patient";
-        }
         visit.setPatientName(resolvedPatientName);
 
         String resolvedMrn = patientIdentifier != null
@@ -161,7 +169,7 @@ public class PatientVisitService {
                 .patientId(linkedPatient != null ? linkedPatient.getPatientId() : savedVisit.getMrn())
                 .eventType("VISIT_CREATED")
                 .vaultKeyName(vaultKeyName)
-                                                                .timestamp(LocalDateTime.now())
+                .timestamp(LocalDateTime.now())
                 .build());
 
         PatientVisitResponse response = toResponse(savedVisit);
@@ -183,7 +191,7 @@ public class PatientVisitService {
         List<PatientVisit> visits;
 
         if (user.getRole() == Role.PATIENT) {
-            Optional<Patient> patientOpt = patientRepository.findByEmailIgnoreCase(currentUserEmail);
+            Optional<Patient> patientOpt = patientRepository.findByUser(user);
             if (patientOpt.isPresent()) {
                 visits = patientVisitRepository.findByPatientIdentifier(patientOpt.get().getPatientId());
             } else {
@@ -214,7 +222,7 @@ public class PatientVisitService {
         User user = findUser(currentUserEmail);
 
         if (user.getRole() == Role.PATIENT) {
-            Patient patient = patientRepository.findByEmailIgnoreCase(currentUserEmail)
+            Patient patient = patientRepository.findByUser(user)
                     .orElseThrow(() -> new AccessDeniedException("Not authorized to view visits: no patient profile found"));
             if (!patient.getPatientId().equalsIgnoreCase(patientId.trim())) {
                 throw new AccessDeniedException("Not authorized to view visits for patient: " + patientId);
@@ -318,7 +326,7 @@ public class PatientVisitService {
                         visit.getEncryptionKey().getVaultKeyName(),
                         visit.getEncryptionKey().getWrappedDek());
 
-                Map<String, Object> clinicalPayload = buildClinicalPayload(request);
+                Map<String, Object> clinicalPayload = buildClinicalPayload(request, visit.getPatientName());
 
                 String jsonToEncrypt = objectMapper.writeValueAsString(clinicalPayload);
                 EnvelopeEncryptionService.EncryptedPayload encryptedPayload =
@@ -341,7 +349,7 @@ public class PatientVisitService {
                     .patientId(updatedVisit.getPatient() != null ? updatedVisit.getPatient().getPatientId() : updatedVisit.getMrn())
                     .eventType("VISIT_UPDATED")
                     .vaultKeyName(updatedVisit.getEncryptionKey().getVaultKeyName())
-                                                                                .timestamp(LocalDateTime.now())
+                    .timestamp(LocalDateTime.now())
                     .build());
         }
 
@@ -382,9 +390,10 @@ public class PatientVisitService {
 
     private void checkReadAccess(PatientVisit visit, User user) {
         if (user.getRole() == Role.PATIENT) {
-            boolean hasAccess = (visit.getPatient() != null && visit.getPatient().getEmail() != null && visit.getPatient().getEmail().equalsIgnoreCase(user.getEmail()))
+            boolean hasAccess = (visit.getPatient() != null && visit.getPatient().getUser() != null && visit.getPatient().getUser().getId().equals(user.getId()))
                     || (visit.getOwner() != null && visit.getOwner().getId().equals(user.getId()))
-                    || (visit.getMrn() != null && patientRepository.findByEmailIgnoreCase(user.getEmail()).map(p -> p.getPatientId().equalsIgnoreCase(visit.getMrn())).orElse(false));
+                    || (visit.getPatient() != null && patientRepository.findByUser(user).map(p -> p.getId().equals(visit.getPatient().getId())).orElse(false))
+                    || (visit.getMrn() != null && patientRepository.findByUser(user).map(p -> p.getPatientId().equalsIgnoreCase(visit.getMrn())).orElse(false));
             if (!hasAccess) {
                 throw new AccessDeniedException("Not authorized to view this visit");
             }
@@ -424,8 +433,17 @@ public class PatientVisitService {
                 (v.getEncryptionKey() != null && v.getEncryptionKey().isInvalidated()) ||
                 (v.getPatient() != null && v.getPatient().isShredded());
 
-        String diagnosis = v.getDiagnosis();
-        String medicalNotes = v.getMedicalNotes();
+        String patientName = v.getPatientName();
+        String bloodPressure = v.getBloodPressure();
+        Integer heartRate = v.getHeartRate();
+        String respiratoryRate = v.getRespiratoryRate();
+        String temperature = v.getTemperature();
+        String oxygenSaturation = v.getOxygenSaturation();
+        String heightCm = v.getHeightCm();
+        String weightKg = v.getWeightKg();
+        String bmi = v.getBmi();
+        Integer painScore = v.getPainScore();
+
         String allergies = v.getAllergies();
         String prescriptions = v.getPrescriptions();
         String chiefComplaint = v.getChiefComplaint();
@@ -433,10 +451,16 @@ public class PatientVisitService {
         String immunizationStatus = v.getImmunizationStatus();
         String lifestyleFactors = v.getLifestyleFactors();
         String followUpDate = v.getFollowUpDate();
+
+        String diagnosis = v.getDiagnosis();
+        String medicalNotes = v.getMedicalNotes();
         String soapSubjective = v.getSoapSubjective();
         String soapObjective = v.getSoapObjective();
         String soapAssessment = v.getSoapAssessment();
         String soapPlan = v.getSoapPlan();
+
+        String attendingDoctor = v.getAttendingDoctor();
+        String department = v.getDepartment();
 
         // If encrypted data blob exists and key is valid, unwrap and decrypt
         if (!isShredded && v.getEncryptedDataBlob() != null && v.getEncryptionKey() != null) {
@@ -450,8 +474,22 @@ public class PatientVisitService {
                         dek);
                 String json = new String(decryptedBytes, StandardCharsets.UTF_8);
                 Map<?, ?> map = objectMapper.readValue(json, Map.class);
-                if (map.containsKey("diagnosis")) diagnosis = (String) map.get("diagnosis");
-                if (map.containsKey("medicalNotes")) medicalNotes = (String) map.get("medicalNotes");
+                if (map.containsKey("patientName")) patientName = (String) map.get("patientName");
+                if (map.containsKey("bloodPressure")) bloodPressure = (String) map.get("bloodPressure");
+                if (map.containsKey("heartRate")) {
+                    Object hr = map.get("heartRate");
+                    heartRate = hr != null ? ((Number) hr).intValue() : null;
+                }
+                if (map.containsKey("respiratoryRate")) respiratoryRate = (String) map.get("respiratoryRate");
+                if (map.containsKey("temperature")) temperature = (String) map.get("temperature");
+                if (map.containsKey("oxygenSaturation")) oxygenSaturation = (String) map.get("oxygenSaturation");
+                if (map.containsKey("heightCm")) heightCm = (String) map.get("heightCm");
+                if (map.containsKey("weightKg")) weightKg = (String) map.get("weightKg");
+                if (map.containsKey("bmi")) bmi = (String) map.get("bmi");
+                if (map.containsKey("painScore")) {
+                    Object ps = map.get("painScore");
+                    painScore = ps != null ? ((Number) ps).intValue() : null;
+                }
                 if (map.containsKey("allergies")) allergies = (String) map.get("allergies");
                 if (map.containsKey("prescriptions")) prescriptions = (String) map.get("prescriptions");
                 if (map.containsKey("chiefComplaint")) chiefComplaint = (String) map.get("chiefComplaint");
@@ -459,10 +497,14 @@ public class PatientVisitService {
                 if (map.containsKey("immunizationStatus")) immunizationStatus = (String) map.get("immunizationStatus");
                 if (map.containsKey("lifestyleFactors")) lifestyleFactors = (String) map.get("lifestyleFactors");
                 if (map.containsKey("followUpDate")) followUpDate = (String) map.get("followUpDate");
+                if (map.containsKey("diagnosis")) diagnosis = (String) map.get("diagnosis");
+                if (map.containsKey("medicalNotes")) medicalNotes = (String) map.get("medicalNotes");
                 if (map.containsKey("soapSubjective")) soapSubjective = (String) map.get("soapSubjective");
                 if (map.containsKey("soapObjective")) soapObjective = (String) map.get("soapObjective");
                 if (map.containsKey("soapAssessment")) soapAssessment = (String) map.get("soapAssessment");
                 if (map.containsKey("soapPlan")) soapPlan = (String) map.get("soapPlan");
+                if (map.containsKey("attendingDoctor")) attendingDoctor = (String) map.get("attendingDoctor");
+                if (map.containsKey("department")) department = (String) map.get("department");
             } catch (Exception e) {
                 log.warn("Decryption failed for visit {}: Vault key shredded or invalid", v.getId());
                 isShredded = true;
@@ -472,10 +514,12 @@ public class PatientVisitService {
         String resolvedPatientName;
         if (isShredded) {
             resolvedPatientName = "[SHREDDED]";
-        } else if (v.getPatient() != null) {
+        } else if (patientName != null && !patientName.isBlank()) {
+            resolvedPatientName = patientName;
+        } else if (v.getPatient() != null && v.getPatient().getFirstName() != null) {
             resolvedPatientName = v.getPatient().getFirstName() + " " + v.getPatient().getLastName();
         } else {
-            resolvedPatientName = v.getPatientName() != null ? v.getPatientName() : "Unknown Patient";
+            resolvedPatientName = "Unknown Patient";
         }
 
         PatientVisitResponse resp = PatientVisitResponse.builder()
@@ -483,15 +527,15 @@ public class PatientVisitService {
                 .patientId(v.getPatient() != null ? v.getPatient().getPatientId() : v.getMrn())
                 .patientName(resolvedPatientName)
                 .mrn(v.getMrn())
-                .bloodPressure(isShredded ? null : v.getBloodPressure())
-                .heartRate(isShredded ? null : v.getHeartRate())
-                .respiratoryRate(isShredded ? null : v.getRespiratoryRate())
-                .temperature(isShredded ? null : v.getTemperature())
-                .oxygenSaturation(isShredded ? null : v.getOxygenSaturation())
-                .heightCm(isShredded ? null : v.getHeightCm())
-                .weightKg(isShredded ? null : v.getWeightKg())
-                .bmi(isShredded ? null : v.getBmi())
-                .painScore(isShredded ? null : v.getPainScore())
+                .bloodPressure(isShredded ? null : bloodPressure)
+                .heartRate(isShredded ? null : heartRate)
+                .respiratoryRate(isShredded ? null : respiratoryRate)
+                .temperature(isShredded ? null : temperature)
+                .oxygenSaturation(isShredded ? null : oxygenSaturation)
+                .heightCm(isShredded ? null : heightCm)
+                .weightKg(isShredded ? null : weightKg)
+                .bmi(isShredded ? null : bmi)
+                .painScore(isShredded ? null : painScore)
                 .allergies(isShredded ? "[SHREDDED]" : allergies)
                 .prescriptions(isShredded ? "[SHREDDED]" : prescriptions)
                 .chiefComplaint(isShredded ? "[SHREDDED]" : chiefComplaint)
@@ -505,8 +549,8 @@ public class PatientVisitService {
                 .soapObjective(isShredded ? "[SHREDDED]" : soapObjective)
                 .soapAssessment(isShredded ? "[SHREDDED]" : soapAssessment)
                 .soapPlan(isShredded ? "[SHREDDED]" : soapPlan)
-                .attendingDoctor(isShredded ? "[SHREDDED]" : v.getAttendingDoctor())
-                .department(isShredded ? null : v.getDepartment())
+                .attendingDoctor(isShredded ? "[SHREDDED]" : attendingDoctor)
+                .department(isShredded ? null : department)
                 .shredded(isShredded)
                 .ownerEmail(v.getOwner() != null ? v.getOwner().getEmail() : null)
                 .attachments(attachmentResponses)
@@ -521,10 +565,24 @@ public class PatientVisitService {
         return resp;
     }
 
-    private Map<String, Object> buildClinicalPayload(PatientVisitRequest request) {
+    private Map<String, Object> buildClinicalPayload(PatientVisitRequest request, String patientName) {
         Map<String, Object> payload = new HashMap<>();
-        if (request.getDiagnosis() != null) payload.put("diagnosis", request.getDiagnosis());
-        if (request.getMedicalNotes() != null) payload.put("medicalNotes", request.getMedicalNotes());
+        if (patientName != null && !patientName.isBlank()) {
+            payload.put("patientName", patientName);
+        } else if (request.getPatientName() != null && !request.getPatientName().isBlank()) {
+            payload.put("patientName", request.getPatientName());
+        }
+
+        if (request.getBloodPressure() != null) payload.put("bloodPressure", request.getBloodPressure());
+        if (request.getHeartRate() != null) payload.put("heartRate", request.getHeartRate());
+        if (request.getRespiratoryRate() != null) payload.put("respiratoryRate", request.getRespiratoryRate());
+        if (request.getTemperature() != null) payload.put("temperature", request.getTemperature());
+        if (request.getOxygenSaturation() != null) payload.put("oxygenSaturation", request.getOxygenSaturation());
+        if (request.getHeightCm() != null) payload.put("heightCm", request.getHeightCm());
+        if (request.getWeightKg() != null) payload.put("weightKg", request.getWeightKg());
+        if (request.getBmi() != null) payload.put("bmi", request.getBmi());
+        if (request.getPainScore() != null) payload.put("painScore", request.getPainScore());
+
         if (request.getAllergies() != null) payload.put("allergies", request.getAllergies());
         if (request.getPrescriptions() != null) payload.put("prescriptions", request.getPrescriptions());
         if (request.getChiefComplaint() != null) payload.put("chiefComplaint", request.getChiefComplaint());
@@ -532,10 +590,20 @@ public class PatientVisitService {
         if (request.getImmunizationStatus() != null) payload.put("immunizationStatus", request.getImmunizationStatus());
         if (request.getLifestyleFactors() != null) payload.put("lifestyleFactors", request.getLifestyleFactors());
         if (request.getFollowUpDate() != null) payload.put("followUpDate", request.getFollowUpDate());
+
+        if (request.getDiagnosis() != null) payload.put("diagnosis", request.getDiagnosis());
+        if (request.getMedicalNotes() != null) payload.put("medicalNotes", request.getMedicalNotes());
         if (request.getSoapSubjective() != null) payload.put("soapSubjective", request.getSoapSubjective());
         if (request.getSoapObjective() != null) payload.put("soapObjective", request.getSoapObjective());
         if (request.getSoapAssessment() != null) payload.put("soapAssessment", request.getSoapAssessment());
         if (request.getSoapPlan() != null) payload.put("soapPlan", request.getSoapPlan());
+
+        if (request.getAttendingDoctor() != null) payload.put("attendingDoctor", request.getAttendingDoctor());
+        if (request.getDepartment() != null) payload.put("department", request.getDepartment());
         return payload;
+    }
+
+    private Map<String, Object> buildClinicalPayload(PatientVisitRequest request) {
+        return buildClinicalPayload(request, request.getPatientName());
     }
 }
