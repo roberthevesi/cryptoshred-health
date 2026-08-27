@@ -41,11 +41,23 @@ yarn-error.log*
 pnpm-debug.log*
 
 # ── Environment & Secrets ──────────────────────────────────────────────────
+*.env
+*.env.*
 .env
+.env.*
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*firebase-adminsdk*.json
+*service-account*.json
+id_rsa*
+id_ed25519*
 
 # ── Database & Backup Dumps ────────────────────────────────────────────────
 **/backups/*.json

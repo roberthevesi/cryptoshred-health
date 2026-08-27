@@ -111,10 +111,11 @@ class AdminStaffProvisioningTest {
     @Test
     @DisplayName("createUser uses explicit password when provided")
     void testCreateUserWithExplicitPassword() {
+        String explicitPassword = "test-mock-explicit-password-" + UUID.randomUUID();
         AdminUserRequest request = new AdminUserRequest();
         request.setEmail("custom.auditor@hospital.com");
         request.setRole(Role.AUDITOR);
-        request.setPassword("CustomSecretPass123!");
+        request.setPassword(explicitPassword);
 
         when(userRepository.existsByEmail("custom.auditor@hospital.com")).thenReturn(false);
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
@@ -131,7 +132,7 @@ class AdminStaffProvisioningTest {
         assertEquals(Role.AUDITOR, response.getBody().getRole());
         assertNull(response.getBody().getTemporaryPassword(), "No temporary password should be returned when custom password was set");
 
-        verify(passwordEncoder).encode("CustomSecretPass123!");
+        verify(passwordEncoder).encode(explicitPassword);
         verify(userRepository).save(any(User.class));
     }
 
