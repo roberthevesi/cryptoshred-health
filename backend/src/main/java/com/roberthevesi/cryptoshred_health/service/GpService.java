@@ -19,10 +19,15 @@ public class GpService {
 
     private final GpRepository gpRepository;
 
-    public List<GpResponse> findAll() {
-        return gpRepository.findByIsActiveTrue().stream()
+    public List<GpResponse> findAll(boolean includeInactive) {
+        List<GP> list = includeInactive ? gpRepository.findAll() : gpRepository.findByIsActiveTrue();
+        return list.stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
+    }
+
+    public List<GpResponse> findAll() {
+        return findAll(true);
     }
 
     public GpResponse findById(UUID id) {
@@ -46,6 +51,7 @@ public class GpService {
         gp.setGmcNumber(request.getGmcNumber());
         gp.setSpecialisation(request.getSpecialisation());
         gp.setPracticeName(request.getPracticeName());
+        gp.setActive(true);
         
         return toResponse(gpRepository.save(gp));
     }
@@ -70,6 +76,13 @@ public class GpService {
                 .orElseThrow(() -> new RuntimeException("GP not found"));
         gp.setActive(false);
         gpRepository.save(gp);
+    }
+
+    public GpResponse reactivate(UUID id) {
+        GP gp = gpRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("GP not found"));
+        gp.setActive(true);
+        return toResponse(gpRepository.save(gp));
     }
 
     private GpResponse toResponse(GP gp) {

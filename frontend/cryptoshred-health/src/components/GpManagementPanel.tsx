@@ -5,6 +5,7 @@ import {
   Plus,
   Pencil,
   XCircle,
+  CheckCircle2,
   Stethoscope,
   Building2,
   AlertCircle,
@@ -22,11 +23,12 @@ export default function GpManagementPanel() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingGp, setEditingGp] = useState<GP | null>(null);
   const [deactivatingGp, setDeactivatingGp] = useState<GP | null>(null);
+  const [reactivatingGp, setReactivatingGp] = useState<GP | null>(null);
   const [error, setError] = useState('');
 
   const { data: gps = [], isLoading } = useQuery<GP[]>({
     queryKey: ['gps-management'],
-    queryFn: () => apiClient.get<GP[]>('/gps').then((r) => r.data),
+    queryFn: () => apiClient.get<GP[]>('/gps?includeInactive=true').then((r) => r.data),
   });
 
   const filteredGps = searchTerm
@@ -62,6 +64,22 @@ export default function GpManagementPanel() {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
         'Failed to deactivate GP.';
+      setError(msg);
+    },
+  });
+
+  const reactivateMutation = useMutation({
+    mutationFn: (id: string) => apiClient.patch(`/gps/${id}/activate`),
+    onSuccess: () => {
+      setError('');
+      setReactivatingGp(null);
+      queryClient.invalidateQueries({ queryKey: ['gps-management'] });
+      queryClient.invalidateQueries({ queryKey: ['gps'] });
+    },
+    onError: (err: unknown) => {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        'Failed to reactivate GP.';
       setError(msg);
     },
   });
@@ -209,7 +227,7 @@ export default function GpManagementPanel() {
                         <span>Edit</span>
                       </button>
 
-                      {gp.isActive && (
+                      {gp.isActive ? (
                         <button
                           type="button"
                           onClick={() => setDeactivatingGp(gp)}
@@ -219,6 +237,17 @@ export default function GpManagementPanel() {
                         >
                           <XCircle className="h-3.5 w-3.5" />
                           <span>Deactivate</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setReactivatingGp(gp)}
+                          disabled={reactivateMutation.isPending}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 border border-transparent hover:border-emerald-200 transition text-xs font-medium"
+                          title="Reactivate GP"
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          <span>Reactivate</span>
                         </button>
                       )}
                     </div>
@@ -271,6 +300,38 @@ export default function GpManagementPanel() {
         cancelLabel="Cancel"
         variant="warning"
         isLoading={deactivateMutation.isPending}
+      />
+
+      {/* GP Reactivation Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={!!reactivatingGp}
+        onClose={() => setReactivatingGp(null)}
+        onConfirm={() => {
+          if (reactivatingGp) {
+            reactivateMutation.mutate(reactivatingGp.id);
+          }
+        }}
+        title="Reactivate General Practitioner"
+        message={
+          <>
+            Are you sure you want to reactivate{' '}
+            <strong className="text-slate-900">
+              Dr. {reactivatingGp?.firstName} {reactivatingGp?.lastName}
+            </strong>
+            ? They will appear as Active in clinical assignments.
+          </>
+        }
+        detail={
+          reactivatingGp && (
+            <span>
+              GMC Licence: {reactivatingGp.gmcNumber} | Practice: {reactivatingGp.practiceName || 'N/A'}
+            </span>
+          )
+        }
+        confirmLabel="Reactivate Practitioner"
+        cancelLabel="Cancel"
+        variant="info"
+        isLoading={reactivateMutation.isPending}
       />
     </div>
   );
