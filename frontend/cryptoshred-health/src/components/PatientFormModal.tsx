@@ -329,11 +329,12 @@ export default function PatientFormModal({ isOpen, onClose, patient, onSuccess }
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="patient-email" className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Email
+                  Email <span className="text-red-500">*</span> <span className="text-xs text-slate-400 font-normal">(Required for portal login)</span>
                 </label>
                 <input
                   id="patient-email"
                   type="email"
+                  required
                   value={form.email}
                   onChange={(e) => handleChange('email', e.target.value)}
                   placeholder="patient@example.com"
