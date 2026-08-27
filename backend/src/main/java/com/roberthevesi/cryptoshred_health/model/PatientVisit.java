@@ -44,15 +44,6 @@ public class PatientVisit {
     @Column(nullable = false)
     private String mrn;
 
-    @Column
-    private String dateOfBirth;
-
-    @Column
-    private String gender;
-
-    @Column
-    private String bloodType;
-
     // ── Vitals & Biometrics ──────────────────────────────────────────────────
     @Column
     private String bloodPressure;
@@ -122,39 +113,12 @@ public class PatientVisit {
     @Column(columnDefinition = "TEXT")
     private String soapPlan;
 
-    // ── Care Provider & Administrative Metadata ──────────────────────────────
+    // ── Care Provider & Department ───────────────────────────────────────────
     @Column
     private String attendingDoctor;
 
     @Column
     private String department;
-
-    @Column
-    private String insuranceProvider;
-
-    @Column
-    private String insurancePolicyNumber;
-
-    @Column
-    private String insuranceGroupNumber;
-
-    @Column
-    private String phone;
-
-    @Column
-    private String email;
-
-    @Column(columnDefinition = "TEXT")
-    private String address;
-
-    @Column
-    private String emergencyContactName;
-
-    @Column
-    private String emergencyContactPhone;
-
-    @Column
-    private String emergencyContactRelationship;
 
     // ── Encryption & Lifecycle Fields ────────────────────────────────────────
     /** Base64 ciphertext of the encrypted clinical encounter payload. */

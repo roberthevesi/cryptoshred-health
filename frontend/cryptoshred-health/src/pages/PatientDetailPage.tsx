@@ -931,6 +931,12 @@ export default function PatientDetailPage() {
                     <span className="text-slate-500 block">Gender:</span>
                     <span className="text-slate-800">{patient.gender || '—'}</span>
                   </div>
+                  <div>
+                    <span className="text-slate-500 block">Blood Type:</span>
+                    <span className="font-semibold text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md inline-block mt-0.5">
+                      {patient.bloodType || 'Not recorded'}
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -950,6 +956,46 @@ export default function PatientDetailPage() {
                   <div>
                     <span className="text-slate-500 block">Residential Address:</span>
                     <span className="text-slate-900">{patient.address || '—'}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <h4 className="font-semibold text-rose-600 uppercase tracking-wider text-[11px]">
+                  Emergency Contact (Next of Kin)
+                </h4>
+                <div className="space-y-2">
+                  <div>
+                    <span className="text-slate-500 block">Contact Name:</span>
+                    <span className="text-slate-900 font-medium">{patient.emergencyContactName || 'None recorded'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block">Relationship:</span>
+                    <span className="text-slate-800">{patient.emergencyContactRelationship || '—'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block">Emergency Phone:</span>
+                    <span className="text-slate-800 font-mono">{patient.emergencyContactPhone || '—'}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <h4 className="font-semibold text-blue-700 uppercase tracking-wider text-[11px]">
+                  Health Insurance &amp; Billing Policy
+                </h4>
+                <div className="space-y-2">
+                  <div>
+                    <span className="text-slate-500 block">Provider:</span>
+                    <span className="text-slate-900 font-medium">{patient.insuranceProvider || 'NHS Standard Care'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block">Policy Number:</span>
+                    <span className="text-slate-800 font-mono">{patient.insurancePolicyNumber || '—'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block">Group Number:</span>
+                    <span className="text-slate-800 font-mono">{patient.insuranceGroupNumber || '—'}</span>
                   </div>
                 </div>
               </div>

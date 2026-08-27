@@ -25,6 +25,13 @@ public class PatientResponse {
     private String phoneNumber;
     private String address;
     private String nhsNumber;
+    private String bloodType;
+    private String emergencyContactName;
+    private String emergencyContactPhone;
+    private String emergencyContactRelationship;
+    private String insuranceProvider;
+    private String insurancePolicyNumber;
+    private String insuranceGroupNumber;
     private GpResponse gp;
 
     @JsonProperty("isActive")

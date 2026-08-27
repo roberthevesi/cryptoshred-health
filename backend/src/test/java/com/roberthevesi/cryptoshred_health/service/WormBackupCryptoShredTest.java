@@ -55,8 +55,6 @@ class WormBackupCryptoShredTest {
         visit.setId(visitId);
         visit.setPatientName("Alice Smith");
         visit.setMrn("MRN-12345");
-        visit.setDateOfBirth("1990-05-15");
-        visit.setGender("Female");
         visit.setEncryptedDataBlob(encryptedPayload.ciphertextBase64());
         visit.setShredded(false);
         visit.setCreatedAt(LocalDateTime.now());

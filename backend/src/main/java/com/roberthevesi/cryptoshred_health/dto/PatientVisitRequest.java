@@ -6,16 +6,11 @@ import lombok.Data;
 @Data
 public class PatientVisitRequest {
 
-    @NotBlank(message = "Patient name is required")
+    private String patientId;
+
     private String patientName;
 
     private String mrn;
-
-    private String dateOfBirth;
-
-    private String gender;
-
-    private String bloodType;
 
     // ── Vitals & Biometrics ──────────────────────────────────────────────────
     private String bloodPressure;
@@ -64,28 +59,10 @@ public class PatientVisitRequest {
 
     private String soapPlan;
 
-    // ── Care Provider & Insurance ────────────────────────────────────────────
+    // ── Care Provider & Department ───────────────────────────────────────────
     private String attendingDoctor;
 
     private String department;
-
-    private String insuranceProvider;
-
-    private String insurancePolicyNumber;
-
-    private String insuranceGroupNumber;
-
-    private String phone;
-
-    private String email;
-
-    private String address;
-
-    private String emergencyContactName;
-
-    private String emergencyContactPhone;
-
-    private String emergencyContactRelationship;
 
     /** Optional visit encounter timestamp (e.g. 2025-06-15T09:30:00 or 2025-06-15). */
     private String visitDate;

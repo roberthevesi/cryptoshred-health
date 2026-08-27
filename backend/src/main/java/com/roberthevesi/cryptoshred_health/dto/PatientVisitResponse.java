@@ -18,9 +18,6 @@ public class PatientVisitResponse {
     private String patientId; // Synthetic ID of linked Patient
     private String patientName;
     private String mrn;
-    private String dateOfBirth;
-    private String gender;
-    private String bloodType;
 
     // ── Vitals & Biometrics ──────────────────────────────────────────────────
     private String bloodPressure;
@@ -50,18 +47,9 @@ public class PatientVisitResponse {
     private String soapAssessment;
     private String soapPlan;
 
-    // ── Care Provider & Insurance ────────────────────────────────────────────
+    // ── Care Provider & Department ───────────────────────────────────────────
     private String attendingDoctor;
     private String department;
-    private String insuranceProvider;
-    private String insurancePolicyNumber;
-    private String insuranceGroupNumber;
-    private String phone;
-    private String email;
-    private String address;
-    private String emergencyContactName;
-    private String emergencyContactPhone;
-    private String emergencyContactRelationship;
 
     // ── Encryption Status ────────────────────────────────────────────────────
     private String encryptedDataBlob;

@@ -82,6 +82,13 @@ public class ErasureService {
         patient.setPhoneNumber(null);
         patient.setAddress(null);
         patient.setNhsNumber(null);
+        patient.setBloodType(null);
+        patient.setEmergencyContactName(null);
+        patient.setEmergencyContactPhone(null);
+        patient.setEmergencyContactRelationship(null);
+        patient.setInsuranceProvider(null);
+        patient.setInsurancePolicyNumber(null);
+        patient.setInsuranceGroupNumber(null);
         patient.setEncryptedDataBlob(null);
         patient.setShredded(true);
         patient.setActive(false);
@@ -382,11 +389,6 @@ public class ErasureService {
         visit.setSoapPlan("[SHREDDED]");
         visit.setPatientName("[SHREDDED]");
         visit.setAttendingDoctor("[SHREDDED]");
-        visit.setPhone(null);
-        visit.setEmail(null);
-        visit.setAddress(null);
-        visit.setEmergencyContactName(null);
-        visit.setEmergencyContactPhone(null);
         visit.setEncryptedDataBlob(null);
         visit.setShredded(true);
 

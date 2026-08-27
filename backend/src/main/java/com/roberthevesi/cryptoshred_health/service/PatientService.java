@@ -160,6 +160,13 @@ public class PatientService {
         piiPayload.put("phoneNumber", request.getPhoneNumber());
         piiPayload.put("address", request.getAddress());
         piiPayload.put("nhsNumber", request.getNhsNumber());
+        piiPayload.put("bloodType", request.getBloodType());
+        piiPayload.put("emergencyContactName", request.getEmergencyContactName());
+        piiPayload.put("emergencyContactPhone", request.getEmergencyContactPhone());
+        piiPayload.put("emergencyContactRelationship", request.getEmergencyContactRelationship());
+        piiPayload.put("insuranceProvider", request.getInsuranceProvider());
+        piiPayload.put("insurancePolicyNumber", request.getInsurancePolicyNumber());
+        piiPayload.put("insuranceGroupNumber", request.getInsuranceGroupNumber());
 
         EnvelopeEncryptionService.EncryptedPayload encryptedPayload;
         try {
@@ -185,6 +192,13 @@ public class PatientService {
         patient.setPhoneNumber(request.getPhoneNumber());
         patient.setAddress(request.getAddress());
         patient.setNhsNumber(request.getNhsNumber());
+        patient.setBloodType(request.getBloodType());
+        patient.setEmergencyContactName(request.getEmergencyContactName());
+        patient.setEmergencyContactPhone(request.getEmergencyContactPhone());
+        patient.setEmergencyContactRelationship(request.getEmergencyContactRelationship());
+        patient.setInsuranceProvider(request.getInsuranceProvider());
+        patient.setInsurancePolicyNumber(request.getInsurancePolicyNumber());
+        patient.setInsuranceGroupNumber(request.getInsuranceGroupNumber());
 
         if (request.getGpId() != null) {
             GP gp = gpRepository.findById(request.getGpId())
@@ -255,6 +269,13 @@ public class PatientService {
         patient.setPhoneNumber(request.getPhoneNumber());
         patient.setAddress(request.getAddress());
         patient.setNhsNumber(request.getNhsNumber());
+        patient.setBloodType(request.getBloodType());
+        patient.setEmergencyContactName(request.getEmergencyContactName());
+        patient.setEmergencyContactPhone(request.getEmergencyContactPhone());
+        patient.setEmergencyContactRelationship(request.getEmergencyContactRelationship());
+        patient.setInsuranceProvider(request.getInsuranceProvider());
+        patient.setInsurancePolicyNumber(request.getInsurancePolicyNumber());
+        patient.setInsuranceGroupNumber(request.getInsuranceGroupNumber());
 
         if (request.getGpId() != null) {
             GP gp = gpRepository.findById(request.getGpId())
@@ -280,6 +301,13 @@ public class PatientService {
                 piiPayload.put("phoneNumber", request.getPhoneNumber());
                 piiPayload.put("address", request.getAddress());
                 piiPayload.put("nhsNumber", request.getNhsNumber());
+                piiPayload.put("bloodType", request.getBloodType());
+                piiPayload.put("emergencyContactName", request.getEmergencyContactName());
+                piiPayload.put("emergencyContactPhone", request.getEmergencyContactPhone());
+                piiPayload.put("emergencyContactRelationship", request.getEmergencyContactRelationship());
+                piiPayload.put("insuranceProvider", request.getInsuranceProvider());
+                piiPayload.put("insurancePolicyNumber", request.getInsurancePolicyNumber());
+                piiPayload.put("insuranceGroupNumber", request.getInsuranceGroupNumber());
 
                 String piiJson = objectMapper.writeValueAsString(piiPayload);
                 EnvelopeEncryptionService.EncryptedPayload encryptedPayload =
@@ -345,6 +373,13 @@ public class PatientService {
         String phone = patient.getPhoneNumber();
         String address = patient.getAddress();
         String nhs = patient.getNhsNumber();
+        String bloodType = patient.getBloodType();
+        String emergencyContactName = patient.getEmergencyContactName();
+        String emergencyContactPhone = patient.getEmergencyContactPhone();
+        String emergencyContactRelationship = patient.getEmergencyContactRelationship();
+        String insuranceProvider = patient.getInsuranceProvider();
+        String insurancePolicyNumber = patient.getInsurancePolicyNumber();
+        String insuranceGroupNumber = patient.getInsuranceGroupNumber();
 
         // If encrypted data blob exists and key is valid, unwrap and verify via Vault
         if (!isShredded && patient.getEncryptedDataBlob() != null && patient.getEncryptionKey() != null) {
@@ -369,6 +404,13 @@ public class PatientService {
                 if (dobStr != null && !dobStr.isBlank()) {
                     dob = LocalDate.parse(dobStr);
                 }
+                if (map.containsKey("bloodType")) bloodType = (String) map.get("bloodType");
+                if (map.containsKey("emergencyContactName")) emergencyContactName = (String) map.get("emergencyContactName");
+                if (map.containsKey("emergencyContactPhone")) emergencyContactPhone = (String) map.get("emergencyContactPhone");
+                if (map.containsKey("emergencyContactRelationship")) emergencyContactRelationship = (String) map.get("emergencyContactRelationship");
+                if (map.containsKey("insuranceProvider")) insuranceProvider = (String) map.get("insuranceProvider");
+                if (map.containsKey("insurancePolicyNumber")) insurancePolicyNumber = (String) map.get("insurancePolicyNumber");
+                if (map.containsKey("insuranceGroupNumber")) insuranceGroupNumber = (String) map.get("insuranceGroupNumber");
             } catch (Exception e) {
                 log.warn("Vault decryption failed for patient {}: key destroyed or invalid", patient.getPatientId());
                 isShredded = true;
@@ -384,6 +426,13 @@ public class PatientService {
             phone = null;
             address = null;
             nhs = null;
+            bloodType = null;
+            emergencyContactName = null;
+            emergencyContactPhone = null;
+            emergencyContactRelationship = null;
+            insuranceProvider = null;
+            insurancePolicyNumber = null;
+            insuranceGroupNumber = null;
         }
 
         return PatientResponse.builder()
@@ -397,6 +446,13 @@ public class PatientService {
                 .phoneNumber(phone)
                 .address(address)
                 .nhsNumber(nhs)
+                .bloodType(bloodType)
+                .emergencyContactName(emergencyContactName)
+                .emergencyContactPhone(emergencyContactPhone)
+                .emergencyContactRelationship(emergencyContactRelationship)
+                .insuranceProvider(insuranceProvider)
+                .insurancePolicyNumber(insurancePolicyNumber)
+                .insuranceGroupNumber(insuranceGroupNumber)
                 .gp(patient.getGp() != null ? toGpResponse(patient.getGp()) : null)
                 .isActive(patient.isActive() && !isShredded)
                 .shredded(isShredded)

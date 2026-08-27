@@ -52,6 +52,27 @@ public class Patient {
     @Column
     private String nhsNumber;
 
+    @Column
+    private String bloodType;
+
+    @Column
+    private String emergencyContactName;
+
+    @Column
+    private String emergencyContactPhone;
+
+    @Column
+    private String emergencyContactRelationship;
+
+    @Column
+    private String insuranceProvider;
+
+    @Column
+    private String insurancePolicyNumber;
+
+    @Column
+    private String insuranceGroupNumber;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "gp_id")
     private GP gp;

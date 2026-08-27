@@ -46,8 +46,12 @@ public class PatientVisitService {
 
         // 1. Resolve master Patient entity if MRN / patientId provided
         Patient linkedPatient = null;
-        if (request.getMrn() != null && !request.getMrn().isBlank()) {
-            linkedPatient = patientRepository.findByPatientId(request.getMrn()).orElse(null);
+        String patientIdentifier = request.getPatientId() != null && !request.getPatientId().isBlank()
+                ? request.getPatientId().trim()
+                : (request.getMrn() != null && !request.getMrn().isBlank() ? request.getMrn().trim() : null);
+
+        if (patientIdentifier != null) {
+            linkedPatient = patientRepository.findByPatientId(patientIdentifier).orElse(null);
         }
 
         // 2. Generate unique Vault KEK reference name & DEK
@@ -59,11 +63,9 @@ public class PatientVisitService {
         String vaultKeyName = "patient_" + patientUuidStr + "_visit_" + visitUuid;
         byte[] dek = envelopeEncryptionService.generateDek();
 
-
         // 3. Wrap DEK via Vault KEK
         vaultKmsService.ensureKeyExists(vaultKeyName);
-            String wrappedDek = vaultKmsService.wrapDek(vaultKeyName, dek);
-
+        String wrappedDek = vaultKmsService.wrapDek(vaultKeyName, dek);
 
         // 4. Build comprehensive clinical payload to encrypt under AES-256-GCM
         Map<String, Object> clinicalPayload = buildClinicalPayload(request);
@@ -87,13 +89,18 @@ public class PatientVisitService {
         visit.setId(visitUuid);
         visit.setPatient(linkedPatient);
 
-        visit.setPatientName(request.getPatientName());
-        visit.setMrn(request.getMrn() != null && !request.getMrn().isBlank()
-                ? request.getMrn()
-                : (linkedPatient != null ? linkedPatient.getPatientId() : "MRN-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase()));
-        visit.setDateOfBirth(request.getDateOfBirth());
-        visit.setGender(request.getGender());
-        visit.setBloodType(request.getBloodType());
+        String resolvedPatientName = request.getPatientName();
+        if (linkedPatient != null) {
+            resolvedPatientName = linkedPatient.getFirstName() + " " + linkedPatient.getLastName();
+        } else if (resolvedPatientName == null || resolvedPatientName.isBlank()) {
+            resolvedPatientName = "Unknown Patient";
+        }
+        visit.setPatientName(resolvedPatientName);
+
+        String resolvedMrn = patientIdentifier != null
+                ? patientIdentifier
+                : (linkedPatient != null ? linkedPatient.getPatientId() : "MRN-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase());
+        visit.setMrn(resolvedMrn);
 
         // Clinical fields
         visit.setBloodPressure(request.getBloodPressure());
@@ -123,15 +130,6 @@ public class PatientVisitService {
 
         visit.setAttendingDoctor(request.getAttendingDoctor());
         visit.setDepartment(request.getDepartment());
-        visit.setInsuranceProvider(request.getInsuranceProvider());
-        visit.setInsurancePolicyNumber(request.getInsurancePolicyNumber());
-        visit.setInsuranceGroupNumber(request.getInsuranceGroupNumber());
-        visit.setPhone(request.getPhone());
-        visit.setEmail(request.getEmail());
-        visit.setAddress(request.getAddress());
-        visit.setEmergencyContactName(request.getEmergencyContactName());
-        visit.setEmergencyContactPhone(request.getEmergencyContactPhone());
-        visit.setEmergencyContactRelationship(request.getEmergencyContactRelationship());
 
         LocalDateTime visitTime = LocalDateTime.now();
         if (request.getCreatedAt() != null) {
@@ -172,9 +170,9 @@ public class PatientVisitService {
         }
 
         // Evict cached patient demographic profile so visitCount is recomputed on next read
-        String patientIdentifier = linkedPatient != null ? linkedPatient.getPatientId() : savedVisit.getMrn();
-        if (patientIdentifier != null && patientCacheService != null) {
-            patientCacheService.evict(patientIdentifier);
+        String evictionId = linkedPatient != null ? linkedPatient.getPatientId() : savedVisit.getMrn();
+        if (evictionId != null && patientCacheService != null) {
+            patientCacheService.evict(evictionId);
         }
         return response;
     }
@@ -278,11 +276,12 @@ public class PatientVisitService {
             throw new AccessDeniedException("Not authorized to update this visit");
         }
 
-        visit.setPatientName(request.getPatientName());
-        if (request.getMrn() != null) visit.setMrn(request.getMrn());
-        visit.setDateOfBirth(request.getDateOfBirth());
-        visit.setGender(request.getGender());
-        visit.setBloodType(request.getBloodType());
+        if (request.getPatientName() != null && !request.getPatientName().isBlank()) {
+            visit.setPatientName(request.getPatientName());
+        }
+        if (request.getMrn() != null && !request.getMrn().isBlank()) {
+            visit.setMrn(request.getMrn());
+        }
 
         visit.setBloodPressure(request.getBloodPressure());
         visit.setHeartRate(request.getHeartRate());
@@ -311,15 +310,6 @@ public class PatientVisitService {
 
         visit.setAttendingDoctor(request.getAttendingDoctor());
         visit.setDepartment(request.getDepartment());
-        visit.setInsuranceProvider(request.getInsuranceProvider());
-        visit.setInsurancePolicyNumber(request.getInsurancePolicyNumber());
-        visit.setInsuranceGroupNumber(request.getInsuranceGroupNumber());
-        visit.setPhone(request.getPhone());
-        visit.setEmail(request.getEmail());
-        visit.setAddress(request.getAddress());
-        visit.setEmergencyContactName(request.getEmergencyContactName());
-        visit.setEmergencyContactPhone(request.getEmergencyContactPhone());
-        visit.setEmergencyContactRelationship(request.getEmergencyContactRelationship());
 
         // Re-encrypt clinical payload
         if (visit.getEncryptionKey() != null && !visit.getEncryptionKey().isInvalidated()) {
@@ -479,14 +469,20 @@ public class PatientVisitService {
             }
         }
 
+        String resolvedPatientName;
+        if (isShredded) {
+            resolvedPatientName = "[SHREDDED]";
+        } else if (v.getPatient() != null) {
+            resolvedPatientName = v.getPatient().getFirstName() + " " + v.getPatient().getLastName();
+        } else {
+            resolvedPatientName = v.getPatientName() != null ? v.getPatientName() : "Unknown Patient";
+        }
+
         PatientVisitResponse resp = PatientVisitResponse.builder()
                 .id(v.getId())
                 .patientId(v.getPatient() != null ? v.getPatient().getPatientId() : v.getMrn())
-                .patientName(isShredded ? "[SHREDDED]" : v.getPatientName())
+                .patientName(resolvedPatientName)
                 .mrn(v.getMrn())
-                .dateOfBirth(isShredded ? null : v.getDateOfBirth())
-                .gender(isShredded ? "[SHREDDED]" : v.getGender())
-                .bloodType(isShredded ? null : v.getBloodType())
                 .bloodPressure(isShredded ? null : v.getBloodPressure())
                 .heartRate(isShredded ? null : v.getHeartRate())
                 .respiratoryRate(isShredded ? null : v.getRespiratoryRate())
@@ -511,16 +507,7 @@ public class PatientVisitService {
                 .soapPlan(isShredded ? "[SHREDDED]" : soapPlan)
                 .attendingDoctor(isShredded ? "[SHREDDED]" : v.getAttendingDoctor())
                 .department(isShredded ? null : v.getDepartment())
-                .insuranceProvider(isShredded ? null : v.getInsuranceProvider())
-                .insurancePolicyNumber(isShredded ? null : v.getInsurancePolicyNumber())
-                .insuranceGroupNumber(isShredded ? null : v.getInsuranceGroupNumber())
-                .phone(isShredded ? null : v.getPhone())
-                .email(isShredded ? null : v.getEmail())
-                .address(isShredded ? null : v.getAddress())
-                .emergencyContactName(isShredded ? null : v.getEmergencyContactName())
-                .emergencyContactPhone(isShredded ? null : v.getEmergencyContactPhone())
-                .emergencyContactRelationship(isShredded ? null : v.getEmergencyContactRelationship())
-                                .shredded(isShredded)
+                .shredded(isShredded)
                 .ownerEmail(v.getOwner() != null ? v.getOwner().getEmail() : null)
                 .attachments(attachmentResponses)
                 .createdAt(v.getCreatedAt())

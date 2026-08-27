@@ -26,9 +26,6 @@ export interface PatientVisit {
   patientId?: string;
   patientName: string;
   mrn?: string;
-  dateOfBirth?: string;
-  gender?: string;
-  bloodType?: string;
   bloodPressure?: string;
   heartRate?: number;
   oxygenSaturation?: string;
@@ -54,15 +51,6 @@ export interface PatientVisit {
   encryptedDataBlob: string | null;
   attendingDoctor?: string;
   department?: string;
-  insuranceProvider?: string;
-  insurancePolicyNumber?: string;
-  insuranceGroupNumber?: string;
-  phone?: string;
-  email?: string;
-  address?: string;
-  emergencyContactName?: string;
-  emergencyContactRelationship?: string;
-  emergencyContactPhone?: string;
   shredded: boolean;
   ownerEmail: string;
   attachments?: PatientAttachment[];
@@ -73,22 +61,11 @@ export interface PatientVisit {
 export type PatientRecord = PatientVisit;
 
 export interface PatientVisitRequest {
-  patientName: string;
+  patientId?: string;
+  patientName?: string;
   mrn?: string;
-  dateOfBirth?: string;
-  gender?: string;
-  bloodType?: string;
-  phone?: string;
-  email?: string;
-  address?: string;
-  emergencyContactName?: string;
-  emergencyContactRelationship?: string;
-  emergencyContactPhone?: string;
   attendingDoctor?: string;
   department?: string;
-  insuranceProvider?: string;
-  insurancePolicyNumber?: string;
-  insuranceGroupNumber?: string;
   bloodPressure?: string;
   heartRate?: number;
   respiratoryRate?: string;
@@ -112,6 +89,8 @@ export interface PatientVisitRequest {
   soapAssessment?: string;
   soapPlan?: string;
   encryptedDataBlob?: string;
+  createdAt?: string;
+  visitDate?: string;
 }
 
 export type PatientRecordRequest = PatientVisitRequest;
@@ -185,6 +164,13 @@ export interface Patient {
   phoneNumber: string;
   address: string;
   nhsNumber?: string;
+  bloodType?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  emergencyContactRelationship?: string;
+  insuranceProvider?: string;
+  insurancePolicyNumber?: string;
+  insuranceGroupNumber?: string;
   gp?: GP;
   isActive?: boolean;
   active?: boolean;
@@ -204,6 +190,13 @@ export interface PatientRequest {
   phoneNumber?: string;
   address?: string;
   nhsNumber?: string;
+  bloodType?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  emergencyContactRelationship?: string;
+  insuranceProvider?: string;
+  insurancePolicyNumber?: string;
+  insuranceGroupNumber?: string;
   gpId?: string;
 }
 

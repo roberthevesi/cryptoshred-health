@@ -252,6 +252,16 @@ public class SyntheticMedicalDataGenerator {
         req.setPhoneNumber(t.phoneNumber());
         req.setAddress(t.address());
         req.setNhsNumber(t.nhsNumber());
+        req.setBloodType(t.bloodType());
+        req.setEmergencyContactName(t.emergencyContactName());
+        req.setEmergencyContactPhone(t.emergencyContactPhone());
+        req.setEmergencyContactRelationship(t.emergencyContactRelationship());
+
+        String[] insurers = {"NHS Standard Care", "Bupa Global Private", "AXA Health UK", "Aviva Health", "VitalityHealth UK"};
+        int pHash = Math.abs(t.patientId().hashCode());
+        req.setInsuranceProvider(insurers[pHash % insurers.length]);
+        req.setInsurancePolicyNumber("NHS-POL-" + (940000 + (pHash % 10000)));
+        req.setInsuranceGroupNumber("GRP-UK-" + (8000 + (pHash % 50)));
 
         if (seededGps != null && !seededGps.isEmpty()) {
             int idx = t.primaryGpIndex() % seededGps.size();
@@ -297,11 +307,9 @@ public class SyntheticMedicalDataGenerator {
                                                    String visitDate, String followUpDate, List<GpResponse> seededGps) {
         PatientVisitRequest req = new PatientVisitRequest();
 
+        req.setPatientId(pt.patientId());
         req.setPatientName(pt.firstName() + " " + pt.lastName());
         req.setMrn(pt.patientId());
-        req.setDateOfBirth(pt.dateOfBirth());
-        req.setGender(pt.gender());
-        req.setBloodType(pt.bloodType());
         req.setHeightCm(pt.heightCm() + " cm");
         req.setWeightKg(String.format(Locale.US, "%.1f kg", pt.weightKg()));
 
@@ -320,18 +328,6 @@ public class SyntheticMedicalDataGenerator {
         java.time.LocalDateTime appointmentTime = java.time.LocalDate.parse(visitDate).atTime(hour, minute);
         req.setCreatedAt(appointmentTime);
         req.setVisitDate(appointmentTime.toString());
-
-        req.setPhone(pt.phoneNumber());
-        req.setEmail(pt.email());
-        req.setAddress(pt.address());
-        req.setEmergencyContactName(pt.emergencyContactName());
-        req.setEmergencyContactPhone(pt.emergencyContactPhone());
-        req.setEmergencyContactRelationship(pt.emergencyContactRelationship());
-
-        String[] insurers = {"NHS Standard Care", "Bupa Global Private", "AXA Health UK", "Aviva Health", "VitalityHealth UK"};
-        req.setInsuranceProvider(insurers[(patientIndex + visitIdx) % insurers.length]);
-        req.setInsurancePolicyNumber("NHS-POL-" + (940000 + patientIndex * 10 + visitIdx));
-        req.setInsuranceGroupNumber("GRP-UK-" + (8000 + (patientIndex % 50)));
 
         switch (visitIdx) {
             case 0 -> populateGeneralPracticeVisit(req, patientIndex);

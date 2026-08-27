@@ -171,9 +171,14 @@ export default function PatientPortalView() {
                     {patient.gender}
                   </span>
                 )}
-                {latestVisit?.bloodType && (
-                  <span className="flex items-center gap-1 font-semibold text-slate-700">
-                    Blood Type: <span className="text-rose-600">{latestVisit.bloodType}</span>
+                {patient.bloodType && (
+                  <span className="flex items-center gap-1 font-semibold text-slate-700 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded">
+                    Blood Type: <span className="text-rose-600 font-bold">{patient.bloodType}</span>
+                  </span>
+                )}
+                {patient.emergencyContactName && (
+                  <span className="flex items-center gap-1 text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded">
+                    ICE: <span className="font-semibold text-slate-800">{patient.emergencyContactName}</span> {patient.emergencyContactRelationship ? `(${patient.emergencyContactRelationship})` : ''}
                   </span>
                 )}
                 {patient.email && (

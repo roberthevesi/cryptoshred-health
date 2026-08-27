@@ -92,7 +92,7 @@ export default function ProofViewerModal({
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-fade-in overflow-y-auto">
+    <div className="fixed inset-0 z-[100] !m-0 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-fade-in overflow-y-auto">
       <div className="relative w-full max-w-4xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-5 my-8 max-h-[90vh] overflow-y-auto">
         {/* Modal Top Header */}
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
