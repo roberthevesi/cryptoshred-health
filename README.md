@@ -7,13 +7,12 @@
 ## 🌟 Key Architecture & Features
 
 - **Clinical Primary Care EHR Workflow**: Patient Census directory linking to dedicated patient workspaces (`/patients/:patientId`) with encounter timelines, SOAP consultation notes, telemetry, and PDF attachments.
+- **Zero-Plaintext Database Storage (True Zero-Knowledge EHR)**: All Protected Health Information (PHI) and patient demographics are stored strictly inside AES-256-GCM encrypted ciphertext blobs (`encrypted_data_blob`) in PostgreSQL. Live database dumps contain zero plaintext health or demographic data.
 - **Envelope Encryption with HashiCorp Vault KMS**: Every patient identity and clinical encounter generates a dedicated 256-bit AES Data Encryption Key (DEK), wrapped via patient-scoped Vault Transit Key Encryption Keys (`patient_{patientUuid}` and `patient_{patientUuid}_visit_{visitUuid}`).
 - **Cryptographic Key Rotation**: Built-in zero-plaintext DEK re-wrapping (`POST /api/keys/rotate`) under newly rotated Vault KEK versions without decrypting or exposing underlying clinical records.
-
-
 - **Cryptographic Right-to-be-Forgotten (GDPR Article 17)**: Instant, permanent erasure by destroying the Vault Transit KEK, rendering ciphertext cryptographically irrecoverable, and minting digital deletion proof certificates.
 - **GP Directory & Management**: Practitioner registry with GMC license tracking and searchable assignment dropdowns.
-- **Kafka Streaming & Redis Cache**: Event stream auditing (`patient-record-events`) and fast cached reads with auto-invalidation on crypto-shred.
+- **Kafka Streaming & Redis Cache**: Event stream auditing (`patient-record-events`) and fast cached reads (15m TTL) with auto-invalidation on crypto-shred.
 - **Clinical Light Design System**: Clean NHS-style healthcare UI.
 
 ---
@@ -46,6 +45,7 @@ VAULT_DEV_ROOT_TOKEN=root
 VAULT_PORT=8200
 REDIS_HOST=localhost
 REDIS_PORT=6379
+REDIS_TTL_MS=900000
 CORS_ALLOWED_ORIGINS=http://localhost:5173
 ```
 
@@ -68,7 +68,7 @@ npm run dev
 
 ## 🔒 Verification & Testing
 ```bash
-# Backend test suite (19 integration tests)
+# Backend test suite (60 unit & integration tests)
 cd backend
 ./mvnw test
 
