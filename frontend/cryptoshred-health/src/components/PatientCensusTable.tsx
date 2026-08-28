@@ -171,7 +171,7 @@ export default function PatientCensusTable() {
                 }}
                 className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-sm transition shrink-0"
               >
-                <UserPlus className="h-4 w-4" /> Register Patient (GP)
+                <UserPlus className="h-4 w-4" /> Register Patient
               </button>
             )}
           </div>
@@ -260,7 +260,7 @@ export default function PatientCensusTable() {
                   <tr>
                     <td colSpan={6} className="py-12 text-center text-slate-500">
                       {patients.length === 0
-                        ? 'No patients registered in the database yet. Click "Register Patient (GP)" above to add the first patient.'
+                        ? 'No patients registered in the database yet. Click "Register Patient" above to add the first patient.'
                         : 'No matching patients found in registry.'}
                     </td>
                   </tr>
