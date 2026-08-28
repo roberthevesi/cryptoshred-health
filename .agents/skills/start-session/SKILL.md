@@ -28,19 +28,16 @@ Upon invocation, the agent MUST perform the following inspection steps:
 ## 2. Roadmap Evaluation Against the 4 Dissertation Pillars
 The agent evaluates pending work across the 4 core pillars defined in `.knowledge/status.md`:
 
-1. **Pillar 1: Empirical Evaluation & Benchmarking**:
-   * JMH microbenchmarks (Plaintext vs AES-GCM vs Vault Envelope Encryption).
-   * Crypto-shredding $O(1)$ vs physical delete $O(N)$ comparisons.
-   * Merkle DAG scaling and proof verification latency curves.
-   * k6 / Gatling multi-user load testing.
-2. **Pillar 2: Formal Security Analysis & Threat Modeling**:
-   * STRIDE/DREAD threat model across honest-but-curious and insider adversaries.
-   * IND-CCA2 security reductions and residual memory zeroization audit.
-3. **Pillar 3: Healthcare Interoperability & Compliance**:
-   * HL7 FHIR R4 JSON export endpoints.
-   * Cryptographic key rotation (DEK re-wrapping under new KEK versions).
-   * GDPR Art. 17 vs HIPAA/NHS legal retention reconciliation.
-4. **Pillar 4: Written Dissertation Thesis Document**:
+1. **Pillar 1: System Core & Zero-Plaintext Storage (Practical)** — 100% Complete
+   * Spring Boot 3, zero-plaintext PostgreSQL, Vault Transit KMS, Redis L2, Kafka KRaft, WORM, React 19 UI.
+2. **Pillar 2: Cryptographic Protocols & Standards (Practical)** — 100% Complete
+   * Dual-level crypto-shredding, key rotation protocol (`/api/keys/rotate`), HL7 FHIR R4 exporter (`/api/patients/{id}/fhir`), Merkle DAG & RSA-2048 deletion proof engine.
+3. **Pillar 3: Empirical Benchmarks & Load Testing Suite (Practical)** — 100% Complete
+   * JMH microbenchmarks ($O(1)$ vs $O(N)$), Merkle DAG scaling, k6 macro load testing harness up to 500 VUs / 96k RPS.
+4. **Pillar 4: Written Dissertation Thesis Document & Syntheses (Active)**:
+   * Formal STRIDE/DREAD threat matrix & 4 adversary models (Chapter 3).
+   * Formal IND-CCA2 cryptographic reduction proofs & residual memory zeroization audit (Chapter 6).
+   * GDPR Art. 17 vs HIPAA/NHS legal retention reconciliation synthesis (Chapter 6).
    * Chapter-by-chapter drafting progress (Chapters 1–8).
 
 ---
