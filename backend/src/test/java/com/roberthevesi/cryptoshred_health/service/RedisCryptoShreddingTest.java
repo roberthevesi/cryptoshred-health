@@ -71,6 +71,7 @@ class RedisCryptoShreddingTest {
                 eventLogPublisher
         );
 
+        ErasureService erasureService = Mockito.mock(ErasureService.class);
         patientVisitService = new PatientVisitService(
                 patientVisitRepository,
                 patientRepository,
@@ -81,7 +82,8 @@ class RedisCryptoShreddingTest {
                 patientVisitCacheService,
                 patientCacheService,
                 patientService,
-                objectMapper
+                objectMapper,
+                erasureService
         );
 
         testDoctor = new User();

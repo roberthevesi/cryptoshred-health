@@ -26,10 +26,10 @@ public class ErasureController {
     /**
      * Complete Patient Right-to-be-Forgotten:
      * Destroys the patient's master demographic Vault KEK, shreds all linked clinical visits and attachments.
-     * Restricted to users with the AUDITOR role.
+     * Restricted to users with DOCTOR, AUDITOR, or ADMIN role.
      */
     @DeleteMapping("/patients/{patientId}/forget")
-    @PreAuthorize("hasRole('AUDITOR')")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'AUDITOR', 'ADMIN')")
     public ResponseEntity<VerifiableDeletionProofDto> forgetPatient(
             @PathVariable String patientId,
             @AuthenticationPrincipal UserDetails currentUser) {
@@ -41,10 +41,10 @@ public class ErasureController {
     /**
      * Individual Visit Right-to-be-Forgotten:
      * Destroys the visit's Vault KEK, nullifies clinical payload and attachments.
-     * Restricted to users with the AUDITOR role.
+     * Restricted to users with DOCTOR, AUDITOR, or ADMIN role.
      */
     @DeleteMapping({"/visits/{visitId}/forget", "/records/{visitId}/forget", "/{visitId}/forget"})
-    @PreAuthorize("hasRole('AUDITOR')")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'AUDITOR', 'ADMIN')")
     public ResponseEntity<VerifiableDeletionProofDto> forgetVisit(
             @PathVariable UUID visitId,
             @AuthenticationPrincipal UserDetails currentUser) {

@@ -2,6 +2,8 @@ package com.roberthevesi.cryptoshred_health.controller;
 
 import com.roberthevesi.cryptoshred_health.dto.PatientVisitRequest;
 import com.roberthevesi.cryptoshred_health.dto.PatientVisitResponse;
+import com.roberthevesi.cryptoshred_health.dto.VerifiableDeletionProofDto;
+import com.roberthevesi.cryptoshred_health.service.ErasureService;
 import com.roberthevesi.cryptoshred_health.service.PatientVisitService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +23,7 @@ import java.util.UUID;
 public class PatientVisitController {
 
     private final PatientVisitService patientVisitService;
+    private final ErasureService erasureService;
 
     @PostMapping
     @PreAuthorize("hasRole('DOCTOR')")
@@ -60,11 +63,11 @@ public class PatientVisitController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('DOCTOR')")
-    public ResponseEntity<Void> delete(
+    @PreAuthorize("hasAnyRole('DOCTOR', 'AUDITOR', 'ADMIN')")
+    public ResponseEntity<VerifiableDeletionProofDto> delete(
             @PathVariable UUID id,
             @AuthenticationPrincipal UserDetails currentUser) {
-        patientVisitService.delete(id, currentUser.getUsername());
-        return ResponseEntity.noContent().build();
+        VerifiableDeletionProofDto proof = erasureService.forgetVisit(id, currentUser.getUsername());
+        return ResponseEntity.ok(proof);
     }
 }

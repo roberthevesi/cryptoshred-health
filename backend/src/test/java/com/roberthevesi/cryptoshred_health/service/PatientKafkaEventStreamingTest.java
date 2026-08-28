@@ -190,19 +190,6 @@ class PatientKafkaEventStreamingTest {
                 eventLogPublisher
         );
 
-        patientVisitService = new PatientVisitService(
-                patientVisitRepository,
-                patientRepository,
-                userRepository,
-                vaultKmsService,
-                envelopeEncryptionService,
-                eventLogPublisher,
-                patientVisitCacheService,
-                patientCacheService,
-                patientService,
-                objectMapper
-        );
-
         erasureService = new ErasureService(
                 patientVisitRepository,
                 patientRepository,
@@ -214,6 +201,20 @@ class PatientKafkaEventStreamingTest {
                 proofSigningService,
                 merkleTreeService,
                 objectMapper
+        );
+
+        patientVisitService = new PatientVisitService(
+                patientVisitRepository,
+                patientRepository,
+                userRepository,
+                vaultKmsService,
+                envelopeEncryptionService,
+                eventLogPublisher,
+                patientVisitCacheService,
+                patientCacheService,
+                patientService,
+                objectMapper,
+                erasureService
         );
 
         keyManagementService = new KeyManagementService(

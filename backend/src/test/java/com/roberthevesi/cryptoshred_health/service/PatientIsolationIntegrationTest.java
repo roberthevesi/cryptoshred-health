@@ -74,6 +74,7 @@ class PatientIsolationIntegrationTest {
                 eventLogPublisher
         );
 
+        ErasureService erasureService = Mockito.mock(ErasureService.class);
         patientVisitService = new PatientVisitService(
                 patientVisitRepository,
                 patientRepository,
@@ -84,7 +85,8 @@ class PatientIsolationIntegrationTest {
                 patientVisitCacheService,
                 patientCacheService,
                 patientService,
-                objectMapper
+                objectMapper,
+                erasureService
         );
 
         attachmentService = new AttachmentService(

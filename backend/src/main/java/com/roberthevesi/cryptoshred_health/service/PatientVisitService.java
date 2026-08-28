@@ -6,6 +6,7 @@ import com.roberthevesi.cryptoshred_health.dto.PatientResponse;
 import com.roberthevesi.cryptoshred_health.dto.PatientVisitEventDto;
 import com.roberthevesi.cryptoshred_health.dto.PatientVisitRequest;
 import com.roberthevesi.cryptoshred_health.dto.PatientVisitResponse;
+import com.roberthevesi.cryptoshred_health.dto.VerifiableDeletionProofDto;
 import com.roberthevesi.cryptoshred_health.model.EncryptionKey;
 import com.roberthevesi.cryptoshred_health.model.Patient;
 import com.roberthevesi.cryptoshred_health.model.PatientVisit;
@@ -16,6 +17,7 @@ import com.roberthevesi.cryptoshred_health.repository.PatientVisitRepository;
 import com.roberthevesi.cryptoshred_health.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +43,8 @@ public class PatientVisitService {
     private final PatientCacheService patientCacheService;
     private final PatientService patientService;
     private final ObjectMapper objectMapper;
+    @Lazy
+    private final ErasureService erasureService;
 
     @Transactional
     public PatientVisitResponse create(PatientVisitRequest request, String currentUserEmail) {
@@ -368,19 +372,8 @@ public class PatientVisitService {
     }
 
     @Transactional
-    public void delete(UUID id, String currentUserEmail) {
-        PatientVisit visit = findVisit(id);
-        User user = findUser(currentUserEmail);
-
-        if (user.getRole() != Role.DOCTOR && !visit.getOwner().getId().equals(user.getId())) {
-            throw new AccessDeniedException("Not authorized to delete this visit");
-        }
-        String patientIdentifier = visit.getPatient() != null ? visit.getPatient().getPatientId() : visit.getMrn();
-        patientVisitRepository.delete(visit);
-        patientVisitCacheService.evict(id);
-        if (patientIdentifier != null && patientCacheService != null) {
-            patientCacheService.evict(patientIdentifier);
-        }
+    public VerifiableDeletionProofDto delete(UUID id, String currentUserEmail) {
+        return erasureService.forgetVisit(id, currentUserEmail);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
