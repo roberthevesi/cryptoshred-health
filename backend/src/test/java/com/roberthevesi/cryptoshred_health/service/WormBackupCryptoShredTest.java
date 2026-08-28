@@ -77,6 +77,13 @@ class WormBackupCryptoShredTest {
         List<WormSnapshotDto> snapshots = wormBackupExporterService.listSnapshots();
         assertEquals(1, snapshots.size());
         assertEquals(snapshot.getFileName(), snapshots.get(0).getFileName());
+
+        WormSnapshotDto fullSnapshot = wormBackupExporterService.getSnapshotByFileName(snapshot.getFileName());
+        assertNotNull(fullSnapshot.getVisits());
+        assertEquals(1, fullSnapshot.getVisits().size());
+        assertEquals("wrapped_dek_base64", fullSnapshot.getVisits().get(0).getWrappedDek());
+        assertEquals(encryptedPayload.ivBase64(), fullSnapshot.getVisits().get(0).getIv());
+        assertEquals(encryptedPayload.ciphertextBase64(), fullSnapshot.getVisits().get(0).getEncryptedDataBlob());
     }
 
     @Test
@@ -90,8 +97,6 @@ class WormBackupCryptoShredTest {
         UUID visitId = UUID.randomUUID();
         String vaultKeyName = "patient_shredded-patient-uuid_visit_" + visitId;
         String wrappedDek = "wrapped_dek_sample";
-
-
 
         PatientVisit visit = new PatientVisit();
         visit.setId(visitId);
@@ -109,6 +114,12 @@ class WormBackupCryptoShredTest {
         // Step 1: Export snapshot prior to shredding
         WormSnapshotDto snapshot = wormBackupExporterService.exportSnapshot();
 
+        // Verify active snapshot contains wrappedDek
+        WormSnapshotDto fullSnapshot = wormBackupExporterService.getSnapshotByFileName(snapshot.getFileName());
+        assertNotNull(fullSnapshot.getVisits());
+        assertEquals(1, fullSnapshot.getVisits().size());
+        assertEquals(wrappedDek, fullSnapshot.getVisits().get(0).getWrappedDek());
+
         // Step 2: Simulate Vault KEK destruction (unwrapDek throws Exception)
         when(vaultKmsService.unwrapDek(anyString(), anyString()))
                 .thenThrow(new IllegalStateException("Vault Transit KEK missing or invalid: " + vaultKeyName));
@@ -117,6 +128,6 @@ class WormBackupCryptoShredTest {
         String result = wormBackupExporterService.verifyPostShredDecryptionFailure(snapshot.getFileName(), visitId);
 
         // Assert
-        assertTrue(result.contains("VISIT_HAS_NO_WRAPPED_DEK") || result.contains("[ZERO_PURGE_SUCCESS]"));
+        assertTrue(result.contains("[ZERO_PURGE_SUCCESS]"), "Expected [ZERO_PURGE_SUCCESS] in result but got: " + result);
     }
 }

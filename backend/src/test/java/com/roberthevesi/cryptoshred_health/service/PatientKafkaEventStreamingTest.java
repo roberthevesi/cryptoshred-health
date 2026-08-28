@@ -6,13 +6,19 @@ import com.roberthevesi.cryptoshred_health.dto.KeyRotationResponseDto;
 import com.roberthevesi.cryptoshred_health.dto.PatientRequest;
 import com.roberthevesi.cryptoshred_health.dto.PatientResponse;
 import com.roberthevesi.cryptoshred_health.dto.PatientVisitEventDto;
+import com.roberthevesi.cryptoshred_health.dto.PatientVisitRequest;
+import com.roberthevesi.cryptoshred_health.dto.PatientVisitResponse;
 import com.roberthevesi.cryptoshred_health.dto.VerifiableDeletionProofDto;
 import com.roberthevesi.cryptoshred_health.model.EncryptionKey;
 import com.roberthevesi.cryptoshred_health.model.Patient;
+import com.roberthevesi.cryptoshred_health.model.PatientVisit;
+import com.roberthevesi.cryptoshred_health.model.Role;
+import com.roberthevesi.cryptoshred_health.model.User;
 import com.roberthevesi.cryptoshred_health.repository.EncryptionKeyRepository;
 import com.roberthevesi.cryptoshred_health.repository.GpRepository;
 import com.roberthevesi.cryptoshred_health.repository.PatientRepository;
 import com.roberthevesi.cryptoshred_health.repository.PatientVisitRepository;
+import com.roberthevesi.cryptoshred_health.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,6 +28,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -34,11 +41,13 @@ class PatientKafkaEventStreamingTest {
     private PatientVisitRepository patientVisitRepository;
     private EncryptionKeyRepository encryptionKeyRepository;
     private GpRepository gpRepository;
+    private UserRepository userRepository;
     private VaultKmsService vaultKmsService;
     private EnvelopeEncryptionService envelopeEncryptionService;
     private EventLogPublisher eventLogPublisher;
     private EventLogConsumer eventLogConsumer;
     private PatientService patientService;
+    private PatientVisitService patientVisitService;
     private ErasureService erasureService;
     private KeyManagementService keyManagementService;
     private PatientCacheService patientCacheService;
@@ -54,12 +63,15 @@ class PatientKafkaEventStreamingTest {
     private final Map<String, byte[]> vaultStorage = new ConcurrentHashMap<>();
     // In-memory patient storage
     private final Map<String, Patient> patientDb = new ConcurrentHashMap<>();
+    // In-memory visit storage
+    private final Map<UUID, PatientVisit> visitDb = new ConcurrentHashMap<>();
 
     @BeforeEach
     void setUp() {
         objectMapper.findAndRegisterModules();
         vaultStorage.clear();
         patientDb.clear();
+        visitDb.clear();
 
         when(kafkaTemplate.send(anyString(), any(), any()))
                 .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(null));
@@ -68,12 +80,19 @@ class PatientKafkaEventStreamingTest {
         patientVisitRepository = Mockito.mock(PatientVisitRepository.class);
         encryptionKeyRepository = Mockito.mock(EncryptionKeyRepository.class);
         gpRepository = Mockito.mock(GpRepository.class);
+        userRepository = Mockito.mock(UserRepository.class);
         vaultKmsService = Mockito.mock(VaultKmsService.class);
         envelopeEncryptionService = new EnvelopeEncryptionService();
         patientCacheService = Mockito.mock(PatientCacheService.class);
         patientVisitCacheService = Mockito.mock(PatientVisitCacheService.class);
         proofSigningService = Mockito.mock(ProofSigningService.class);
         merkleTreeService = Mockito.mock(MerkleTreeService.class);
+
+        User doctorUser = new User();
+        doctorUser.setId(UUID.randomUUID());
+        doctorUser.setEmail("doctor@hospital.com");
+        doctorUser.setRole(Role.DOCTOR);
+        when(userRepository.findByEmail(anyString())).thenReturn(Optional.of(doctorUser));
 
         when(proofSigningService.sign(anyString())).thenReturn("MOCK_RSA_SIGNATURE_HEX");
         when(merkleTreeService.getMerkleRoot()).thenReturn("MOCK_MERKLE_ROOT");
@@ -134,12 +153,29 @@ class PatientKafkaEventStreamingTest {
                     .findFirst();
         });
 
-        when(patientVisitRepository.findByPatientIdentifier(anyString())).thenReturn(Collections.emptyList());
+        when(patientVisitRepository.save(any(PatientVisit.class))).thenAnswer(inv -> {
+            PatientVisit v = inv.getArgument(0);
+            if (v.getId() == null) v.setId(UUID.randomUUID());
+            visitDb.put(v.getId(), v);
+            return v;
+        });
+
+        when(patientVisitRepository.findById(any(UUID.class))).thenAnswer(inv -> {
+            UUID id = inv.getArgument(0);
+            return Optional.ofNullable(visitDb.get(id));
+        });
+
+        when(patientVisitRepository.findByPatientIdentifier(anyString())).thenAnswer(inv -> {
+            String pid = inv.getArgument(0);
+            return visitDb.values().stream()
+                    .filter(v -> (v.getPatient() != null && pid.equalsIgnoreCase(v.getPatient().getPatientId())) ||
+                                 (v.getMrn() != null && pid.equalsIgnoreCase(v.getMrn())))
+                    .collect(Collectors.toList());
+        });
 
         eventLogPublisher = new EventLogPublisher(kafkaTemplate, objectMapper);
         eventLogConsumer = new EventLogConsumer(objectMapper, vaultKmsService, envelopeEncryptionService);
 
-        com.roberthevesi.cryptoshred_health.repository.UserRepository userRepository = Mockito.mock(com.roberthevesi.cryptoshred_health.repository.UserRepository.class);
         org.springframework.security.crypto.password.PasswordEncoder passwordEncoder = Mockito.mock(org.springframework.security.crypto.password.PasswordEncoder.class);
 
         patientService = new PatientService(
@@ -152,6 +188,19 @@ class PatientKafkaEventStreamingTest {
                 objectMapper,
                 patientCacheService,
                 eventLogPublisher
+        );
+
+        patientVisitService = new PatientVisitService(
+                patientVisitRepository,
+                patientRepository,
+                userRepository,
+                vaultKmsService,
+                envelopeEncryptionService,
+                eventLogPublisher,
+                patientVisitCacheService,
+                patientCacheService,
+                patientService,
+                objectMapper
         );
 
         erasureService = new ErasureService(
@@ -358,5 +407,121 @@ class PatientKafkaEventStreamingTest {
                 .eventType("SYSTEM_EVENT")
                 .build());
         verify(kafkaTemplate, times(1)).send(anyString(), eq(eventId.toString()), anyString());
+    }
+
+    @Test
+    @DisplayName("Visit Lifecycle: VISIT_CREATED & VISIT_UPDATED streaming -> active decryption -> forgetVisit crypto-shredding -> permanent decryption failure")
+    void testVisitCreatedAndUpdatedKafkaEventStreamingAndCryptoShredding() throws Exception {
+        // 1. Create a patient first
+        PatientRequest patientReq = new PatientRequest();
+        patientReq.setFirstName("Donna");
+        patientReq.setLastName("Noble");
+        patientReq.setEmail("donna.noble@tardis.com");
+        patientReq.setDateOfBirth("1980-05-15");
+        patientReq.setGender("Female");
+        PatientResponse patientResp = patientService.create(patientReq);
+        String patientId = patientResp.getPatientId();
+
+        // 2. Create a new clinical visit
+        PatientVisitRequest createVisitReq = new PatientVisitRequest();
+        createVisitReq.setPatientId(patientId);
+        createVisitReq.setPatientName("Donna Noble");
+        createVisitReq.setBloodPressure("120/80");
+        createVisitReq.setHeartRate(72);
+        createVisitReq.setRespiratoryRate("16");
+        createVisitReq.setTemperature("36.6");
+        createVisitReq.setOxygenSaturation("99%");
+        createVisitReq.setDiagnosis("Routine Physical Examination");
+        createVisitReq.setChiefComplaint("Annual health checkup");
+        createVisitReq.setMedicalNotes("Patient is in overall excellent health.");
+        createVisitReq.setAttendingDoctor("Dr. John Smith");
+        createVisitReq.setDepartment("General Practice");
+
+        reset(kafkaTemplate);
+        when(kafkaTemplate.send(anyString(), any(), any()))
+                .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(null));
+        ArgumentCaptor<String> visitCreatedPayloadCaptor = ArgumentCaptor.forClass(String.class);
+
+        PatientVisitResponse visitResponse = patientVisitService.create(createVisitReq, "doctor@hospital.com");
+        assertNotNull(visitResponse);
+        UUID visitId = visitResponse.getId();
+        assertNotNull(visitId);
+
+        // Verify VISIT_CREATED event published to Kafka with all required envelope fields
+        verify(kafkaTemplate, times(1)).send(anyString(), eq(patientId), visitCreatedPayloadCaptor.capture());
+        PatientVisitEventDto createdEvent = objectMapper.readValue(visitCreatedPayloadCaptor.getValue(), PatientVisitEventDto.class);
+
+        assertEquals("VISIT_CREATED", createdEvent.getEventType());
+        assertEquals(visitId, createdEvent.getVisitId());
+        assertEquals(patientId, createdEvent.getPatientId());
+        assertNotNull(createdEvent.getVaultKeyName());
+        assertNotNull(createdEvent.getWrappedDek(), "VISIT_CREATED event must contain wrappedDek");
+        assertNotNull(createdEvent.getIv(), "VISIT_CREATED event must contain iv");
+        assertNotNull(createdEvent.getEncryptedDataBlob(), "VISIT_CREATED event must contain encryptedDataBlob");
+
+        // Decrypt VISIT_CREATED event payload while active
+        String decryptedCreatedJson = eventLogConsumer.attemptDecryptEventPayload(createdEvent);
+        assertNotNull(decryptedCreatedJson);
+        assertTrue(decryptedCreatedJson.contains("Routine Physical Examination"));
+        assertTrue(decryptedCreatedJson.contains("120/80"));
+        assertTrue(decryptedCreatedJson.contains("Annual health checkup"));
+
+        // 3. Update the clinical visit
+        PatientVisitRequest updateVisitReq = new PatientVisitRequest();
+        updateVisitReq.setPatientId(patientId);
+        updateVisitReq.setPatientName("Donna Noble");
+        updateVisitReq.setBloodPressure("125/82");
+        updateVisitReq.setHeartRate(75);
+        updateVisitReq.setDiagnosis("Mild Hypertension Follow-up");
+        updateVisitReq.setChiefComplaint("Slight headache");
+        updateVisitReq.setMedicalNotes("Prescribed lifestyle modifications.");
+        updateVisitReq.setAttendingDoctor("Dr. John Smith");
+        updateVisitReq.setDepartment("Cardiology");
+
+        reset(kafkaTemplate);
+        when(kafkaTemplate.send(anyString(), any(), any()))
+                .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(null));
+        ArgumentCaptor<String> visitUpdatedPayloadCaptor = ArgumentCaptor.forClass(String.class);
+
+        PatientVisitResponse updatedVisitResponse = patientVisitService.update(visitId, updateVisitReq, "doctor@hospital.com");
+        assertNotNull(updatedVisitResponse);
+
+        // Verify VISIT_UPDATED event published to Kafka with all required envelope fields
+        verify(kafkaTemplate, times(1)).send(anyString(), eq(patientId), visitUpdatedPayloadCaptor.capture());
+        PatientVisitEventDto updatedEvent = objectMapper.readValue(visitUpdatedPayloadCaptor.getValue(), PatientVisitEventDto.class);
+
+        assertEquals("VISIT_UPDATED", updatedEvent.getEventType());
+        assertEquals(visitId, updatedEvent.getVisitId());
+        assertEquals(patientId, updatedEvent.getPatientId());
+        assertEquals(createdEvent.getVaultKeyName(), updatedEvent.getVaultKeyName());
+        assertNotNull(updatedEvent.getWrappedDek(), "VISIT_UPDATED event must contain wrappedDek");
+        assertNotNull(updatedEvent.getIv(), "VISIT_UPDATED event must contain iv");
+        assertNotNull(updatedEvent.getEncryptedDataBlob(), "VISIT_UPDATED event must contain encryptedDataBlob");
+
+        // Decrypt VISIT_UPDATED event payload while active
+        String decryptedUpdatedJson = eventLogConsumer.attemptDecryptEventPayload(updatedEvent);
+        assertNotNull(decryptedUpdatedJson);
+        assertTrue(decryptedUpdatedJson.contains("Mild Hypertension Follow-up"));
+        assertTrue(decryptedUpdatedJson.contains("125/82"));
+        assertTrue(decryptedUpdatedJson.contains("Prescribed lifestyle modifications."));
+
+        // 4. Crypto-shred the individual visit via ErasureService
+        VerifiableDeletionProofDto visitProof = erasureService.forgetVisit(visitId, "DPO-Security-Officer");
+        assertNotNull(visitProof);
+        assertEquals("VISIT_DELETED", visitProof.getStatus());
+        verify(vaultKmsService, times(1)).destroyKey(createdEvent.getVaultKeyName());
+
+        // 5. Verify that attempting to decrypt historical VISIT_CREATED and VISIT_UPDATED events fails with 'Vault KEK destroyed'
+        IllegalStateException exCreated = assertThrows(
+                IllegalStateException.class,
+                () -> eventLogConsumer.attemptDecryptEventPayload(createdEvent)
+        );
+        assertTrue(exCreated.getMessage().contains("Vault KEK destroyed"), "Decryption must fail due to destroyed Vault KEK");
+
+        IllegalStateException exUpdated = assertThrows(
+                IllegalStateException.class,
+                () -> eventLogConsumer.attemptDecryptEventPayload(updatedEvent)
+        );
+        assertTrue(exUpdated.getMessage().contains("Vault KEK destroyed"), "Decryption must fail due to destroyed Vault KEK");
     }
 }
