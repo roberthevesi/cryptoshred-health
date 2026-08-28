@@ -13,7 +13,6 @@ import {
   Plus,
   Pencil,
   Eye,
-  Trash2,
   ShieldCheck,
   ShieldAlert,
   AlertTriangle,
@@ -60,7 +59,6 @@ export default function PatientDetailPage() {
   const [showEditPatientModal, setShowEditPatientModal] = useState(false);
   const [selectedVisitForEdit, setSelectedVisitForEdit] = useState<PatientVisit | null>(null);
   const [selectedVisitForView, setSelectedVisitForView] = useState<string | null>(null);
-  const [visitToDelete, setVisitToDelete] = useState<PatientVisit | null>(null);
   const [visitToShred, setVisitToShred] = useState<PatientVisit | null>(null);
   const [isFullPatientShredOpen, setIsFullPatientShredOpen] = useState(false);
   const [deletionProof, setDeletionProof] = useState<DeletionProof | null>(null);
@@ -108,19 +106,7 @@ export default function PatientDetailPage() {
     enabled: !!patientId,
   });
 
-  // Delete a visit mutation
-  const deleteVisitMutation = useMutation({
-    mutationFn: (id: string) => apiClient.delete(`/visits/${id}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['visits'] });
-      queryClient.invalidateQueries({ queryKey: ['records'] });
-      queryClient.invalidateQueries({ queryKey: ['patient', patientId] });
-      queryClient.invalidateQueries({ queryKey: ['patients'] });
-      queryClient.invalidateQueries({ queryKey: ['proofBundle', patientId] });
-    },
-  });
-
-  // Full Patient Crypto-Shred Mutation (Auditor Only)
+  // Full Patient Crypto-Shred Mutation (Doctor, Auditor, Admin)
   const patientErasureMutation = useMutation({
     mutationFn: (pid: string) =>
       apiClient.delete<DeletionProof>(`/erasure/patients/${pid}/forget`).then((r) => r.data),
@@ -137,12 +123,12 @@ export default function PatientDetailPage() {
     onError: (err: unknown) => {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        'Patient crypto-shredding failed. Auditor authorization required.';
+        'Patient crypto-shredding failed.';
       setErasureError(msg);
     },
   });
 
-  // Single Visit Crypto-shred mutation (Auditor Only)
+  // Single Visit Crypto-shred mutation (Doctor, Auditor, Admin)
   const visitErasureMutation = useMutation({
     mutationFn: (visitId: string) =>
       apiClient.delete<DeletionProof>(`/erasure/visits/${visitId}/forget`).then((r) => r.data),
@@ -158,7 +144,7 @@ export default function PatientDetailPage() {
     onError: (err: unknown) => {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        'Visit crypto-shredding failed. Auditor authorization required.';
+        'Visit crypto-shredding failed.';
       setErasureError(msg);
     },
   });
@@ -795,23 +781,14 @@ export default function PatientDetailPage() {
                                 <Pencil className="h-3.5 w-3.5" />
                               </button>
                             )}
-                            {isDoctor && !isShredded && !visit.shredded && (
-                              <button
-                                onClick={() => setVisitToDelete(visit)}
-                                className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-slate-100 transition"
-                                title="Delete visit"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            )}
-                            {isAuditor && !visit.shredded && !isShredded && (
+                            {(isDoctor || isAuditor) && !visit.shredded && !isShredded && (
                               <button
                                 onClick={() => setVisitToShred(visit)}
                                 disabled={visitErasureMutation.isPending}
-                                className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition"
+                                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold text-xs transition border border-rose-200"
                                 title="Crypto-Shred Visit (GDPR Art. 17)"
                               >
-                                <ShieldAlert className="h-3.5 w-3.5" />
+                                <ShieldAlert className="h-3.5 w-3.5" /> Shred
                               </button>
                             )}
                           </div>
@@ -1309,45 +1286,7 @@ export default function PatientDetailPage() {
         />
       )}
 
-      {/* 1. Visit Deletion Confirmation Modal */}
-      <ConfirmationModal
-        isOpen={!!visitToDelete}
-        onClose={() => setVisitToDelete(null)}
-        onConfirm={() => {
-          if (visitToDelete) {
-            deleteVisitMutation.mutate(visitToDelete.id);
-          }
-        }}
-        title="Delete Clinical Visit"
-        message={
-          <p>
-            Are you sure you want to delete the clinical visit recorded on{' '}
-            <strong className="text-slate-900">
-              {visitToDelete &&
-                new Date(visitToDelete.createdAt).toLocaleDateString(undefined, {
-                  year: 'numeric',
-                  month: 'short',
-                  day: 'numeric',
-                })}
-            </strong>
-            ?
-          </p>
-        }
-        detail={
-          visitToDelete && (
-            <span>
-              Attending: {visitToDelete.attendingDoctor || 'Unassigned'} | Diagnosis:{' '}
-              {visitToDelete.diagnosis || 'None specified'}
-            </span>
-          )
-        }
-        confirmLabel="Delete Visit"
-        cancelLabel="Cancel"
-        variant="danger"
-        isLoading={deleteVisitMutation.isPending}
-      />
-
-      {/* 2. Single Visit Crypto-Shredding Confirmation Modal (Auditor) */}
+      {/* Single Visit Crypto-Shredding Confirmation Modal (Doctor & Auditor) */}
       <ConfirmationModal
         isOpen={!!visitToShred}
         onClose={() => setVisitToShred(null)}
