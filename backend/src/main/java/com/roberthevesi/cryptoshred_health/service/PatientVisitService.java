@@ -85,11 +85,12 @@ public class PatientVisitService {
         // 4. Build comprehensive clinical payload to encrypt under AES-256-GCM
         Map<String, Object> clinicalPayload = buildClinicalPayload(request, resolvedPatientName);
 
+        EnvelopeEncryptionService.EncryptedPayload encryptedPayload;
         String ciphertextBase64;
         String ivBase64;
         try {
             String jsonToEncrypt = objectMapper.writeValueAsString(clinicalPayload);
-            EnvelopeEncryptionService.EncryptedPayload encryptedPayload =
+            encryptedPayload =
                     envelopeEncryptionService.encrypt(jsonToEncrypt.getBytes(StandardCharsets.UTF_8), dek);
             ciphertextBase64 = encryptedPayload.ciphertextBase64();
             ivBase64 = encryptedPayload.ivBase64();
@@ -169,6 +170,9 @@ public class PatientVisitService {
                 .patientId(linkedPatient != null ? linkedPatient.getPatientId() : savedVisit.getMrn())
                 .eventType("VISIT_CREATED")
                 .vaultKeyName(vaultKeyName)
+                .wrappedDek(wrappedDek)
+                .iv(encryptedPayload.ivBase64())
+                .encryptedDataBlob(ciphertextBase64)
                 .timestamp(LocalDateTime.now())
                 .build());
 
@@ -349,6 +353,9 @@ public class PatientVisitService {
                     .patientId(updatedVisit.getPatient() != null ? updatedVisit.getPatient().getPatientId() : updatedVisit.getMrn())
                     .eventType("VISIT_UPDATED")
                     .vaultKeyName(updatedVisit.getEncryptionKey().getVaultKeyName())
+                    .wrappedDek(updatedVisit.getEncryptionKey().getWrappedDek())
+                    .iv(updatedVisit.getEncryptionKey().getIv())
+                    .encryptedDataBlob(updatedVisit.getEncryptedDataBlob())
                     .timestamp(LocalDateTime.now())
                     .build());
         }

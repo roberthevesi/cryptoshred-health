@@ -234,7 +234,7 @@ public class WormBackupExporterService {
                 .patientId(visit.getPatient() != null ? visit.getPatient().getPatientId() : visit.getMrn())
                 .mrn(visit.getMrn())
                 .vaultKeyName(key != null ? key.getVaultKeyName() : null)
-                .wrappedDek(null)
+                .wrappedDek(key != null && !key.isInvalidated() ? key.getWrappedDek() : null)
                 .iv(key != null ? key.getIv() : null)
                 .encryptedDataBlob(visit.getEncryptedDataBlob())
                 .shredded(visit.isShredded())
