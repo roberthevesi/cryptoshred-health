@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CryptoShred Health — 1-Click Record Decryptor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex items-center justify-center p-6">
+  <div class="max-w-2xl w-full bg-slate-800 border border-slate-700 rounded-2xl p-8 shadow-2xl space-y-6">
+    <div class="border-b border-slate-700 pb-4">
+      <h1 class="text-xl font-bold text-blue-400 flex items-center gap-2">
+        🔓 CryptoShred 1-Click Decryptor
+      </h1>
+      <p class="text-xs text-slate-400 mt-1">
+        Paste the exact string copied from the HashiCorp Vault UI, your IV, and ciphertext blob. Decryption runs 100% locally in your browser via WebCrypto.
+      </p>
+    </div>
+
+    <div class="space-y-4">
+      <div>
+        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+          Vault UI Decrypted Output (Key / DEK)
+        </label>
+        <input
+          id="keyInput"
+          type="text"
+          placeholder="e.g. cUd6WjFGalZKTCsxa0lJR2dIbWxNTGx5ZE9sdnJHMksyajhtTVVnQ21tST0="
+          class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs font-mono text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+          IV (Initialization Vector)
+        </label>
+        <input
+          id="ivInput"
+          type="text"
+          placeholder="e.g. DlKpPgB6yPklLfaY"
+          class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs font-mono text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+          Encrypted Data Blob (Ciphertext)
+        </label>
+        <textarea
+          id="blobInput"
+          rows="4"
+          placeholder="e.g. xB8gyDvFOBRDdfMka5UyLyGELaILyX..."
+          class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs font-mono text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        ></textarea>
+      </div>
+
+      <button
+        id="decryptBtn"
+        onclick="runDecryption()"
+        class="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-xl shadow-lg transition duration-150"
+      >
+        Decrypt Record
+      </button>
+    </div>
+
+    <div id="outputContainer" class="hidden space-y-2 pt-2 border-t border-slate-700">
+      <label class="block text-xs font-semibold text-emerald-400 uppercase tracking-wider">
+        Decrypted Plaintext JSON:
+      </label>
+      <pre id="outputPre" class="p-4 bg-slate-950 border border-emerald-500/30 rounded-xl text-xs font-mono text-emerald-300 overflow-x-auto whitespace-pre-wrap"></pre>
+    </div>
+
+    <div id="errorContainer" class="hidden p-3 bg-red-950/80 border border-red-500/50 rounded-xl text-xs text-red-300">
+    </div>
+  </div>
+
+  <script>
+    function base64ToBytes(b64) {
+      const bin = atob(b64.trim());
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) {
+        bytes[i] = bin.charCodeAt(i);
+      }
+      return bytes;
+    }
+
+    async function runDecryption() {
+      const errBox = document.getElementById('errorContainer');
+      const outBox = document.getElementById('outputContainer');
+      const outPre = document.getElementById('outputPre');
+      errBox.classList.add('hidden');
+      outBox.classList.add('hidden');
+
+      try {
+        const keyRaw = document.getElementById('keyInput').value.trim();
+        const ivRaw = document.getElementById('ivInput').value.trim();
+        const blobRaw = document.getElementById('blobInput').value.trim();
+
+        if (!keyRaw || !ivRaw || !blobRaw) {
+          throw new Error('Please fill in Key, IV, and Encrypted Data Blob.');
+        }
+
+        // Auto-handle Vault UI double-base64 vs single-base64
+        let keyBytes = base64ToBytes(keyRaw);
+        if (keyBytes.length !== 32) {
+          try {
+            // Unpack Vault UI base64-wrapped layer
+            const text = new TextDecoder().decode(keyBytes);
+            const secondPass = base64ToBytes(text);
+            if (secondPass.length === 32) {
+              keyBytes = secondPass;
+            }
+          } catch (e) {}
+        }
+
+        if (keyBytes.length !== 32) {
+          throw new Error('Key must resolve to 32 bytes (256 bits). Current decoded length: ' + keyBytes.length + ' bytes');
+        }
+
+        const ivBytes = base64ToBytes(ivRaw);
+        const cipherBytes = base64ToBytes(blobRaw);
+
+        const cryptoKey = await window.crypto.subtle.importKey(
+          'raw',
+          keyBytes,
+          { name: 'AES-GCM' },
+          false,
+          ['decrypt']
+        );
+
+        const decryptedBuffer = await window.crypto.subtle.decrypt(
+          { name: 'AES-GCM', iv: ivBytes },
+          cryptoKey,
+          cipherBytes
+        );
+
+        const plaintext = new TextDecoder().decode(decryptedBuffer);
+        try {
+          outPre.textContent = JSON.stringify(JSON.parse(plaintext), null, 2);
+        } catch (_) {
+          outPre.textContent = plaintext;
+        }
+        outBox.classList.remove('hidden');
+      } catch (err) {
+        errBox.textContent = '❌ Decryption Error: ' + err.message;
+        errBox.classList.remove('hidden');
+      }
+    }
+  </script>
+</body>
+</html>
