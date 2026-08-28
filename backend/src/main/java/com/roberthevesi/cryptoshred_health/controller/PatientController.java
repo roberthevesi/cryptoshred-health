@@ -21,6 +21,7 @@ import java.util.UUID;
 public class PatientController {
 
     private final PatientService patientService;
+    private final com.roberthevesi.cryptoshred_health.service.ErasureService erasureService;
 
     @PreAuthorize("hasAnyRole('DOCTOR', 'AUDITOR', 'ADMIN')")
     @GetMapping
@@ -62,9 +63,12 @@ public class PatientController {
     }
 
     @DeleteMapping("/{patientId}")
-    @PreAuthorize("hasRole('AUDITOR')")
-    public ResponseEntity<Void> delete(@PathVariable String patientId) {
-        patientService.deactivate(patientId);
-        return ResponseEntity.noContent().build();
+    @PreAuthorize("hasAnyRole('DOCTOR', 'AUDITOR', 'ADMIN')")
+    public ResponseEntity<com.roberthevesi.cryptoshred_health.dto.VerifiableDeletionProofDto> delete(
+            @PathVariable String patientId,
+            @AuthenticationPrincipal UserDetails currentUser) {
+        com.roberthevesi.cryptoshred_health.dto.VerifiableDeletionProofDto proof =
+                erasureService.forgetPatient(patientId, currentUser.getUsername());
+        return ResponseEntity.ok(proof);
     }
 }

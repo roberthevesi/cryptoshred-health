@@ -1041,7 +1041,7 @@ export default function PatientDetailPage() {
                     </p>
                   </div>
 
-                  {isAuditor ? (
+                  {(isDoctor || isAuditor || isAdmin) ? (
                     <button
                       onClick={() => setIsFullPatientShredOpen(true)}
                       disabled={patientErasureMutation.isPending}
@@ -1061,7 +1061,7 @@ export default function PatientDetailPage() {
                   ) : (
                     <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-600 text-xs font-medium">
                       <Lock className="h-3.5 w-3.5 text-slate-400" />
-                      <span>Auditor Role Required to Execute Erasure</span>
+                      <span>Clinician or Auditor Role Required to Execute Erasure</span>
                     </div>
                   )}
                 </div>
