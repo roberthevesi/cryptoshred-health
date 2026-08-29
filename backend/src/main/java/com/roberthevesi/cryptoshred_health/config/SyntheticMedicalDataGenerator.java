@@ -241,6 +241,27 @@ public class SyntheticMedicalDataGenerator {
         return list;
     }
 
+    // ── 3. 15 DEDICATED HISTORICAL GDPR ERASURE PATIENTS ────────────────────
+    public List<PatientTemplate> getHistoricalErasurePatients() {
+        List<PatientTemplate> list = new ArrayList<>(15);
+        list.add(new PatientTemplate("PAT-10101", "Dominic", "Sterling", "1977-04-18", "Male", "dominic.sterling@example.com", "+44 7700 900201", "12 Highfield Road, Oxford OX3 7AY", "419 823 9014", "A+", 180, 82.0, "Penicillin", "Stage 1 Hypertension", "Helena Sterling", "+44 7700 900701", "Spouse", 0));
+        list.add(new PatientTemplate("PAT-10102", "Gemma", "Holloway", "1983-11-29", "Female", "gemma.holloway@example.com", "+44 7700 900202", "84 Victoria Street, Bristol BS1 6DR", "628 194 7305", "O+", 165, 63.0, "None Known", "Asthma, Rhinitis", "Mark Holloway", "+44 7700 900702", "Spouse", 6));
+        list.add(new PatientTemplate("PAT-10103", "Kieran", "Doherty", "1991-06-14", "Male", "kieran.doherty@example.com", "+44 7700 900203", "49 Antrim Road, Belfast BT15 2BG", "815 392 6401", "B+", 178, 79.0, "Latex", "Migraine with Aura", "Aisling Doherty", "+44 7700 900703", "Spouse", 9));
+        list.add(new PatientTemplate("PAT-10104", "Eilidh", "Fraser", "1968-09-03", "Female", "eilidh.fraser@example.com", "+44 7700 900204", "23 Morningside Road, Edinburgh EH10 4DP", "374 918 2056", "AB-", 162, 68.0, "Sulfa Drugs", "Hypothyroidism", "Hamish Fraser", "+44 7700 900704", "Spouse", 3));
+        list.add(new PatientTemplate("PAT-10105", "Arjun", "Reddy", "1986-02-21", "Male", "arjun.reddy@example.com", "+44 7700 900205", "77 Soho Hill, Birmingham B19 1AA", "902 481 3759", "O-", 182, 86.0, "Aspirin", "Hyperlipidemia, T2DM", "Sunita Reddy", "+44 7700 900705", "Spouse", 2));
+        list.add(new PatientTemplate("PAT-10106", "Nia", "Vaughan", "1995-12-10", "Female", "nia.vaughan@example.com", "+44 7700 900206", "31 Albany Road, Cardiff CF24 3LA", "563 810 4927", "A-", 168, 59.0, "None Known", "Atopic Dermatitis", "Owain Vaughan", "+44 7700 900706", "Brother", 8));
+        list.add(new PatientTemplate("PAT-10107", "Lucas", "Moreau", "1999-07-05", "Male", "lucas.moreau@example.com", "+44 7700 900207", "18 King's Parade, Cambridge CB2 1SP", "291 738 5046", "B-", 176, 72.0, "Codeine", "Anxiety, IBS", "Camille Moreau", "+44 7700 900707", "Parent", 4));
+        list.add(new PatientTemplate("PAT-10108", "Zara", "Akhtar", "1974-03-30", "Female", "zara.akhtar@example.com", "+44 7700 900208", "92 Roundhay Road, Leeds LS8 5NT", "740 619 3825", "O+", 160, 71.0, "Penicillin", "Gout, Hypertension", "Imran Akhtar", "+44 7700 900708", "Spouse", 7));
+        list.add(new PatientTemplate("PAT-10109", "Finn", "O'Sullivan", "1980-10-15", "Male", "finn.osullivan@example.com", "+44 7700 900209", "66 Lisburn Road, Belfast BT9 6AF", "184 927 6530", "A+", 184, 88.0, "None Known", "Osteoarthritis", "Maeve O'Sullivan", "+44 7700 900709", "Spouse", 9));
+        list.add(new PatientTemplate("PAT-10110", "Seraphina", "Cross", "2002-08-25", "Female", "seraphina.cross@example.com", "+44 7700 900210", "55 Oxford Street, London W1D 2EE", "859 304 7162", "AB+", 170, 57.0, "Latex", "Acne Vulgaris", "Julian Cross", "+44 7700 900710", "Father", 0));
+        list.add(new PatientTemplate("PAT-10111", "Hamza", "Tariq", "1989-01-17", "Male", "hamza.tariq@example.com", "+44 7700 900211", "108 Cheetham Hill Road, Manchester M8 8PZ", "317 842 5906", "B+", 179, 81.0, "None Known", "Lumbar Disc Herniation", "Zaynab Tariq", "+44 7700 900711", "Spouse", 5));
+        list.add(new PatientTemplate("PAT-10112", "Carys", "Howells", "1965-05-08", "Female", "carys.howells@example.com", "+44 7700 900212", "19 Cowbridge Road East, Cardiff CF11 9AD", "682 150 9437", "O-", 164, 69.0, "Sulfa Drugs", "Osteoporosis", "Rhodri Howells", "+44 7700 900712", "Spouse", 8));
+        list.add(new PatientTemplate("PAT-10113", "Angus", "MacKinnon", "1958-08-12", "Male", "angus.mackinnon@example.com", "+44 7700 900213", "41 Princes Street, Edinburgh EH2 2BY", "945 271 8360", "A+", 181, 91.0, "Aspirin", "COPD, Hypertension", "Jean MacKinnon", "+44 7700 900713", "Spouse", 3));
+        list.add(new PatientTemplate("PAT-10114", "Fatima", "Noor", "1994-04-02", "Female", "fatima.noor@example.com", "+44 7700 900214", "38 Stratford Road, Birmingham B11 1AN", "409 683 2715", "O+", 162, 60.0, "Penicillin", "Migraine", "Bilal Noor", "+44 7700 900714", "Brother", 2));
+        list.add(new PatientTemplate("PAT-10115", "Rowan", "Sinclair", "1982-11-20", "Non-Binary", "rowan.sinclair@example.com", "+44 7700 900215", "73 Gloucester Road, Bristol BS7 8AS", "753 194 8206", "B-", 175, 74.0, "None Known", "GERD, Anxiety", "Morgan Sinclair", "+44 7700 900715", "Partner", 6));
+        return list;
+    }
+
     public PatientRequest toPatientRequest(PatientTemplate t, List<GpResponse> seededGps) {
         PatientRequest req = new PatientRequest();
         req.setPatientId(t.patientId());
