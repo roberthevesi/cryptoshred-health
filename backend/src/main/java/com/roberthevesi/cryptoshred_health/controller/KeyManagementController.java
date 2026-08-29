@@ -18,6 +18,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/keys")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
 public class KeyManagementController {
 
     private final KeyManagementService keyManagementService;
@@ -28,7 +29,6 @@ public class KeyManagementController {
      * or exposing clinical ciphertext.
      */
     @PostMapping("/rotate")
-    @PreAuthorize("hasRole('DOCTOR') or hasRole('AUDITOR')")
     public ResponseEntity<KeyRotationResponseDto> rotateKeys(
             @RequestBody(required = false) KeyRotationRequestDto request,
             @RequestParam(required = false) String scope,
@@ -52,7 +52,6 @@ public class KeyManagementController {
      * Convenience shortcut endpoint to rotate all keys for a specific patient.
      */
     @PostMapping("/patients/{patientId}/rotate")
-    @PreAuthorize("hasRole('DOCTOR') or hasRole('AUDITOR')")
     public ResponseEntity<KeyRotationResponseDto> rotatePatientKeys(@PathVariable String patientId) {
         KeyRotationRequestDto request = KeyRotationRequestDto.builder()
                 .scope("PATIENT")
@@ -65,7 +64,6 @@ public class KeyManagementController {
      * Convenience shortcut endpoint to rotate the key for a specific visit.
      */
     @PostMapping("/visits/{visitId}/rotate")
-    @PreAuthorize("hasRole('DOCTOR') or hasRole('AUDITOR')")
     public ResponseEntity<KeyRotationResponseDto> rotateVisitKey(@PathVariable UUID visitId) {
         KeyRotationRequestDto request = KeyRotationRequestDto.builder()
                 .scope("VISIT")
@@ -78,7 +76,6 @@ public class KeyManagementController {
      * Retrieves high-level metrics on KMS encryption keys.
      */
     @GetMapping("/summary")
-    @PreAuthorize("hasRole('DOCTOR') or hasRole('AUDITOR')")
     public ResponseEntity<KeyStatusSummaryDto> getKeySummary() {
         return ResponseEntity.ok(keyManagementService.getKeySummary());
     }
