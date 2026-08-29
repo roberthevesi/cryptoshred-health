@@ -14,9 +14,8 @@ scrape_configs:
     params:
       format: ['prometheus']
     scrape_interval: 10s
-    bearer_token: 'root'
     static_configs:
-      - targets: ['vault-1:8200']
+      - targets: ['vault-1:8200', 'vault-2:8200', 'vault-3:8200']
 
   - job_name: 'postgres'
     scrape_interval: 10s
