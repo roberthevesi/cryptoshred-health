@@ -119,7 +119,7 @@ public class SyntheticMedicalDataGenerator {
         List<PatientTemplate> list = new ArrayList<>(100);
 
         // 1-10
-        list.add(new PatientTemplate("PAT-49201", "Oliver", "Smith", "1985-04-12", "Male", "patient@health.org", "+44 7700 900142", "42 Hill House Lane, London NW1 4NP", "943 476 5919", "A+", 178, 75.0, "Penicillin, Latex", "Type 2 Diabetes Mellitus, Essential Hypertension", "Sarah Smith", "+44 7700 900551", "Spouse", 0));
+        list.add(new PatientTemplate("PAT-49201", "Oliver", "Smith", "1985-04-12", "Male", "oliver.smith@example.com", "+44 7700 900142", "42 Hill House Lane, London NW1 4NP", "943 476 5919", "A+", 178, 75.0, "Penicillin, Latex", "Type 2 Diabetes Mellitus, Essential Hypertension", "Sarah Smith", "+44 7700 900551", "Spouse", 0));
         list.add(new PatientTemplate("PAT-10002", "Marcus", "Thorne", "1992-09-25", "Male", "marcus.thorne@example.com", "+44 7700 900881", "17 Kensington Church Walk, London W8 4NB", "485 910 2384", "O-", 182, 79.0, "None Known", "Post-Surgical Appendectomy Recovery", "Claire Thorne", "+44 7700 900552", "Spouse", 1));
         list.add(new PatientTemplate("PAT-10003", "Sarah", "Jenkins", "1978-11-03", "Female", "sarah.jenkins@example.com", "+44 7700 900319", "88 Bloomsbury Way, London WC1A 2SE", "712 849 3015", "B+", 165, 72.0, "Sulfa Drugs", "Hyperlipidemia, Stage 1 Hypertension", "David Jenkins", "+44 7700 900553", "Spouse", 1));
         list.add(new PatientTemplate("PAT-10004", "Oliver", "Harrison", "1997-02-14", "Male", "oliver.harrison@example.com", "+44 7700 900404", "12 Deansgate Court, Manchester M1 1AD", "629 104 8831", "O+", 178, 74.0, "None Known", "Mild Intermittent Asthma", "Laura Harrison", "+44 7700 900554", "Parent", 5));

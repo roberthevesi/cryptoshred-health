@@ -153,7 +153,8 @@ npm run dev
 | **ADMIN** | `admin@cryptoshred.health` | `Password123!` | Staff management, synthetic data seeder, KMS key rotation (`/api/keys`), DR backup capture & restore |
 | **DOCTOR** | `doctor@hospital.com` | `Password123!` | Patient intake, clinical encounters, SOAP notes, PDF attachments, GDPR crypto-shredding |
 | **AUDITOR** | `auditor@health.gov` | `Password123!` | View anonymized records, verify Merkle DAG deletion proofs, audit WORM receipts |
-| **PATIENT** | `patient@health.org` | `Password123!` | View personal medical record and personal encounter timeline |
+
+> *Note: Individual Patient portal accounts are provisioned dynamically when patients are registered.*
 
 ---
 

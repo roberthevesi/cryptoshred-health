@@ -164,7 +164,7 @@ class PatientIsolationIntegrationTest {
     @Test
     @DisplayName("Data Access: Patient can retrieve own profile via getPatientForCurrentUser")
     void testPatientCanRetrieveOwnProfile() {
-        String patientEmail = "patient@health.org";
+        String patientEmail = "oliver.smith@example.com";
         User patientUser = new User();
         patientUser.setId(UUID.randomUUID());
         patientUser.setEmail(patientEmail);
@@ -216,7 +216,7 @@ class PatientIsolationIntegrationTest {
     @Test
     @DisplayName("Patient Isolation: Patient user cannot access another patient's visits")
     void testPatientCannotAccessAnotherPatientsVisits() {
-        String selfEmail = "patient@health.org";
+        String selfEmail = "oliver.smith@example.com";
         User patientUser = new User();
         patientUser.setId(UUID.randomUUID());
         patientUser.setEmail(selfEmail);
@@ -238,7 +238,7 @@ class PatientIsolationIntegrationTest {
     @Test
     @DisplayName("Patient Isolation: Patient user can access their own visits and attachments")
     void testPatientCanAccessOwnVisitsAndAttachments() {
-        String selfEmail = "patient@health.org";
+        String selfEmail = "oliver.smith@example.com";
         User patientUser = new User();
         patientUser.setId(UUID.randomUUID());
         patientUser.setEmail(selfEmail);
@@ -299,7 +299,7 @@ class PatientIsolationIntegrationTest {
         patient.setPatientId(patientId);
         patient.setFirstName("Oliver");
         patient.setLastName("Smith");
-        patient.setEmail("patient@health.org");
+        patient.setEmail("oliver.smith@example.com");
         patient.setActive(true);
         patient.setShredded(false);
 
@@ -320,7 +320,7 @@ class PatientIsolationIntegrationTest {
                 .patientId(patientId)
                 .firstName("Oliver")
                 .lastName("Smith")
-                .email("patient@health.org")
+                .email("oliver.smith@example.com")
                 .isActive(true)
                 .shredded(false)
                 .build();
