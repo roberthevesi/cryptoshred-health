@@ -14,15 +14,34 @@ services:
     networks:
       - cryptoshred-net
 
+  # ── HashiCorp Vault HA Proxy (Port 8200 Auto-Failover Load Balancer) ───
+  vault-lb:
+    image: haproxy:2.8-alpine
+    container_name: vault_lb
+    restart: always
+    ports:
+      - "${VAULT_PORT:-8200}:8200"
+      - "8209:8209"
+    volumes:
+      - ./vault/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    depends_on:
+      - vault-1
+      - vault-2
+      - vault-3
+    networks:
+      cryptoshred-net:
+        aliases:
+          - vault
+          - vault-lb
+
   # ── HashiCorp Vault 3-Node Raft HA Cluster ──────────────────────────────
-  # Primary Leader Node on port 8200 (backward compatible for dev & single-node mode)
   vault-1:
     image: hashicorp/vault:1.13.3
     container_name: vault-1
     hostname: vault-1
     restart: always
     ports:
-      - "${VAULT_PORT:-8200}:8200"
+      - "8211:8200"
       - "8201:8201"
     environment:
       VAULT_DEV_ROOT_TOKEN: "${VAULT_DEV_ROOT_TOKEN}"
@@ -64,7 +83,6 @@ services:
     networks:
       cryptoshred-net:
         aliases:
-          - vault
           - vault-1
 
   vault-2:
