@@ -33,6 +33,8 @@ public class KeyManagementService {
     private final PatientVisitRepository patientVisitRepository;
     private final VaultKmsService vaultKmsService;
     private final EventLogPublisher eventLogPublisher;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private CryptoMetricsService cryptoMetricsService;
 
     /**
      * Executes cryptographic key rotation across the requested scope (ALL, PATIENT, VISIT, or KEY).
@@ -80,11 +82,16 @@ public class KeyManagementService {
             }
 
             try {
+                long keyStartTime = System.nanoTime();
                 // 1. Advance KEK version inside Vault Transit
                 vaultKmsService.rotateKey(key.getVaultKeyName());
 
                 // 2. Re-wrap DEK under the new KEK version (Zero-Plaintext re-encryption inside Vault)
                 String newWrappedDek = vaultKmsService.rewrapDek(key.getVaultKeyName(), key.getWrappedDek());
+
+                if (cryptoMetricsService != null) {
+                    cryptoMetricsService.recordCryptoDuration("rotate", System.nanoTime() - keyStartTime);
+                }
 
                 // 3. Update persistent key entity
                 int prevVersion = key.getKeyVersion();
