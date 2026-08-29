@@ -42,18 +42,21 @@ if ! vault status 2>&1 | grep -q "Initialized.*true"; then
   vault secrets enable transit >/dev/null 2>&1 || true
 else
   echo "[Vault-Init] Vault is already initialized."
-  for i in 1 2 3 4 5; do
-    if vault status 2>&1 | grep -qi "Sealed.*true"; then
+  UNSEALED=0
+  for i in $(seq 1 30); do
+    STATUS_OUT=$(vault status 2>&1 || true)
+    if echo "$STATUS_OUT" | grep -qi "Sealed.*false"; then
+      echo "[Vault-Init] Vault is unsealed and healthy."
+      UNSEALED=1
+      break
+    elif echo "$STATUS_OUT" | grep -qi "Sealed.*true"; then
       if [ -f "$INIT_FILE" ]; then
         UNSEAL_KEY=$(grep -E 'Unseal Key 1:' "$INIT_FILE" | awk '{print $NF}' | tr -d '\r\n ')
-        echo "[Vault-Init] Unsealing Vault from saved credentials (attempt $i)..."
-        vault operator unseal "$UNSEAL_KEY" || true
+        echo "[Vault-Init] Unsealing Vault with persistent credentials (attempt $i/30)..."
+        vault operator unseal "$UNSEAL_KEY" >/dev/null 2>&1 || true
       else
         echo "[Vault-Init] WARNING: Vault is sealed but $INIT_FILE was not found!"
       fi
-    elif vault status 2>&1 | grep -qi "Sealed.*false"; then
-      echo "[Vault-Init] Vault is unsealed and healthy."
-      break
     fi
     sleep 1
   done
