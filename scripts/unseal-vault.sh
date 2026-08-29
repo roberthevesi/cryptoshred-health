@@ -10,11 +10,11 @@ for NODE in vault-1 vault-2 vault-3; do
     if echo "$STATUS" | grep -qi "Sealed.*true"; then
       echo "🔑 $NODE is sealed. Unsealing..."
       docker exec $NODE sh -c '
-        if [ -f /vault/file/vault-init.txt ]; then
-          UNSEAL_KEY=$(grep "Unseal Key 1:" /vault/file/vault-init.txt | awk "{print \$NF}")
-          vault operator unseal "$UNSEAL_KEY"
+        if [ -s /vault/file/vault-init.txt ] && grep -q "Unseal Key 1:" /vault/file/vault-init.txt; then
+          KEY=$(grep -E "Unseal Key 1:" /vault/file/vault-init.txt | awk "{print \$NF}")
+          vault operator unseal "$KEY"
         else
-          echo "⚠️ No vault-init.txt found in /vault/file"
+          echo "⚠️ No valid unseal key found in /vault/file/vault-init.txt"
         fi
       '
     elif echo "$STATUS" | grep -qi "Sealed.*false"; then
