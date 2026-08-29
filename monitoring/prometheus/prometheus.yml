@@ -14,7 +14,7 @@ scrape_configs:
     params:
       format: ['prometheus']
     scrape_interval: 10s
-    bearer_token: 'root-vault-token'
+    bearer_token: 'root'
     static_configs:
       - targets: ['vault-1:8200']
 
