@@ -83,10 +83,6 @@ public class DataPopulationService {
             createUser("auditor@health.gov", "Password123!", Role.AUDITOR);
             log.info("Created default demo auditor account: auditor@health.gov");
         }
-        if (userRepository.findByEmail("patient@health.org").isEmpty()) {
-            createUser("patient@health.org", "Password123!", Role.PATIENT);
-            log.info("Created default demo patient account: patient@health.org");
-        }
         if (userRepository.findByEmail("admin@cryptoshred.health").isEmpty()) {
             createUser("admin@cryptoshred.health", "Password123!", Role.ADMIN);
             log.info("Created default admin account: admin@cryptoshred.health");
@@ -202,7 +198,7 @@ public class DataPopulationService {
                 PatientVisit v = visits.get(0);
                 if (!v.isShredded()) {
                     try {
-                        erasureService.forgetVisit(v.getId(), "patient@health.org");
+                        erasureService.forgetVisit(v.getId(), doctorEmail);
                         shreddedCount++;
                     } catch (Exception ex) {
                         log.warn("Could not pre-shred visit {}: {}", v.getId(), ex.getMessage());

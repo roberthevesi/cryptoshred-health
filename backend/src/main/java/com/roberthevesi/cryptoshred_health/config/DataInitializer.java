@@ -28,7 +28,7 @@ public class DataInitializer implements CommandLineRunner {
         dataPopulationService.seedDefaultAccounts();
         dataPopulationService.seedCliniciansIfMissing();
 
-        log.info("CryptoShred Health EHR ready. Default demo accounts: doctor@hospital.com, auditor@health.gov, patient@health.org, admin@cryptoshred.health");
+        log.info("CryptoShred Health EHR ready. Default demo accounts: doctor@hospital.com, auditor@health.gov, admin@cryptoshred.health");
         log.info("💡 To populate synthetic patient data, trigger POST /api/admin/seed-data as Admin.");
     }
 }

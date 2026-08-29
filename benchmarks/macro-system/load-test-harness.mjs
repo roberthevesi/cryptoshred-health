@@ -29,7 +29,7 @@ const DEFAULT_CONFIG = {
   users: {
     doctor: { email: 'doctor@hospital.com', password: 'Password123!', role: 'DOCTOR' },
     auditor: { email: 'auditor@health.gov', password: 'Password123!', role: 'AUDITOR' },
-    patient: { email: 'patient@health.org', password: 'Password123!', role: 'PATIENT' },
+    patient: { email: 'oliver.smith@example.com', password: 'Password123!', role: 'PATIENT' },
     admin: { email: 'admin@cryptoshred.health', password: 'Password123!', role: 'ADMIN' },
   }
 };
