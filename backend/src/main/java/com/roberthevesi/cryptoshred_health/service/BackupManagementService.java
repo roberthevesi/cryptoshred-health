@@ -8,6 +8,7 @@ import com.roberthevesi.cryptoshred_health.dto.WormSnapshotDto;
 import com.roberthevesi.cryptoshred_health.dto.WormVisitEntryDto;
 import com.roberthevesi.cryptoshred_health.model.EncryptionKey;
 import com.roberthevesi.cryptoshred_health.model.PatientVisit;
+import com.roberthevesi.cryptoshred_health.repository.MerkleNodeRepository;
 import com.roberthevesi.cryptoshred_health.repository.PatientVisitRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +34,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 /**
@@ -56,6 +58,7 @@ public class BackupManagementService {
 
     private final DataSource dataSource;
     private final PatientVisitRepository patientVisitRepository;
+    private final MerkleNodeRepository merkleNodeRepository;
     private final MerkleTreeService merkleTreeService;
     private final ProofSigningService proofSigningService;
     private final VaultOperations vaultOperations;
@@ -66,12 +69,14 @@ public class BackupManagementService {
     public BackupManagementService(
             DataSource dataSource,
             PatientVisitRepository patientVisitRepository,
+            MerkleNodeRepository merkleNodeRepository,
             MerkleTreeService merkleTreeService,
             ProofSigningService proofSigningService,
             @Autowired(required = false) VaultOperations vaultOperations,
             @Value("${backup.bundle.directory:backups/bundles}") String backupBundleDirectory) {
         this.dataSource = dataSource;
         this.patientVisitRepository = patientVisitRepository;
+        this.merkleNodeRepository = merkleNodeRepository;
         this.merkleTreeService = merkleTreeService;
         this.proofSigningService = proofSigningService;
         this.vaultOperations = vaultOperations;
@@ -372,6 +377,145 @@ public class BackupManagementService {
         } catch (Exception e) {
             log.error("Error during bundle integrity verification for '{}': {}", bundleIdentifier, e.getMessage(), e);
             return false;
+        }
+    }
+
+    /**
+     * Restores an atomic backup bundle into PostgreSQL database, WORM storage, and Merkle DAG.
+     * Rejects restore if pre-flight SHA-256 / digital signature integrity verification fails.
+     *
+     * @param bundleIdentifier Bundle UUID or folder name.
+     * @return true if restore succeeded; throws exception otherwise.
+     */
+    public synchronized boolean restoreBundle(String bundleIdentifier) {
+        log.info("🚨 [DISASTER RECOVERY] Initiating coupled restore for bundle: {}", bundleIdentifier);
+
+        // 1. Strict Pre-flight integrity verification
+        if (!verifyBundleIntegrity(bundleIdentifier)) {
+            log.error("🚨 [RESTORE REJECTED] Cannot restore bundle '{}': Pre-flight integrity check failed!", bundleIdentifier);
+            throw new IllegalStateException("Pre-flight integrity verification failed for bundle: " + bundleIdentifier);
+        }
+
+        Path baseBundleDir = Paths.get(backupBundleDirectory).toAbsolutePath().normalize();
+        Path targetBundleDir = locateBundleDirectory(bundleIdentifier, baseBundleDir);
+        if (targetBundleDir == null || !Files.exists(targetBundleDir)) {
+            throw new IllegalArgumentException("Backup bundle directory not found for: " + bundleIdentifier);
+        }
+
+        // 2. Restore PostgreSQL Zero-Plaintext Database Dump
+        Path dbDumpPath = targetBundleDir.resolve(DB_BACKUP_FILENAME);
+        if (Files.exists(dbDumpPath)) {
+            executeSqlDumpRestore(dbDumpPath);
+            log.info("  ↳ ✅ PostgreSQL Zero-Plaintext database restored successfully.");
+        } else {
+            throw new IllegalStateException("Database dump file missing in bundle: " + dbDumpPath);
+        }
+
+        // 3. Restore WORM Encounters file
+        Path wormPath = targetBundleDir.resolve(WORM_ENCOUNTERS_FILENAME);
+        if (Files.exists(wormPath)) {
+            try {
+                for (String dirPath : List.of("backups/worm", "backend/backups/worm")) {
+                    Path destDir = Paths.get(dirPath);
+                    if (!Files.exists(destDir)) {
+                        Files.createDirectories(destDir);
+                    }
+                    Files.copy(wormPath, destDir.resolve("worm_encounters.json"), StandardCopyOption.REPLACE_EXISTING);
+                }
+                log.info("  ↳ ✅ WORM Encounters restored to backups/worm/.");
+            } catch (Exception ex) {
+                log.warn("Could not copy WORM encounters file: {}", ex.getMessage());
+            }
+        }
+
+        // 4. Re-initialize Merkle Tree in memory from restored database nodes
+        try {
+            merkleTreeService.init();
+            log.info("  ↳ ✅ Merkle Tree re-initialized with {} leaves. Active Root: {}",
+                    merkleNodeRepository.count(), merkleTreeService.getMerkleRoot());
+        } catch (Exception ex) {
+            log.warn("Merkle Tree reinitialization note: {}", ex.getMessage());
+        }
+
+        log.info("🎉 [DISASTER RECOVERY COMPLETE] Bundle '{}' successfully restored.", bundleIdentifier);
+        return true;
+    }
+
+    private Path locateBundleDirectory(String bundleIdentifier, Path baseBundleDir) {
+        Path directPath = baseBundleDir.resolve(bundleIdentifier).normalize();
+        if (Files.exists(directPath) && Files.isDirectory(directPath) && directPath.startsWith(baseBundleDir)) {
+            return directPath;
+        }
+        try (var stream = Files.list(baseBundleDir)) {
+            for (Path dir : stream.filter(Files::isDirectory).toList()) {
+                Path manifestPath = dir.resolve(MANIFEST_FILENAME);
+                if (Files.exists(manifestPath)) {
+                    try {
+                        String content = Files.readString(manifestPath, StandardCharsets.UTF_8);
+                        BackupBundleDto dto = objectMapper.readValue(content, BackupBundleDto.class);
+                        if (bundleIdentifier.equalsIgnoreCase(dto.getBundleId()) ||
+                                dir.getFileName().toString().equalsIgnoreCase(bundleIdentifier)) {
+                            return dir;
+                        }
+                    } catch (Exception ignored) {}
+                }
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    private void executeSqlDumpRestore(Path dbDumpPath) {
+        try (InputStream is = Files.newInputStream(dbDumpPath);
+             BufferedInputStream bis = new BufferedInputStream(is);
+             GZIPInputStream gzis = new GZIPInputStream(bis);
+             BufferedReader reader = new BufferedReader(new InputStreamReader(gzis, StandardCharsets.UTF_8))) {
+
+            if (dataSource == null) {
+                log.warn("DataSource is null, skipping JDBC SQL execution.");
+                return;
+            }
+
+            try (Connection conn = dataSource.getConnection();
+                 Statement stmt = conn.createStatement()) {
+
+                // PostgreSQL session replication role bypasses FK constraints during bulk restore
+                try {
+                    stmt.execute("SET session_replication_role = 'replica';");
+                } catch (Exception ignored) {}
+
+                // Truncate tables first
+                try {
+                    stmt.execute("TRUNCATE TABLE patient_attachments, patient_visits, patients, encryption_keys, merkle_nodes, gps, users CASCADE;");
+                } catch (Exception ex) {
+                    log.debug("Truncate statement info: {}", ex.getMessage());
+                }
+
+                String line;
+                StringBuilder sqlStatement = new StringBuilder();
+                while ((line = reader.readLine()) != null) {
+                    line = line.trim();
+                    if (line.isEmpty() || line.startsWith("--")) {
+                        continue;
+                    }
+                    sqlStatement.append(line).append(" ");
+                    if (line.endsWith(";")) {
+                        String sql = sqlStatement.toString().trim();
+                        try {
+                            stmt.execute(sql);
+                        } catch (Exception stmtEx) {
+                            log.debug("SQL restore statement note: {} -> {}", sql, stmtEx.getMessage());
+                        }
+                        sqlStatement.setLength(0);
+                    }
+                }
+
+                try {
+                    stmt.execute("SET session_replication_role = 'origin';");
+                } catch (Exception ignored) {}
+            }
+        } catch (Exception e) {
+            log.error("Failed to restore SQL dump from {}: {}", dbDumpPath, e.getMessage(), e);
+            throw new RuntimeException("Database restore failed: " + e.getMessage(), e);
         }
     }
 

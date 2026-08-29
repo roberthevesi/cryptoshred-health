@@ -7,6 +7,7 @@ import com.roberthevesi.cryptoshred_health.dto.BackupFileEntryDto;
 import com.roberthevesi.cryptoshred_health.exception.GlobalExceptionHandler;
 import com.roberthevesi.cryptoshred_health.model.EncryptionKey;
 import com.roberthevesi.cryptoshred_health.model.PatientVisit;
+import com.roberthevesi.cryptoshred_health.repository.MerkleNodeRepository;
 import com.roberthevesi.cryptoshred_health.repository.PatientRepository;
 import com.roberthevesi.cryptoshred_health.repository.PatientVisitRepository;
 import com.roberthevesi.cryptoshred_health.repository.UserRepository;
@@ -272,6 +273,7 @@ public class AdminBackupIntegrationTest {
 
         private DataSource mockDataSource;
         private PatientVisitRepository mockVisitRepository;
+        private MerkleNodeRepository mockMerkleNodeRepository;
         private MerkleTreeService mockMerkleTreeService;
         private ProofSigningService proofSigningService;
         private BackupManagementService backupService;
@@ -282,6 +284,7 @@ public class AdminBackupIntegrationTest {
             this.tempBackupDir = tempDir;
             mockDataSource = Mockito.mock(DataSource.class);
             mockVisitRepository = Mockito.mock(PatientVisitRepository.class);
+            mockMerkleNodeRepository = Mockito.mock(MerkleNodeRepository.class);
             mockMerkleTreeService = Mockito.mock(MerkleTreeService.class);
 
             // Real ProofSigningService using local filesystem keypair
@@ -316,6 +319,7 @@ public class AdminBackupIntegrationTest {
             backupService = new BackupManagementService(
                     mockDataSource,
                     mockVisitRepository,
+                    mockMerkleNodeRepository,
                     mockMerkleTreeService,
                     proofSigningService,
                     null, // vaultOperations fallback
