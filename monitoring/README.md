@@ -49,29 +49,20 @@ docker compose --profile monitoring up -d
 
 ## 🧭 Pre-Provisioned Grafana Dashboards
 
-When Grafana boots up, the following dashboards are automatically loaded under folder **`CryptoShred`**:
+When Grafana boots up, the following **2 streamlined, intuitive dashboards** are automatically loaded under folder **`CryptoShred`**:
 
-### 1. 🔐 Cryptographic Engine & Security Telemetry (`cryptoshred_security.json`)
-- **Crypto Operations Rate & Throughput**: Real-time rate of AES-GCM encryption, decryption, KEK rotation, and crypto-shredding operations.
-- **Crypto Engine Latencies**: Real-time latency tracking for encryption/decryption operations.
-- **Merkle Proof Minting & Verification**: Deletion certificate generation duration across `PATIENT_PROFILE`, `CLINICAL_VISIT`, and `INCLUSION_PROOF` scopes.
-- **HMAC Blind Index Search Rates**: Search lookup counts partitioned by blind indexed fields (`nhs_number`, `mrn`, `last_name`).
-- **Resurrected Key Tombstone Purges**: Audit metrics tracking automated reconciliation of orphan Vault KMS keys against Merkle tombstones.
-- **Vault KMS Telemetry**: Transit engine handle request rates, token operations, and rollback metrics.
+### 1. 🏥 Executive & Cryptographic Overview (`cryptoshred_overview.json`)
+- **Key Performance Stat Cards**: Live rates for active crypto ops/sec, average encryption/decryption latencies in ms, total Merkle deletion proofs minted, blind index searches/sec, and tombstone resurrection alerts (`✅ 0 Healthy`).
+- **Cryptographic Latency Curves**: Millisecond-level tracking of AES-256-GCM envelope encryption vs decryption vs key rotation vs $\mathcal{O}(1)$ crypto-shredding.
+- **Merkle Proof Minting Latency**: Directional binary Merkle DAG proof generation duration.
+- **Clinical API Throughput**: Request rate (req/s) broken down across `/api/patients`, `/api/erasure`, `/api/gp`, `/api/fhir`.
+- **HMAC Blind Index Searches**: High-speed $\mathcal{O}(1)$ B-tree lookups over `nhs_number`, `mrn`, and `last_name`.
 
-### 2. 🏥 Clinical EHR Throughput & JVM Health (`cryptoshred_clinical.json`)
-- **API Request Throughput**: Spring Boot HTTP server request rates (`/api/**`, `/actuator/**`).
-- **Endpoint Latencies**: Per-route response times and HTTP status distribution.
-- **JVM Memory Distribution**: Live Heap vs Non-Heap memory usage, committed vs max buffers.
-- **Garbage Collection Dynamics**: GC pause durations and collector timings.
-- **JVM Threads & CPU**: Active threads, daemon threads, and process/system CPU utilization.
-- **HikariCP Connection Pool**: Active, idle, and pending PostgreSQL JDBC connections.
-
-### 3. 🌐 Distributed Infrastructure & Cluster Telemetry (`cryptoshred_infrastructure.json`)
-- **PostgreSQL Database Engine**: Active backend connections, commit/rollback transaction rates, and buffer cache hit ratio.
-- **Redis In-Memory Cache**: Connected clients, memory footprint, max memory headroom, and evictions.
-- **Apache Kafka Event Log**: Broker cluster state, topic partition topologies, and event streaming metrics.
-- **HashiCorp Vault Raft Cluster**: Active node leader status and cluster health.
+### 2. ⚙️ Cluster Infrastructure & Storage Health (`cluster_infrastructure.json`)
+- **JVM Heap Allocation & Memory Zeroization**: Heap memory usage (used vs committed vs max) confirming scoped zeroization leaves zero residual memory leaks.
+- **Garbage Collection Dynamics**: GC pause durations in milliseconds.
+- **HikariCP PostgreSQL Connection Pool**: Active, idle, and pending database JDBC connections.
+- **Redis L2 Cache & Kafka Event Log**: Memory footprint, connected clients, and streaming event throughput.
 
 ---
 
