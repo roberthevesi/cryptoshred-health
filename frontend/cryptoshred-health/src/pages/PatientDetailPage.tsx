@@ -414,20 +414,12 @@ export default function PatientDetailPage() {
                         <ShieldOff className="h-3.5 w-3.5" /> Crypto-Shredded (GDPR Art. 17)
                       </span>
                       <button
-                        onClick={() => setSelectedProofForViewer({ proof: proofBundle?.masterPatientProof || effectiveProof, patientId })}
+                        onClick={() => setActiveTab('compliance')}
                         className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold text-xs transition border border-purple-200 shadow-2xs cursor-pointer"
-                        title="View Cryptographic Proof of Erasure"
+                        title="View Erasure Details"
                       >
                         <ShieldCheck className="h-3.5 w-3.5 text-purple-600" />
-                        <span>View Proof of Erasure</span>
-                      </button>
-                      <button
-                        onClick={handleDownloadPatientProof}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs transition border border-slate-200 shadow-2xs cursor-pointer"
-                        title="Download JSON Proof"
-                      >
-                        <Download className="h-3.5 w-3.5" />
-                        <span>Download JSON</span>
+                        <span>View Erasure Details</span>
                       </button>
                     </div>
                   )}
@@ -848,33 +840,9 @@ export default function PatientDetailPage() {
         {/* TAB 3: Full Demographics & Admin */}
         {activeTab === 'demographics' && (
           <div className="bg-white border border-slate-200 rounded-2xl shadow-card p-6 animate-fade-in space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-base font-bold text-slate-900">Master Patient Registry Details</h3>
-                <p className="text-xs text-slate-500">Envelope-encrypted master demographic profile &amp; FHIR interoperability</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleExportFhir}
-                  disabled={isExportingFhir}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold transition shadow-sm"
-                >
-                  {isExportingFhir ? (
-                    <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-                  ) : (
-                    <Download className="h-3.5 w-3.5 text-blue-600" />
-                  )}
-                  Export FHIR R4
-                </button>
-                {isDoctor && !isShredded && (
-                  <button
-                    onClick={() => setShowEditPatientModal(true)}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-medium transition shadow-sm"
-                  >
-                    <Pencil className="h-3.5 w-3.5" /> Edit Information
-                  </button>
-                )}
-              </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900">Master Patient Registry Details</h3>
+              <p className="text-xs text-slate-500">Envelope-encrypted master demographic profile &amp; FHIR interoperability</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
