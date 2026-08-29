@@ -11,18 +11,18 @@
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
       "id": 100,
-      "title": "🏛️ Vault 3-Node Raft KMS Cluster Nodes",
+      "title": "🏛️ Vault 3-Node Raft KMS Cluster Nodes (Online / Chosen Leader)",
       "type": "row"
     },
     {
       "id": 1,
       "title": "Vault Node 1 (:8200)",
       "type": "stat",
-      "description": "Availability and active leader status for Vault Node 1",
-      "gridPos": { "h": 5, "w": 8, "x": 0, "y": 1 },
+      "description": "Availability for Vault Node 1",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
       "targets": [
         {
-          "expr": "(up{job=\"vault\", instance=~\"vault-1.*\"} or vector(0)) + (clamp_max(vault_core_active{instance=~\"vault-1.*\"}, 1) * 10 or vector(0))",
+          "expr": "up{job=\"vault\", instance=~\"vault-1.*\"}",
           "refId": "A"
         }
       ],
@@ -33,9 +33,7 @@
               "type": "value",
               "options": {
                 "0": { "color": "red", "text": "🔴 Offline" },
-                "1": { "color": "blue", "text": "🟢 Online (Standby)" },
-                "10": { "color": "green", "text": "👑 Online (Chosen Leader)" },
-                "11": { "color": "green", "text": "👑 Online (Chosen Leader)" }
+                "1": { "color": "green", "text": "🟢 Online (Available)" }
               }
             }
           ],
@@ -43,8 +41,7 @@
             "mode": "absolute",
             "steps": [
               { "color": "red", "value": null },
-              { "color": "blue", "value": 1 },
-              { "color": "green", "value": 10 }
+              { "color": "green", "value": 1 }
             ]
           }
         }
@@ -61,11 +58,11 @@
       "id": 2,
       "title": "Vault Node 2 (:8202)",
       "type": "stat",
-      "description": "Availability and active leader status for Vault Node 2",
-      "gridPos": { "h": 5, "w": 8, "x": 8, "y": 1 },
+      "description": "Availability for Vault Node 2",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
       "targets": [
         {
-          "expr": "(up{job=\"vault\", instance=~\"vault-2.*\"} or vector(0)) + (clamp_max(vault_core_active{instance=~\"vault-2.*\"}, 1) * 10 or vector(0))",
+          "expr": "up{job=\"vault\", instance=~\"vault-2.*\"}",
           "refId": "A"
         }
       ],
@@ -76,9 +73,7 @@
               "type": "value",
               "options": {
                 "0": { "color": "red", "text": "🔴 Offline" },
-                "1": { "color": "blue", "text": "🟢 Online (Standby)" },
-                "10": { "color": "green", "text": "👑 Online (Chosen Leader)" },
-                "11": { "color": "green", "text": "👑 Online (Chosen Leader)" }
+                "1": { "color": "green", "text": "🟢 Online (Available)" }
               }
             }
           ],
@@ -86,8 +81,7 @@
             "mode": "absolute",
             "steps": [
               { "color": "red", "value": null },
-              { "color": "blue", "value": 1 },
-              { "color": "green", "value": 10 }
+              { "color": "green", "value": 1 }
             ]
           }
         }
@@ -104,11 +98,11 @@
       "id": 3,
       "title": "Vault Node 3 (:8204)",
       "type": "stat",
-      "description": "Availability and active leader status for Vault Node 3",
-      "gridPos": { "h": 5, "w": 8, "x": 16, "y": 1 },
+      "description": "Availability for Vault Node 3",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
       "targets": [
         {
-          "expr": "(up{job=\"vault\", instance=~\"vault-3.*\"} or vector(0)) + (clamp_max(vault_core_active{instance=~\"vault-3.*\"}, 1) * 10 or vector(0))",
+          "expr": "up{job=\"vault\", instance=~\"vault-3.*\"}",
           "refId": "A"
         }
       ],
@@ -119,9 +113,7 @@
               "type": "value",
               "options": {
                 "0": { "color": "red", "text": "🔴 Offline" },
-                "1": { "color": "blue", "text": "🟢 Online (Standby)" },
-                "10": { "color": "green", "text": "👑 Online (Chosen Leader)" },
-                "11": { "color": "green", "text": "👑 Online (Chosen Leader)" }
+                "1": { "color": "green", "text": "🟢 Online (Available)" }
               }
             }
           ],
@@ -129,8 +121,7 @@
             "mode": "absolute",
             "steps": [
               { "color": "red", "value": null },
-              { "color": "blue", "value": 1 },
-              { "color": "green", "value": 10 }
+              { "color": "green", "value": 1 }
             ]
           }
         }
@@ -144,18 +135,59 @@
       }
     },
     {
+      "id": 4,
+      "title": "👑 Elected Leader Node",
+      "type": "stat",
+      "description": "Indicates which Vault node is currently the active chosen leader",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
+      "targets": [
+        {
+          "expr": "vault_core_active{job=\"vault\"}",
+          "legendFormat": "{{instance}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": { "color": "blue", "text": "Standby" },
+                "1": { "color": "green", "text": "👑 Chosen Leader" }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "blue", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      }
+    },
+    {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
       "id": 200,
       "title": "🧠 JVM Memory Zeroization & Garbage Collection",
       "type": "row"
     },
     {
-      "id": 4,
+      "id": 5,
       "title": "JVM Heap Memory Allocation",
       "type": "timeseries",
       "description": "Verifies that scoped byte[] memory zeroization leaves no residual heap leaks",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 7 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
       "targets": [
         {
           "expr": "jvm_memory_used_bytes{area=\"heap\"}",
@@ -186,11 +218,11 @@
       }
     },
     {
-      "id": 5,
+      "id": 6,
       "title": "JVM Garbage Collection Pause Times (ms)",
       "type": "timeseries",
       "description": "Garbage collector pause durations in milliseconds",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 7 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
       "targets": [
         {
           "expr": "(rate(jvm_gc_pause_seconds_sum[1m]) / rate(jvm_gc_pause_seconds_count[1m])) * 1000",
@@ -211,17 +243,17 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 15 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
       "id": 300,
       "title": "🗄️ Database Connection Pool & Storage Health",
       "type": "row"
     },
     {
-      "id": 6,
+      "id": 7,
       "title": "HikariCP PostgreSQL Connection Pool",
       "type": "timeseries",
       "description": "Active, Idle, and Pending database JDBC connections",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
       "targets": [
         {
           "expr": "hikaricp_connections_active",
@@ -251,11 +283,11 @@
       }
     },
     {
-      "id": 7,
+      "id": 8,
       "title": "Redis L2 Cache & Kafka Event Log Health",
       "type": "timeseries",
       "description": "Redis memory footprint and Kafka audit stream status",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
       "targets": [
         {
           "expr": "redis_memory_used_bytes",
@@ -288,5 +320,5 @@
   "timezone": "browser",
   "title": "⚙️ Cluster Infrastructure & Storage Health",
   "uid": "cluster-infrastructure",
-  "version": 3
+  "version": 4
 }
