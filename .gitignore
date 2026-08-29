@@ -62,9 +62,16 @@ id_ed25519*
 # ── Database & Backup Dumps ────────────────────────────────────────────────
 **/backups/*.json
 **/backups/keys/
+**/backups/bundles/
+**/backups/db/
+**/backups/vault/
+**/backups/worm/
 !**/backups/.gitkeep
 pgdata/
 vaultdata/
+vaultdata-1/
+vaultdata-2/
+vaultdata-3/
 
 # ── Benchmark Results ──────────────────────────────────────────────────────
 backend/benchmark-results/*.json
