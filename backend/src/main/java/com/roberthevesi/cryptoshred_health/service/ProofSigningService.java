@@ -228,10 +228,17 @@ public class ProofSigningService {
     }
 
     /**
-     * Verifies the signature against input data. Handles both Vault Transit signatures
-     * (vault:v1:...) and legacy Base64 RSA signatures.
+     * Verifies the signature against input data using the current default public key.
      */
     public boolean verify(String data, String signature) {
+        return verify(data, signature, getPublicKey());
+    }
+
+    /**
+     * Verifies the signature against input data. Handles both Vault Transit signatures
+     * (vault:v1:...) and standard Base64 RSA signatures against the provided PublicKey.
+     */
+    public boolean verify(String data, String signature, PublicKey publicKey) {
         if (data == null || signature == null || signature.isBlank()) {
             return false;
         }
@@ -249,20 +256,20 @@ public class ProofSigningService {
                     VaultResponse response = vaultOperations.write("transit/verify/" + KEY_NAME, request);
                     if (response != null && response.getData() != null) {
                         Object validObj = response.getData().get("valid");
-                        if (validObj instanceof Boolean b) {
-                            return b;
+                        if (validObj instanceof Boolean b && b) {
+                            return true;
                         }
                     }
                 } catch (Exception e) {
-                    log.warn("Vault Transit signature verification failed: {}", e.getMessage());
+                    log.debug("Vault Transit signature verification check: {}", e.getMessage());
                 }
             }
 
-            // Fallback: verify vault:v1:... signature locally using public key
+            // Fallback: verify vault:v1:... signature locally using provided/fallback public key
             try {
                 int lastColonIndex = signature.lastIndexOf(':');
                 String rawBase64 = (lastColonIndex != -1) ? signature.substring(lastColonIndex + 1) : signature;
-                PublicKey pubKey = getPublicKey();
+                PublicKey pubKey = publicKey != null ? publicKey : getPublicKey();
                 if (pubKey != null) {
                     Signature rsa = Signature.getInstance("SHA256withRSA");
                     rsa.initVerify(pubKey);
@@ -276,9 +283,9 @@ public class ProofSigningService {
             return false;
         }
 
-        // 2. Legacy Base64 RSA signature
+        // 2. Standard Base64 RSA signature
         try {
-            PublicKey pubKey = getPublicKey();
+            PublicKey pubKey = publicKey != null ? publicKey : getPublicKey();
             if (pubKey != null) {
                 Signature rsa = Signature.getInstance("SHA256withRSA");
                 rsa.initVerify(pubKey);
@@ -287,7 +294,7 @@ public class ProofSigningService {
                 return rsa.verify(signatureBytes);
             }
         } catch (Exception e) {
-            log.warn("Legacy RSA signature verification failed: {}", e.getMessage());
+            log.warn("RSA signature verification failed: {}", e.getMessage());
         }
         return false;
     }
@@ -366,7 +373,7 @@ public class ProofSigningService {
         }
     }
 
-    private PublicKey parsePublicKeyFromPem(String pem) throws Exception {
+    public PublicKey parsePublicKeyFromPem(String pem) throws Exception {
         String cleanPem = pem
                 .replace("-----BEGIN PUBLIC KEY-----", "")
                 .replace("-----END PUBLIC KEY-----", "")
@@ -374,6 +381,26 @@ public class ProofSigningService {
         byte[] decoded = Base64.getDecoder().decode(cleanPem);
         KeyFactory keyFactory = KeyFactory.getInstance("RSA");
         return keyFactory.generatePublic(new X509EncodedKeySpec(decoded));
+    }
+
+    public PublicKey parsePqcPublicKeyFromPem(String pem) {
+        if (pem == null || pem.isBlank()) {
+            return null;
+        }
+        try {
+            String cleanPem = pem
+                    .replace("-----BEGIN ML-DSA-65 PUBLIC KEY-----", "")
+                    .replace("-----END ML-DSA-65 PUBLIC KEY-----", "")
+                    .replace("-----BEGIN PUBLIC KEY-----", "")
+                    .replace("-----END PUBLIC KEY-----", "")
+                    .replaceAll("\\s+", "");
+            byte[] decoded = Base64.getDecoder().decode(cleanPem);
+            KeyFactory keyFactory = KeyFactory.getInstance("Dilithium3", "BCPQC");
+            return keyFactory.generatePublic(new X509EncodedKeySpec(decoded));
+        } catch (Exception e) {
+            log.warn("Could not parse PQC public key from PEM: {}", e.getMessage());
+            return null;
+        }
     }
 
     /**
