@@ -11,12 +11,12 @@
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
       "id": 100,
-      "title": "🧩 System Component Health & Status",
+      "title": "🧩 System Component Health & Status Overview",
       "type": "row"
     },
     {
       "id": 1,
-      "title": "☕ Backend API",
+      "title": "☕ Spring Boot API",
       "type": "stat",
       "description": "Spring Boot 3 Core (:8080)",
       "gridPos": { "h": 3, "w": 4, "x": 0, "y": 1 },
@@ -56,13 +56,13 @@
     },
     {
       "id": 2,
-      "title": "🏛️ Vault KMS Primary",
+      "title": "⚖️ Vault HA Proxy",
       "type": "stat",
-      "description": "HashiCorp Vault Transit Node 1 (:8200)",
+      "description": "HAProxy Zero-Downtime LB (:8200)",
       "gridPos": { "h": 3, "w": 5, "x": 4, "y": 1 },
       "targets": [
         {
-          "expr": "up{job=\"vault\", instance=~\"vault-1.*\"}",
+          "expr": "clamp_max(sum(up{job=\"vault\"}), 1)",
           "refId": "A"
         }
       ],
@@ -73,7 +73,7 @@
               "type": "value",
               "options": {
                 "0": { "color": "red", "text": "🔴 Offline" },
-                "1": { "color": "green", "text": "👑 Online (vault-1)" }
+                "1": { "color": "green", "text": "🟢 Active (:8200)" }
               }
             }
           ],
@@ -98,7 +98,7 @@
       "id": 3,
       "title": "🗄️ PostgreSQL DB",
       "type": "stat",
-      "description": "PostgreSQL 15 Zero-Plaintext DB (:5433)",
+      "description": "PostgreSQL 15 DB (:5433)",
       "gridPos": { "h": 3, "w": 5, "x": 9, "y": 1 },
       "targets": [
         {
@@ -217,15 +217,142 @@
     {
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 4 },
+      "id": 150,
+      "title": "🏛️ HashiCorp Vault 3-Node Cluster (All 3 Nodes Live Status)",
+      "type": "row"
+    },
+    {
+      "id": 6,
+      "title": "🏛️ Vault Node 1 (Primary :8201)",
+      "type": "stat",
+      "description": "Primary Vault instance handling KMS requests",
+      "gridPos": { "h": 3, "w": 8, "x": 0, "y": 5 },
+      "targets": [
+        {
+          "expr": "up{job=\"vault\", instance=~\"vault-1.*\"}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": { "color": "red", "text": "🔴 Node 1 Offline" },
+                "1": { "color": "green", "text": "🟢 Node 1 Online (Primary)" }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 7,
+      "title": "🏛️ Vault Node 2 (Backup :8202)",
+      "type": "stat",
+      "description": "Secondary Vault instance for auto-failover",
+      "gridPos": { "h": 3, "w": 8, "x": 8, "y": 5 },
+      "targets": [
+        {
+          "expr": "up{job=\"vault\", instance=~\"vault-2.*\"}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": { "color": "red", "text": "🔴 Node 2 Offline" },
+                "1": { "color": "blue", "text": "🟢 Node 2 Online (Backup)" }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "blue", "value": 1 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 8,
+      "title": "🏛️ Vault Node 3 (Backup :8203)",
+      "type": "stat",
+      "description": "Tertiary Vault instance for auto-failover",
+      "gridPos": { "h": 3, "w": 8, "x": 16, "y": 5 },
+      "targets": [
+        {
+          "expr": "up{job=\"vault\", instance=~\"vault-3.*\"}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": { "color": "red", "text": "🔴 Node 3 Offline" },
+                "1": { "color": "blue", "text": "🟢 Node 3 Online (Backup)" }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "blue", "value": 1 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 8 },
       "id": 200,
       "title": "🔐 Cryptographic Performance & Clinical Traffic",
       "type": "row"
     },
     {
-      "id": 6,
+      "id": 9,
       "title": "⚡ Active Crypto Ops",
       "type": "stat",
-      "gridPos": { "h": 3, "w": 5, "x": 0, "y": 5 },
+      "gridPos": { "h": 3, "w": 5, "x": 0, "y": 9 },
       "targets": [
         {
           "expr": "sum(rate(cryptoshred_crypto_duration_seconds_count[1m])) or vector(0)",
@@ -246,10 +373,10 @@
       }
     },
     {
-      "id": 7,
+      "id": 10,
       "title": "🔒 Avg Encryption Time",
       "type": "stat",
-      "gridPos": { "h": 3, "w": 5, "x": 5, "y": 5 },
+      "gridPos": { "h": 3, "w": 5, "x": 5, "y": 9 },
       "targets": [
         {
           "expr": "(sum(rate(cryptoshred_crypto_duration_seconds_sum{operation=\"encrypt\"}[1m])) / sum(rate(cryptoshred_crypto_duration_seconds_count{operation=\"encrypt\"}[1m])) * 1000) or vector(0)",
@@ -276,10 +403,10 @@
       }
     },
     {
-      "id": 8,
+      "id": 11,
       "title": "🔓 Avg Decryption Time",
       "type": "stat",
-      "gridPos": { "h": 3, "w": 5, "x": 10, "y": 5 },
+      "gridPos": { "h": 3, "w": 5, "x": 10, "y": 9 },
       "targets": [
         {
           "expr": "(sum(rate(cryptoshred_crypto_duration_seconds_sum{operation=\"decrypt\"}[1m])) / sum(rate(cryptoshred_crypto_duration_seconds_count{operation=\"decrypt\"}[1m])) * 1000) or vector(0)",
@@ -306,10 +433,10 @@
       }
     },
     {
-      "id": 9,
+      "id": 12,
       "title": "🌲 Merkle Proofs Minted",
       "type": "stat",
-      "gridPos": { "h": 3, "w": 4, "x": 15, "y": 5 },
+      "gridPos": { "h": 3, "w": 4, "x": 15, "y": 9 },
       "targets": [
         {
           "expr": "sum(cryptoshred_merkle_proof_mint_duration_seconds_count) or vector(0)",
@@ -330,10 +457,10 @@
       }
     },
     {
-      "id": 10,
+      "id": 13,
       "title": "🛡️ Resurrected Key Purges",
       "type": "stat",
-      "gridPos": { "h": 3, "w": 5, "x": 19, "y": 5 },
+      "gridPos": { "h": 3, "w": 5, "x": 19, "y": 9 },
       "targets": [
         {
           "expr": "sum(cryptoshred_tombstones_purged_count_total) or vector(0)",
@@ -367,11 +494,11 @@
       }
     },
     {
-      "id": 11,
+      "id": 14,
       "title": "Cryptographic Operations Latency (ms)",
       "type": "timeseries",
       "description": "AES-256-GCM encryption, decryption, key rotation, and O(1) crypto-shredding latencies",
-      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 8 },
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 12 },
       "targets": [
         {
           "expr": "(rate(cryptoshred_crypto_duration_seconds_sum[1m]) / rate(cryptoshred_crypto_duration_seconds_count[1m])) * 1000",
@@ -392,11 +519,11 @@
       }
     },
     {
-      "id": 12,
+      "id": 15,
       "title": "Clinical API Request Rate (Req/Sec)",
       "type": "timeseries",
       "description": "Throughput across clinical REST endpoints (/api/patients, /api/erasure, /api/gp, /api/fhir)",
-      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 8 },
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 12 },
       "targets": [
         {
           "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/.*\"}[1m])) by (uri)",
@@ -417,11 +544,11 @@
       }
     },
     {
-      "id": 13,
+      "id": 16,
       "title": "HMAC Blind Index Searches (Lookups/Sec)",
       "type": "timeseries",
       "description": "O(1) B-tree blind index lookups preserving zero plaintext in database",
-      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 8 },
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 12 },
       "targets": [
         {
           "expr": "rate(cryptoshred_blind_index_lookup_count_total[1m])",
@@ -442,17 +569,17 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 15 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 19 },
       "id": 300,
       "title": "🧠 JVM Memory & Database Pool (Deduplicated & Clean)",
       "type": "row"
     },
     {
-      "id": 14,
+      "id": 17,
       "title": "JVM Heap Memory Allocation",
       "type": "timeseries",
       "description": "Aggregated JVM heap memory confirming scoped zeroization leaves zero leaks",
-      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 16 },
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 20 },
       "targets": [
         {
           "expr": "sum(jvm_memory_used_bytes{area=\"heap\"})",
@@ -483,11 +610,11 @@
       }
     },
     {
-      "id": 15,
+      "id": 18,
       "title": "JVM Garbage Collection Pause Time (ms)",
       "type": "timeseries",
       "description": "Clean average GC pause duration in milliseconds",
-      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 16 },
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 20 },
       "targets": [
         {
           "expr": "(sum(rate(jvm_gc_pause_seconds_sum[1m])) / sum(rate(jvm_gc_pause_seconds_count[1m])) * 1000) or vector(0)",
@@ -507,11 +634,11 @@
       }
     },
     {
-      "id": 16,
+      "id": 19,
       "title": "HikariCP PostgreSQL Connection Pool",
       "type": "timeseries",
       "description": "Active, Idle, and Pending PostgreSQL JDBC connections",
-      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 16 },
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 20 },
       "targets": [
         {
           "expr": "hikaricp_connections_active",
@@ -542,17 +669,17 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 27 },
       "id": 400,
       "title": "🗄️ Database, Redis & Kafka Event Log (Deduplicated)",
       "type": "row"
     },
     {
-      "id": 17,
+      "id": 20,
       "title": "PostgreSQL Transactions Throughput (healthdb)",
       "type": "timeseries",
       "description": "Deduplicated transaction rate specifically for healthdb database",
-      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 24 },
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 28 },
       "targets": [
         {
           "expr": "sum(rate(pg_stat_database_xact_commit{datname=\"healthdb\"}[1m])) or vector(0)",
@@ -577,11 +704,11 @@
       }
     },
     {
-      "id": 18,
+      "id": 21,
       "title": "Redis L2 Cache Memory & Client Activity",
       "type": "timeseries",
       "description": "Redis memory consumption in bytes and active connected clients",
-      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 24 },
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 28 },
       "targets": [
         {
           "expr": "redis_memory_used_bytes",
@@ -606,11 +733,11 @@
       }
     },
     {
-      "id": 19,
+      "id": 22,
       "title": "Kafka Topic Partitions & Audit Event Activity",
       "type": "timeseries",
       "description": "Partition topology for patient-record-events and message throughput",
-      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 24 },
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 28 },
       "targets": [
         {
           "expr": "kafka_topic_partitions{topic=\"patient-record-events\"}",
@@ -637,11 +764,11 @@
   ],
   "refresh": "5s",
   "schemaVersion": 39,
-  "tags": ["cryptoshred", "unified", "clinical", "security", "infrastructure"],
+  "tags": ["cryptoshred", "unified", "clinical", "security", "infrastructure", "vault"],
   "time": { "from": "now-15m", "to": "now" },
   "timepicker": { "refresh_intervals": ["5s", "10s", "30s", "1m"] },
   "timezone": "browser",
   "title": "🏥 CryptoShred Health — Unified Mission Control",
   "uid": "cryptoshred-unified",
-  "version": 1
+  "version": 2
 }
