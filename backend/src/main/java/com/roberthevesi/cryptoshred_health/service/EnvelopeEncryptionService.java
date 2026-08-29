@@ -1,5 +1,8 @@
 package com.roberthevesi.cryptoshred_health.service;
 
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.Cipher;
@@ -10,6 +13,8 @@ import java.security.SecureRandom;
 import java.util.Base64;
 
 @Service
+@RequiredArgsConstructor
+@Slf4j
 public class EnvelopeEncryptionService {
 
     private static final String ALGORITHM = "AES";
@@ -19,6 +24,9 @@ public class EnvelopeEncryptionService {
     private static final int DEK_SIZE_BYTES = 32;  // 256 bits
 
     private final SecureRandom secureRandom = new SecureRandom();
+
+    @Autowired(required = false)
+    private CryptoMetricsService cryptoMetricsService;
 
     public record EncryptedPayload(String ciphertextBase64, String ivBase64) {}
 
@@ -36,6 +44,7 @@ public class EnvelopeEncryptionService {
 
     /** Encrypts plaintext bytes using the provided DEK with AES-256-GCM and optional AAD (Additional Authenticated Data). */
     public EncryptedPayload encrypt(byte[] plaintext, byte[] dek, byte[] aad) {
+        long startTime = System.nanoTime();
         byte[] iv = new byte[GCM_IV_LENGTH];
         try {
             secureRandom.nextBytes(iv);
@@ -54,6 +63,10 @@ public class EnvelopeEncryptionService {
             String cipherTextBase64 = Base64.getEncoder().encodeToString(cipherText);
             String ivBase64 = Base64.getEncoder().encodeToString(iv);
 
+            if (cryptoMetricsService != null) {
+                cryptoMetricsService.recordCryptoDuration("encrypt", System.nanoTime() - startTime);
+            }
+
             return new EncryptedPayload(cipherTextBase64, ivBase64);
         } catch (Exception e) {
             throw new IllegalStateException("AES-GCM encryption failed", e);
@@ -69,6 +82,7 @@ public class EnvelopeEncryptionService {
 
     /** Decrypts base64 ciphertext using the provided IV base64 and DEK with AES-256-GCM and optional AAD (Additional Authenticated Data). */
     public byte[] decrypt(String ciphertextBase64, String ivBase64, byte[] dek, byte[] aad) {
+        long startTime = System.nanoTime();
         byte[] cipherText = null;
         byte[] iv = null;
         try {
@@ -84,7 +98,11 @@ public class EnvelopeEncryptionService {
                 cipher.updateAAD(aad);
             }
 
-            return cipher.doFinal(cipherText);
+            byte[] decrypted = cipher.doFinal(cipherText);
+            if (cryptoMetricsService != null) {
+                cryptoMetricsService.recordCryptoDuration("decrypt", System.nanoTime() - startTime);
+            }
+            return decrypted;
         } catch (Exception e) {
             throw new IllegalStateException("AES-GCM decryption failed", e);
         } finally {
