@@ -17,6 +17,7 @@ import com.roberthevesi.cryptoshred_health.util.TemporaryPasswordGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,7 +28,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class PatientService {
 
@@ -41,6 +41,30 @@ public class PatientService {
     private final ObjectMapper objectMapper;
     private final PatientCacheService patientCacheService;
     private final EventLogPublisher eventLogPublisher;
+
+    @Autowired
+    public PatientService(
+            PatientRepository patientRepository,
+            GpRepository gpRepository,
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            VaultKmsService vaultKmsService,
+            EnvelopeEncryptionService envelopeEncryptionService,
+            CryptoService cryptoService,
+            ObjectMapper objectMapper,
+            PatientCacheService patientCacheService,
+            EventLogPublisher eventLogPublisher) {
+        this.patientRepository = patientRepository;
+        this.gpRepository = gpRepository;
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.vaultKmsService = vaultKmsService;
+        this.envelopeEncryptionService = envelopeEncryptionService;
+        this.cryptoService = cryptoService;
+        this.objectMapper = objectMapper;
+        this.patientCacheService = patientCacheService;
+        this.eventLogPublisher = eventLogPublisher;
+    }
 
     public PatientService(
             PatientRepository patientRepository,
