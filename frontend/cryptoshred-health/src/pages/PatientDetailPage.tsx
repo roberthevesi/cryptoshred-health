@@ -258,6 +258,7 @@ export default function PatientDetailPage() {
   const age = getAge(patient?.dateOfBirth);
   const isDoctor = user?.role === 'DOCTOR';
   const isAuditor = user?.role === 'AUDITOR';
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'ROLE_ADMIN';
   const isShredded = patient?.shredded || patient?.isActive === false || patient?.active === false;
   const activeVisits = patientVisits.filter((v) => !v.shredded && !isShredded);
   const shreddedVisits = patientVisits.filter((v) => v.shredded || isShredded);
@@ -762,6 +763,7 @@ export default function PatientDetailPage() {
                                   onClick={() => handleDownloadVisitProof(visit.id)}
                                   className="p-1.5 rounded-lg text-slate-500 hover:text-purple-700 hover:bg-purple-50 transition border border-slate-200 hover:border-purple-200"
                                   title="Download Visit Proof JSON"
+                                  aria-label="Download Visit Proof JSON"
                                 >
                                   <Download className="h-3.5 w-3.5" />
                                 </button>
@@ -777,6 +779,7 @@ export default function PatientDetailPage() {
                                 }}
                                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
                                 title="Edit visit notes"
+                                aria-label="Edit visit notes"
                               >
                                 <Pencil className="h-3.5 w-3.5" />
                               </button>
@@ -1194,7 +1197,7 @@ export default function PatientDetailPage() {
                     <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
                       isShredded ? 'bg-rose-100 text-rose-800 border border-rose-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                     }`}>
-                      {isShredded ? 'MATH SHREDDED' : 'PROTECTED'}
+                      {isShredded ? 'CRYPTO SHREDDED' : 'PROTECTED'}
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-500">

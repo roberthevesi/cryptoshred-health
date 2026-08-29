@@ -240,7 +240,7 @@ class RedisCryptoShreddingTest {
         );
         String piiJson = objectMapper.writeValueAsString(piiPayload);
         EnvelopeEncryptionService.EncryptedPayload encryptedPayload =
-                envelopeEncryptionService.encrypt(piiJson.getBytes(StandardCharsets.UTF_8), rawDek);
+                envelopeEncryptionService.encrypt(piiJson.getBytes(StandardCharsets.UTF_8), rawDek, patientId.getBytes(StandardCharsets.UTF_8));
 
         Patient patient = new Patient();
         patient.setId(patientUuid);

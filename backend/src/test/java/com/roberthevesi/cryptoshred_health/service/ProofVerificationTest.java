@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -42,8 +43,7 @@ class ProofVerificationTest {
         proofSigningService = new ProofSigningService();
         proofSigningService.init();
 
-        merkleNodeRepository = Mockito.mock(MerkleNodeRepository.class);
-        merkleTreeService = new MerkleTreeService(merkleNodeRepository);
+        merkleTreeService = new MerkleTreeService(null);
     }
 
     @Test
@@ -77,7 +77,7 @@ class ProofVerificationTest {
                 .digitalSignature(signature)
                 .build();
 
-        ErasureService erasureService = new ErasureService(null, null, null, null, null, null, null, proofSigningService, merkleTreeService, new com.fasterxml.jackson.databind.ObjectMapper());
+        ErasureService erasureService = new ErasureService(null, null, null, null, null, null, null, proofSigningService, merkleTreeService, new com.fasterxml.jackson.databind.ObjectMapper(), null);
 
         ProofVerificationResponseDto response = erasureService.verifyProofArtifact(proof);
 
@@ -117,7 +117,7 @@ class ProofVerificationTest {
                 .digitalSignature(signature)
                 .build();
 
-        ErasureService erasureService = new ErasureService(null, null, null, null, null, null, null, proofSigningService, merkleTreeService, new com.fasterxml.jackson.databind.ObjectMapper());
+        ErasureService erasureService = new ErasureService(null, null, null, null, null, null, null, proofSigningService, merkleTreeService, new com.fasterxml.jackson.databind.ObjectMapper(), null);
 
         ProofVerificationResponseDto response = erasureService.verifyProofArtifact(tamperedProof);
 
@@ -158,7 +158,7 @@ class ProofVerificationTest {
                 .digitalSignature(signature)
                 .build();
 
-        ErasureService erasureService = new ErasureService(null, null, null, null, null, null, null, proofSigningService, merkleTreeService, new com.fasterxml.jackson.databind.ObjectMapper());
+        ErasureService erasureService = new ErasureService(null, null, null, null, null, null, null, proofSigningService, merkleTreeService, new com.fasterxml.jackson.databind.ObjectMapper(), null);
 
         ProofVerificationResponseDto response = erasureService.verifyProofArtifact(proof);
 
@@ -199,7 +199,7 @@ class ProofVerificationTest {
                 .digitalSignature(signature)
                 .build();
 
-        ErasureService erasureService = new ErasureService(null, null, null, null, null, null, null, proofSigningService, merkleTreeService, new com.fasterxml.jackson.databind.ObjectMapper());
+        ErasureService erasureService = new ErasureService(null, null, null, null, null, null, null, proofSigningService, merkleTreeService, new com.fasterxml.jackson.databind.ObjectMapper(), null);
 
         ProofVerificationResponseDto response = erasureService.verifyProofArtifact(proof);
 
@@ -211,7 +211,7 @@ class ProofVerificationTest {
 
     @Test
     void testMultiLeafMerkleTreeInclusion() {
-        MerkleTreeService service = new MerkleTreeService(merkleNodeRepository);
+        MerkleTreeService service = new MerkleTreeService(null);
         List<String> leafHashes = List.of(
                 sha256("leaf_hash_0"),
                 sha256("leaf_hash_1"),
@@ -269,7 +269,7 @@ class ProofVerificationTest {
                 .digitalSignature(signature)
                 .build();
 
-        ErasureService erasureService = new ErasureService(null, null, null, null, null, null, null, proofSigningService, merkleTreeService, new com.fasterxml.jackson.databind.ObjectMapper());
+        ErasureService erasureService = new ErasureService(null, null, null, null, null, null, null, proofSigningService, merkleTreeService, new com.fasterxml.jackson.databind.ObjectMapper(), null);
 
         ProofVerificationResponseDto response = erasureService.verifyProofArtifact(proof);
 
@@ -277,5 +277,131 @@ class ProofVerificationTest {
         assertTrue(response.isSignatureValid());
         assertTrue(response.isPayloadIntegrityValid());
         assertTrue(response.isMerkleInclusionValid());
+    }
+
+    // =========================================================================
+    // Phase 1: EnvelopeEncryptionService AAD Tests
+    // =========================================================================
+
+    @Test
+    void testEnvelopeEncryptionServiceAadMatchAndMismatch() {
+        EnvelopeEncryptionService envelopeService = new EnvelopeEncryptionService();
+        byte[] dek = envelopeService.generateDek();
+        byte[] plaintext = "Patient Medical Record 101".getBytes(StandardCharsets.UTF_8);
+        byte[] aad = "PAT-10001".getBytes(StandardCharsets.UTF_8);
+        byte[] wrongAad = "PAT-99999".getBytes(StandardCharsets.UTF_8);
+
+        // 1. Encrypt and Decrypt with matching AAD
+        EnvelopeEncryptionService.EncryptedPayload payload = envelopeService.encrypt(plaintext, dek, aad);
+        assertNotNull(payload.ciphertextBase64());
+        assertNotNull(payload.ivBase64());
+
+        byte[] decrypted = envelopeService.decrypt(payload.ciphertextBase64(), payload.ivBase64(), dek, aad);
+        assertArrayEquals(plaintext, decrypted);
+
+        // 2. Decrypt with wrong AAD fails
+        assertThrows(IllegalStateException.class, () ->
+                envelopeService.decrypt(payload.ciphertextBase64(), payload.ivBase64(), dek, wrongAad));
+
+        // 3. Backward compatible 2-arg and 3-arg without AAD
+        EnvelopeEncryptionService.EncryptedPayload legacyPayload = envelopeService.encrypt(plaintext, dek);
+        byte[] legacyDecrypted = envelopeService.decrypt(legacyPayload.ciphertextBase64(), legacyPayload.ivBase64(), dek);
+        assertArrayEquals(plaintext, legacyDecrypted);
+    }
+
+    // =========================================================================
+    // Phase 1: ProofSigningService Vault Transit & Fallback Tests
+    // =========================================================================
+
+    @Test
+    void testProofSigningServiceVaultTransitMode() throws Exception {
+        org.springframework.vault.core.VaultOperations vaultOps = Mockito.mock(org.springframework.vault.core.VaultOperations.class, Mockito.RETURNS_DEEP_STUBS);
+
+        java.security.KeyPairGenerator keyGen = java.security.KeyPairGenerator.getInstance("RSA");
+        keyGen.initialize(2048);
+        java.security.KeyPair mockKp = keyGen.generateKeyPair();
+        String validPem = "-----BEGIN PUBLIC KEY-----\n" +
+                java.util.Base64.getEncoder().encodeToString(mockKp.getPublic().getEncoded()).replaceAll("(.{64})", "$1\n") +
+                "\n-----END PUBLIC KEY-----";
+
+        org.springframework.vault.support.VaultResponse keyResp = Mockito.mock(org.springframework.vault.support.VaultResponse.class);
+        Mockito.when(keyResp.getData()).thenReturn(Map.of(
+                "type", "rsa-2048",
+                "latest_version", 1,
+                "keys", Map.of(
+                        "1", Map.of("public_key", validPem)
+                )
+        ));
+        Mockito.when(vaultOps.read("transit/keys/" + ProofSigningService.KEY_NAME)).thenReturn(keyResp);
+
+        org.springframework.vault.support.VaultResponse signResp = Mockito.mock(org.springframework.vault.support.VaultResponse.class);
+        Mockito.when(signResp.getData()).thenReturn(Map.of("signature", "vault:v1:MEQCIDaRandomVaultSignatureBase64String=="));
+        Mockito.when(vaultOps.write(Mockito.eq("transit/sign/" + ProofSigningService.KEY_NAME), Mockito.anyMap())).thenReturn(signResp);
+
+        org.springframework.vault.support.VaultResponse verifyResp = Mockito.mock(org.springframework.vault.support.VaultResponse.class);
+        Mockito.when(verifyResp.getData()).thenReturn(Map.of("valid", true));
+        Mockito.when(vaultOps.write(Mockito.eq("transit/verify/" + ProofSigningService.KEY_NAME), Mockito.anyMap())).thenReturn(verifyResp);
+
+        ProofSigningService vaultSigningService = new ProofSigningService(vaultOps);
+        vaultSigningService.init();
+
+        assertTrue(vaultSigningService.isVaultAvailable());
+
+        String data = "IDENTIFIER=PAT-001|TIMESTAMP=2026-08-28T21:00:00|HASH=abcdef";
+        String signature = vaultSigningService.sign(data);
+        assertEquals("vault:v1:MEQCIDaRandomVaultSignatureBase64String==", signature);
+
+        assertTrue(vaultSigningService.verify(data, signature));
+        assertTrue(vaultSigningService.getPublicKeyPem().contains("BEGIN PUBLIC KEY"));
+    }
+
+    @Test
+    void testProofSigningServiceVerifyBothVaultAndLegacySignatures() {
+        String data = "CANONICAL_TEST_DATA";
+
+        // Legacy Base64 signature
+        String legacySig = proofSigningService.sign(data);
+        assertFalse(legacySig.startsWith("vault:"));
+        assertTrue(proofSigningService.verify(data, legacySig));
+
+        // Vault-formatted signature wrapping the base64 signature
+        String vaultSig = "vault:v1:" + legacySig;
+        assertTrue(proofSigningService.verify(data, vaultSig));
+
+        // Tampered data should fail
+        assertFalse(proofSigningService.verify(data + "_tampered", legacySig));
+        assertFalse(proofSigningService.verify(data + "_tampered", vaultSig));
+    }
+
+    // =========================================================================
+    // Phase 3: MerkleTreeService Directional Proofs & Compatibility Tests
+    // =========================================================================
+
+    @Test
+    void testMerkleTreeDirectionalProofsAndLegacyCompatibility() {
+        MerkleTreeService service = new MerkleTreeService(null);
+        service.addLeaf("leaf_A");
+        service.addLeaf("leaf_B");
+        service.addLeaf("leaf_C");
+        service.addLeaf("leaf_D");
+
+        String root = service.getMerkleRoot();
+
+        // Check directional prefixes
+        List<String> proofA = service.getInclusionProof("leaf_A");
+        assertFalse(proofA.isEmpty());
+        assertTrue(proofA.get(0).startsWith("L:"), "leaf_A is at index 0 (even), sibling proof step should have L: prefix");
+
+        List<String> proofB = service.getInclusionProof("leaf_B");
+        assertFalse(proofB.isEmpty());
+        assertTrue(proofB.get(0).startsWith("R:"), "leaf_B is at index 1 (odd), sibling proof step should have R: prefix");
+
+        // Verify directional proofs
+        assertTrue(service.verifyInclusion("leaf_A", proofA, root));
+        assertTrue(service.verifyInclusion("leaf_B", proofB, root));
+
+        // Verify legacy proof without L:/R: prefix
+        List<String> legacyProof = List.of("leaf_B", proofA.get(1).replace("L:", "").replace("R:", ""));
+        assertTrue(service.verifyInclusion("leaf_A", legacyProof, root));
     }
 }

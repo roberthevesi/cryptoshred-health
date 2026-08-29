@@ -79,10 +79,12 @@ public class MerkleTreeService {
             }
 
             List<String> nextLevel = new ArrayList<>();
-            int pairIndex = (index % 2 == 0) ? index + 1 : index - 1;
+            boolean isLeft = (index % 2 == 0);
+            int pairIndex = isLeft ? index + 1 : index - 1;
 
             if (pairIndex < currentLevel.size()) {
-                proofPath.add(currentLevel.get(pairIndex));
+                String prefix = isLeft ? "L:" : "R:";
+                proofPath.add(prefix + currentLevel.get(pairIndex));
             }
 
             for (int i = 0; i < currentLevel.size(); i += 2) {
@@ -102,7 +104,11 @@ public class MerkleTreeService {
             return leafHash.equalsIgnoreCase(expectedRoot);
         }
         String currentHash = leafHash;
-        for (String sibling : proofPath) {
+        for (String step : proofPath) {
+            String sibling = step;
+            if (sibling != null && (sibling.startsWith("L:") || sibling.startsWith("R:"))) {
+                sibling = sibling.substring(2);
+            }
             currentHash = hashPair(currentHash, sibling);
         }
         return currentHash.equalsIgnoreCase(expectedRoot);

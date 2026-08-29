@@ -54,6 +54,7 @@ class PatientKafkaEventStreamingTest {
     private PatientVisitCacheService patientVisitCacheService;
     private ProofSigningService proofSigningService;
     private MerkleTreeService merkleTreeService;
+    private WormBackupExporterService wormBackupExporterService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @SuppressWarnings("unchecked")
@@ -87,6 +88,7 @@ class PatientKafkaEventStreamingTest {
         patientVisitCacheService = Mockito.mock(PatientVisitCacheService.class);
         proofSigningService = Mockito.mock(ProofSigningService.class);
         merkleTreeService = Mockito.mock(MerkleTreeService.class);
+        wormBackupExporterService = Mockito.mock(WormBackupExporterService.class);
 
         User doctorUser = new User();
         doctorUser.setId(UUID.randomUUID());
@@ -200,7 +202,8 @@ class PatientKafkaEventStreamingTest {
                 patientCacheService,
                 proofSigningService,
                 merkleTreeService,
-                objectMapper
+                objectMapper,
+                wormBackupExporterService
         );
 
         patientVisitService = new PatientVisitService(

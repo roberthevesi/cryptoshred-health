@@ -30,8 +30,6 @@ class FhirExportIntegrationTest {
     private PatientVisitService patientVisitService;
     private PatientVisitRepository patientVisitRepository;
     private GpRepository gpRepository;
-    private VaultKmsService vaultKmsService;
-    private EnvelopeEncryptionService envelopeEncryptionService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private FhirExportService fhirExportService;
@@ -43,8 +41,6 @@ class FhirExportIntegrationTest {
         patientVisitService = Mockito.mock(PatientVisitService.class);
         patientVisitRepository = Mockito.mock(PatientVisitRepository.class);
         gpRepository = Mockito.mock(GpRepository.class);
-        vaultKmsService = Mockito.mock(VaultKmsService.class);
-        envelopeEncryptionService = Mockito.mock(EnvelopeEncryptionService.class);
 
         fhirExportService = new FhirExportService(
                 patientService,
@@ -52,8 +48,6 @@ class FhirExportIntegrationTest {
                 patientVisitService,
                 patientVisitRepository,
                 gpRepository,
-                vaultKmsService,
-                envelopeEncryptionService,
                 objectMapper
         );
     }
@@ -162,7 +156,7 @@ class FhirExportIntegrationTest {
                 .build();
 
         when(patientRepository.findByPatientId(patientId)).thenReturn(Optional.of(patient));
-        when(patientVisitRepository.findByPatientIdentifier(patientId)).thenReturn(List.of(visit));
+        when(patientVisitRepository.findAllByPatientComprehensive(patientUuid, patientId)).thenReturn(List.of(visit));
         when(patientService.toResponse(patient)).thenReturn(patientResponse);
         when(patientVisitService.toResponse(visit)).thenReturn(visitResponse);
 
@@ -179,6 +173,9 @@ class FhirExportIntegrationTest {
         List<Map<String, Object>> entries = (List<Map<String, Object>>) bundle.get("entry");
         assertNotNull(entries);
         assertFalse(entries.isEmpty());
+
+        // Validate Bundle Entry fullUrl matches relative reference
+        assertEquals("Patient/" + patientId, entries.get(0).get("fullUrl"));
 
         // Extract resources by type
         Map<String, Map<String, Object>> resourcesByType = new HashMap<>();
@@ -273,10 +270,12 @@ class FhirExportIntegrationTest {
         Map<String, Object> allergyRes = resourcesByType.get("AllergyIntolerance");
         assertEquals("Penicillin", ((Map<String, Object>) allergyRes.get("code")).get("text"));
 
-        // 7. Validate MedicationStatement
+        // 7. Validate MedicationStatement (UK Core compliance: encounter reference instead of context)
         assertTrue(resourcesByType.containsKey("MedicationStatement"));
         Map<String, Object> medRes = resourcesByType.get("MedicationStatement");
         assertEquals("Amlodipine 5mg once daily", ((Map<String, Object>) medRes.get("medicationCodeableConcept")).get("text"));
+        assertEquals(Map.of("reference", "Encounter/" + visitUuid), medRes.get("encounter"));
+        assertNull(medRes.get("context"), "MedicationStatement must not contain legacy context field");
 
         // 8. Validate DocumentReference
         assertEquals(1, documents.size());
@@ -336,7 +335,7 @@ class FhirExportIntegrationTest {
                 .build();
 
         when(patientRepository.findByPatientId(patientId)).thenReturn(Optional.of(shreddedPatient));
-        when(patientVisitRepository.findByPatientIdentifier(patientId)).thenReturn(List.of(shreddedVisit));
+        when(patientVisitRepository.findAllByPatientComprehensive(patientUuid, patientId)).thenReturn(List.of(shreddedVisit));
         when(patientService.toResponse(shreddedPatient)).thenReturn(redactedResponse);
         when(patientVisitService.toResponse(shreddedVisit)).thenReturn(redactedVisitResponse);
 

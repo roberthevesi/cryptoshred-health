@@ -33,8 +33,6 @@ public class FhirExportService {
     private final PatientVisitService patientVisitService;
     private final PatientVisitRepository patientVisitRepository;
     private final GpRepository gpRepository;
-    private final VaultKmsService vaultKmsService;
-    private final EnvelopeEncryptionService envelopeEncryptionService;
     private final ObjectMapper objectMapper;
 
     private static final Map<String, Object> CRYPTO_SHREDDED_TAG = Map.of(
@@ -60,14 +58,7 @@ public class FhirExportService {
                 .orElseThrow(() -> new IllegalArgumentException("Patient not found: " + patientId));
 
         // 2. Fetch associated clinical visits
-        List<PatientVisit> visits = new ArrayList<>(patientVisitRepository.findByPatientIdentifier(patient.getPatientId()));
-        if (visits.isEmpty() && patient.getId() != null) {
-            visits = patientVisitRepository.findAll().stream()
-                    .filter(v -> (v.getPatient() != null && v.getPatient().getId().equals(patient.getId()))
-                            || (v.getMrn() != null && v.getMrn().equals(patient.getPatientId())))
-                    .collect(Collectors.toList());
-        }
-        visits.sort(Comparator.comparing(PatientVisit::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())));
+        List<PatientVisit> visits = patientVisitRepository.findAllByPatientComprehensive(patient.getId(), patient.getPatientId());
 
         // 3. Resolve decrypted / redacted patient demographic response
         PatientResponse pResp = patientService.toResponse(patient);
@@ -124,7 +115,7 @@ public class FhirExportService {
                     .ifPresent(allergy -> addBundleEntry(entries, "AllergyIntolerance/" + allergy.get("id"), allergy));
 
             // MedicationStatement
-            buildMedicationResource(visit, vResp, patient, isVisitShredded)
+            buildMedicationStatementResource(visit, vResp, patient, isVisitShredded)
                     .ifPresent(med -> addBundleEntry(entries, "MedicationStatement/" + med.get("id"), med));
 
             // DocumentReference (Attachments)
@@ -591,8 +582,8 @@ public class FhirExportService {
         return Optional.of(resource);
     }
 
-    private Optional<Map<String, Object>> buildMedicationResource(PatientVisit visit, PatientVisitResponse vResp,
-                                                                  Patient patient, boolean isVisitShredded) {
+    private Optional<Map<String, Object>> buildMedicationStatementResource(PatientVisit visit, PatientVisitResponse vResp,
+                                                                          Patient patient, boolean isVisitShredded) {
         if (vResp.getPrescriptions() == null || vResp.getPrescriptions().isBlank()) {
             return Optional.empty();
         }
@@ -610,7 +601,7 @@ public class FhirExportService {
 
         resource.put("status", isVisitShredded ? "inactive" : "active");
         resource.put("subject", Map.of("reference", "Patient/" + patient.getPatientId()));
-        resource.put("context", Map.of("reference", "Encounter/" + visit.getId()));
+        resource.put("encounter", Map.of("reference", "Encounter/" + visit.getId()));
         resource.put("medicationCodeableConcept", Map.of("text", vResp.getPrescriptions()));
 
         return Optional.of(resource);
@@ -658,7 +649,9 @@ public class FhirExportService {
 
     private void addBundleEntry(List<Map<String, Object>> entries, String relativeUrl, Map<String, Object> resource) {
         Map<String, Object> entry = new LinkedHashMap<>();
-        entry.put("fullUrl", "urn:uuid:" + UUID.randomUUID());
+        entry.put("fullUrl", (relativeUrl != null && !relativeUrl.isBlank())
+                ? relativeUrl
+                : (resource.get("resourceType") + "/" + resource.get("id")));
         entry.put("resource", resource);
         entries.add(entry);
     }

@@ -31,6 +31,11 @@ public class EnvelopeEncryptionService {
 
     /** Encrypts plaintext bytes using the provided DEK with AES-256-GCM. */
     public EncryptedPayload encrypt(byte[] plaintext, byte[] dek) {
+        return encrypt(plaintext, dek, null);
+    }
+
+    /** Encrypts plaintext bytes using the provided DEK with AES-256-GCM and optional AAD (Additional Authenticated Data). */
+    public EncryptedPayload encrypt(byte[] plaintext, byte[] dek, byte[] aad) {
         try {
             byte[] iv = new byte[GCM_IV_LENGTH];
             secureRandom.nextBytes(iv);
@@ -39,6 +44,10 @@ public class EnvelopeEncryptionService {
             Cipher cipher = Cipher.getInstance(TRANSFORMATION);
             GCMParameterSpec parameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
             cipher.init(Cipher.ENCRYPT_MODE, secretKey, parameterSpec);
+
+            if (aad != null) {
+                cipher.updateAAD(aad);
+            }
 
             byte[] cipherText = cipher.doFinal(plaintext);
 
@@ -53,6 +62,11 @@ public class EnvelopeEncryptionService {
 
     /** Decrypts base64 ciphertext using the provided IV base64 and DEK with AES-256-GCM. */
     public byte[] decrypt(String ciphertextBase64, String ivBase64, byte[] dek) {
+        return decrypt(ciphertextBase64, ivBase64, dek, null);
+    }
+
+    /** Decrypts base64 ciphertext using the provided IV base64 and DEK with AES-256-GCM and optional AAD (Additional Authenticated Data). */
+    public byte[] decrypt(String ciphertextBase64, String ivBase64, byte[] dek, byte[] aad) {
         try {
             byte[] cipherText = Base64.getDecoder().decode(ciphertextBase64);
             byte[] iv = Base64.getDecoder().decode(ivBase64);
@@ -61,6 +75,10 @@ public class EnvelopeEncryptionService {
             Cipher cipher = Cipher.getInstance(TRANSFORMATION);
             GCMParameterSpec parameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
             cipher.init(Cipher.DECRYPT_MODE, secretKey, parameterSpec);
+
+            if (aad != null) {
+                cipher.updateAAD(aad);
+            }
 
             return cipher.doFinal(cipherText);
         } catch (Exception e) {

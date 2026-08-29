@@ -17,7 +17,6 @@ import java.util.UUID;
 @Entity
 @Table(name = "patient_visits", indexes = {
         @Index(name = "idx_visit_owner_id",   columnList = "owner_id"),
-        @Index(name = "idx_visit_mrn",         columnList = "mrn"),
         @Index(name = "idx_visit_shredded",    columnList = "shredded"),
         @Index(name = "idx_visit_patient_id",  columnList = "patient_id")
 })
@@ -40,8 +39,8 @@ public class PatientVisit {
     @Transient
     private String patientName;
 
-    /** Medical Record Number or Patient ID pseudonym */
-    @Column(nullable = false)
+    /** Medical Record Number (Transient, encrypted in encryptedDataBlob) */
+    @Transient
     private String mrn;
 
     // ── Vitals & Biometrics (Transient, encrypted in encryptedDataBlob) ─────

@@ -327,9 +327,42 @@ The use of standard AES-256-GCM with unique Initialization Vectors (IVs) and eph
 
 ---
 
+## 8. Live Multi-Tier Macro Benchmark Telemetry (Live Backend Execution)
+
+The following dataset reflects the empirical performance metrics collected from the live end-to-end benchmark execution against the Spring Boot 3.3.4 backend, HashiCorp Vault KMS, PostgreSQL 15, Redis 7, and Apache Kafka 3.7.
+
+### Live Telemetry Data Table
+
+| Scenario | Concurrency (VUs) | Throughput (RPS) | Mean (ms) | $p_{50}$ (ms) | $p_{90}$ (ms) | $p_{95}$ (ms) | $p_{99}$ (ms) | Jitter (ms) | Error Rate (%) |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **S1: Encrypted Reads** | 1 | 37.8 | 26.32 | 23.89 | 33.31 | 35.06 | 92.34 | 13.93 | **0.0%** |
+| | 10 | 179.9 | 55.07 | 49.87 | 91.64 | 103.30 | 152.03 | 9.50 | **0.0%** |
+| | 50 | 197.4 | 250.35 | 241.90 | 358.29 | 445.88 | 545.14 | 67.62 | **0.0%** |
+| | 100 | 167.7 | 582.31 | 508.89 | 943.20 | 1147.59 | 1443.66 | 176.04 | **0.0%** |
+| | 250 | 193.2 | 1231.37 | 1255.93 | 1805.05 | 2136.78 | 2443.95 | 378.45 | **0.0%** |
+| | 500 | 153.8 | 2848.81 | 3043.19 | 3901.54 | 4086.60 | 4701.66 | 322.09 | **0.0%** |
+| **S2: Encrypted Ingestion** | 1 | 15.4 | 64.59 | 54.36 | 91.95 | 103.15 | 152.00 | 19.60 | **0.0%** |
+| | 10 | 69.8 | 142.92 | 135.58 | 206.16 | 246.29 | 305.18 | 22.68 | **0.0%** |
+| | 50 | 52.9 | 920.37 | 844.51 | 1479.79 | 1632.96 | 2021.70 | 161.65 | **0.0%** |
+| | 100 | 60.3 | 1535.53 | 1503.40 | 2047.47 | 2210.05 | 2947.65 | 220.25 | **0.0%** |
+| | 250 | 79.0 | 2780.87 | 2993.55 | 3439.75 | 4018.26 | 4304.04 | 307.79 | **0.0%** |
+| | 500 | 67.7 | 5430.56 | 6057.20 | 8154.04 | 8960.84 | 9826.77 | 356.29 | **0.0%** |
+| **S3: Crypto-Shredding** | 1 | 6.2 | 161.77 | 149.78 | 201.25 | 219.16 | 332.16 | 25.70 | **0.0%** |
+| | 10 | 6.2 | 1501.24 | 1426.42 | 2165.61 | 2551.13 | 3551.38 | 435.24 | **0.0%** |
+| | 50 | 6.9 | 5805.63 | 6465.56 | 7539.70 | 7941.81 | 8548.91 | 522.32 | **0.0%** |
+| | 100 | 8.0 | 9043.34 | 11007.60 | 12601.42 | 13191.52 | 14216.69 | 390.47 | **0.0%** |
+| | 250 | 12.8 | 12645.38 | 15002.43 | 15069.46 | 15069.82 | 15070.10 | 45.53 | 69.0% |
+| | 500 | 23.4 | 13468.85 | 15086.17 | 15128.61 | 15135.17 | 15140.85 | 25.79 | 77.8% |
+| **S4: Fail-Safe Post-Shred** | 50 | 3.5 | 14014.98 | 14035.49 | 14101.37 | 14108.05 | 14115.93 | 5.57 | **0.0%** |
+| | 100 | 546.6 | 181.30 | 174.80 | 248.78 | 276.91 | 344.70 | 39.83 | **0.0%** |
+| | 250 | 571.6 | 430.42 | 426.04 | 576.04 | 606.60 | 761.20 | 83.10 | **0.0%** |
+| | 500 | 557.4 | 864.05 | 879.52 | 1042.52 | 1075.34 | 1232.65 | 81.96 | **0.0%** |
+
+---
+
 **Artifact References:**
-- Raw Metrics JSON: `load-tests/results/raw_metrics.json`
-- Raw Metrics CSV: `load-tests/results/metrics.csv`
+- Raw Metrics JSON: `benchmarks/macro-system/results/raw_metrics.json`
+- Raw Metrics CSV: `benchmarks/macro-system/results/metrics.csv`
 - JMH Microbenchmark Raw Data: `backend/benchmark-results/results.json`
-- Test Harness Implementation: `load-tests/load-test-harness.mjs`
-- k6 Benchmark Script: `load-tests/k6-script.js`
+- Test Harness Implementation: `benchmarks/macro-system/load-test-harness.mjs`
+- k6 Benchmark Script: `benchmarks/macro-system/k6-script.js`
