@@ -223,13 +223,13 @@
     },
     {
       "id": 6,
-      "title": "🏛️ Vault Node 1 (Primary :8201)",
+      "title": "🏛️ Vault Node 1 (:8201)",
       "type": "stat",
-      "description": "Primary Vault instance handling KMS requests",
+      "description": "Live state for Vault Node 1",
       "gridPos": { "h": 3, "w": 8, "x": 0, "y": 5 },
       "targets": [
         {
-          "expr": "up{job=\"vault\", instance=~\"vault-1.*\"}",
+          "expr": "sum(up{instance=~\"vault-1.*\"}) + (sum(vault_core_active{instance=~\"vault-1.*\"}) * 10 or vector(0))",
           "refId": "A"
         }
       ],
@@ -240,7 +240,9 @@
               "type": "value",
               "options": {
                 "0": { "color": "red", "text": "🔴 Node 1 Offline" },
-                "1": { "color": "green", "text": "🟢 Node 1 Online (Primary)" }
+                "1": { "color": "blue", "text": "🛡️ Node 1 Online (Standby)" },
+                "10": { "color": "green", "text": "👑 Node 1 Online (Active Leader)" },
+                "11": { "color": "green", "text": "👑 Node 1 Online (Active Leader)" }
               }
             }
           ],
@@ -248,7 +250,8 @@
             "mode": "absolute",
             "steps": [
               { "color": "red", "value": null },
-              { "color": "green", "value": 1 }
+              { "color": "blue", "value": 1 },
+              { "color": "green", "value": 10 }
             ]
           }
         }
@@ -263,13 +266,13 @@
     },
     {
       "id": 7,
-      "title": "🏛️ Vault Node 2 (Backup :8202)",
+      "title": "🏛️ Vault Node 2 (:8202)",
       "type": "stat",
-      "description": "Secondary Vault instance for auto-failover",
+      "description": "Live state for Vault Node 2",
       "gridPos": { "h": 3, "w": 8, "x": 8, "y": 5 },
       "targets": [
         {
-          "expr": "up{job=\"vault\", instance=~\"vault-2.*\"}",
+          "expr": "sum(up{instance=~\"vault-2.*\"}) + (sum(vault_core_active{instance=~\"vault-2.*\"}) * 10 or vector(0))",
           "refId": "A"
         }
       ],
@@ -280,7 +283,9 @@
               "type": "value",
               "options": {
                 "0": { "color": "red", "text": "🔴 Node 2 Offline" },
-                "1": { "color": "blue", "text": "🟢 Node 2 Online (Backup)" }
+                "1": { "color": "blue", "text": "🛡️ Node 2 Online (Standby)" },
+                "10": { "color": "green", "text": "👑 Node 2 Online (Active Leader)" },
+                "11": { "color": "green", "text": "👑 Node 2 Online (Active Leader)" }
               }
             }
           ],
@@ -288,7 +293,8 @@
             "mode": "absolute",
             "steps": [
               { "color": "red", "value": null },
-              { "color": "blue", "value": 1 }
+              { "color": "blue", "value": 1 },
+              { "color": "green", "value": 10 }
             ]
           }
         }
@@ -303,13 +309,13 @@
     },
     {
       "id": 8,
-      "title": "🏛️ Vault Node 3 (Backup :8203)",
+      "title": "🏛️ Vault Node 3 (:8203)",
       "type": "stat",
-      "description": "Tertiary Vault instance for auto-failover",
+      "description": "Live state for Vault Node 3",
       "gridPos": { "h": 3, "w": 8, "x": 16, "y": 5 },
       "targets": [
         {
-          "expr": "up{job=\"vault\", instance=~\"vault-3.*\"}",
+          "expr": "sum(up{instance=~\"vault-3.*\"}) + (sum(vault_core_active{instance=~\"vault-3.*\"}) * 10 or vector(0))",
           "refId": "A"
         }
       ],
@@ -320,7 +326,9 @@
               "type": "value",
               "options": {
                 "0": { "color": "red", "text": "🔴 Node 3 Offline" },
-                "1": { "color": "blue", "text": "🟢 Node 3 Online (Backup)" }
+                "1": { "color": "blue", "text": "🛡️ Node 3 Online (Standby)" },
+                "10": { "color": "green", "text": "👑 Node 3 Online (Active Leader)" },
+                "11": { "color": "green", "text": "👑 Node 3 Online (Active Leader)" }
               }
             }
           ],
@@ -328,7 +336,8 @@
             "mode": "absolute",
             "steps": [
               { "color": "red", "value": null },
-              { "color": "blue", "value": 1 }
+              { "color": "blue", "value": 1 },
+              { "color": "green", "value": 10 }
             ]
           }
         }

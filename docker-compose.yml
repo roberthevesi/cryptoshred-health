@@ -74,6 +74,7 @@ services:
         }
     volumes:
       - vaultdata-1:/vault/file
+      - vaultshared:/vault/shared
       - ./vault/config:/vault/config:ro
       - ./vault/entrypoint.sh:/vault/entrypoint.sh:ro
     entrypoint: ["/vault/entrypoint.sh"]
@@ -96,6 +97,7 @@ services:
       VAULT_ADDR: "http://127.0.0.1:8200"
       VAULT_API_ADDR: "http://vault-2:8200"
       VAULT_CLUSTER_ADDR: "http://vault-2:8201"
+      VAULT_JOIN_ADDR: "http://vault-1:8200"
       VAULT_LOCAL_CONFIG: >
         {
           "storage": {
@@ -123,6 +125,7 @@ services:
         }
     volumes:
       - vaultdata-2:/vault/file
+      - vaultshared:/vault/shared
       - ./vault/config:/vault/config:ro
       - ./vault/entrypoint.sh:/vault/entrypoint.sh:ro
     entrypoint: ["/vault/entrypoint.sh"]
@@ -145,6 +148,7 @@ services:
       VAULT_ADDR: "http://127.0.0.1:8200"
       VAULT_API_ADDR: "http://vault-3:8200"
       VAULT_CLUSTER_ADDR: "http://vault-3:8201"
+      VAULT_JOIN_ADDR: "http://vault-1:8200"
       VAULT_LOCAL_CONFIG: >
         {
           "storage": {
@@ -172,6 +176,7 @@ services:
         }
     volumes:
       - vaultdata-3:/vault/file
+      - vaultshared:/vault/shared
       - ./vault/config:/vault/config:ro
       - ./vault/entrypoint.sh:/vault/entrypoint.sh:ro
     entrypoint: ["/vault/entrypoint.sh"]
@@ -379,6 +384,7 @@ services:
 volumes:
   pgdata:
   vaultdata:
+  vaultshared:
   vaultdata-1:
   vaultdata-2:
   vaultdata-3:
