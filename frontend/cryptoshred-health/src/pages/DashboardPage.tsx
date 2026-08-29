@@ -82,9 +82,11 @@ export default function DashboardPage() {
               <FileCheck2 className="h-3.5 w-3.5 text-emerald-600" />
               Verify Proof Artifact
             </button>
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-medium text-slate-900">{user?.email}</p>
-              <span className={`${ROLE_BADGE[user?.role ?? '']} text-xs`}>{user?.role}</span>
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100/90 border border-slate-200 shadow-2xs">
+              <span className="text-xs font-semibold text-slate-700">{user?.email}</span>
+              <span className={`${ROLE_BADGE[user?.role ?? '']} text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md`}>
+                {user?.role}
+              </span>
             </div>
             <button id="logout-btn" onClick={handleLogout} className="btn-ghost gap-1.5" title="Sign out" aria-label="Sign out">
               <LogOut className="h-4 w-4" />

@@ -45,7 +45,12 @@ export default function PatientBanner({ record, showVitalsSummary = true }: Prop
                 : 'bg-blue-600 border-blue-500 text-white shadow-sm'
             }`}
           >
-            {record.patientName.charAt(0).toUpperCase()}
+            {(() => {
+              if (record.shredded) return '✕';
+              const parts = (record.patientName || '').trim().split(/\s+/);
+              if (parts.length >= 2) return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase();
+              return (record.patientName || 'PT').slice(0, 2).toUpperCase();
+            })()}
             <span
               className={`absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-white ${
                 record.shredded ? 'bg-slate-400' : 'bg-emerald-500'

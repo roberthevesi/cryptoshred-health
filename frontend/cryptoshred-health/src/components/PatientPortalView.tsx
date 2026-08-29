@@ -134,8 +134,8 @@ export default function PatientPortalView() {
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           {/* Patient Bio & Avatar */}
           <div className="flex items-start sm:items-center gap-4">
-            <div className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold text-2xl shadow-md ring-4 ring-blue-50">
-              {patient.firstName ? patient.firstName.charAt(0) : 'P'}
+            <div className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold text-xl shadow-md ring-4 ring-blue-50">
+              {patient.firstName ? `${patient.firstName.charAt(0)}${patient.lastName ? patient.lastName.charAt(0) : ''}`.toUpperCase() : 'PT'}
               <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 border-2 border-white" />
             </div>
 

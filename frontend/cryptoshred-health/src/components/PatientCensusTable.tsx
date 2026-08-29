@@ -247,12 +247,12 @@ export default function PatientCensusTable() {
             <table className="w-full text-left text-xs">
               <thead className="border-b border-slate-200 bg-slate-50 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
                 <tr>
-                  <th className="py-3.5 pl-4 pr-2">Patient Name &amp; ID</th>
-                  <th className="py-3.5 px-3">Demographics</th>
-                  <th className="py-3.5 px-3">Assigned GP Surgery</th>
-                  <th className="py-3.5 px-3">Contact</th>
-                  <th className="py-3.5 px-3">Status</th>
-                  <th className="py-3.5 pl-3 pr-4 text-right">Patient File</th>
+                  <th className="py-3.5 pl-4 pr-2 whitespace-nowrap min-w-[210px]">Patient Name &amp; ID</th>
+                  <th className="py-3.5 px-3 whitespace-nowrap min-w-[130px]">Demographics</th>
+                  <th className="py-3.5 px-3 whitespace-nowrap min-w-[180px]">Assigned GP Surgery</th>
+                  <th className="py-3.5 px-3 whitespace-nowrap min-w-[180px]">Contact</th>
+                  <th className="py-3.5 px-3 whitespace-nowrap min-w-[110px]">Status</th>
+                  <th className="py-3.5 pl-3 pr-4 text-right whitespace-nowrap min-w-[130px]">Patient File</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -268,6 +268,9 @@ export default function PatientCensusTable() {
                   paginatedPatients.map((patient) => {
                     const isShredded = !!patient.shredded || patient.isActive === false || patient.active === false;
                     const age = !isShredded ? getAge(patient.dateOfBirth) : null;
+                    const initials = isShredded
+                      ? '✕'
+                      : `${patient.firstName?.charAt(0) || ''}${patient.lastName?.charAt(0) || ''}`.toUpperCase() || 'PT';
 
                     return (
                       <tr
@@ -283,18 +286,18 @@ export default function PatientCensusTable() {
                         <td className="py-3.5 pl-4 pr-2">
                           <div className="flex items-center gap-3">
                             <div
-                              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-bold text-sm transition-colors ${
+                              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-bold text-xs transition-colors ${
                                 isShredded
                                   ? 'bg-rose-100 border border-rose-300 text-rose-700 group-hover:bg-rose-600 group-hover:text-white'
                                   : 'bg-blue-50 border border-blue-200 text-blue-700 group-hover:bg-blue-600 group-hover:text-white'
                               }`}
                             >
-                              {isShredded ? '✕' : patient.firstName.charAt(0).toUpperCase()}
+                              {initials}
                             </div>
-                            <div>
-                              <div className="flex items-center gap-2">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <span
-                                  className={`font-bold text-sm transition-colors ${
+                                  className={`font-bold text-sm transition-colors truncate ${
                                     isShredded
                                       ? 'text-rose-900 font-mono'
                                       : 'text-slate-900 group-hover:text-blue-600'
@@ -303,18 +306,18 @@ export default function PatientCensusTable() {
                                   {isShredded ? '[SHREDDED]' : `${patient.firstName} ${patient.lastName}`}
                                 </span>
                                 {isShredded ? (
-                                  <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-rose-100 text-rose-800 border border-rose-200 font-semibold">
+                                  <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-rose-100 text-rose-800 border border-rose-200 font-semibold shrink-0">
                                     GDPR Art. 17
                                   </span>
                                 ) : (
                                   patient.nhsNumber && (
-                                    <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                                    <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 border border-blue-200 shrink-0">
                                       NHS {patient.nhsNumber}
                                     </span>
                                   )
                                 )}
                               </div>
-                              <span className="text-[11px] text-slate-400 font-mono">
+                              <span className="text-[11px] text-slate-400 font-mono block">
                                 ID: {patient.patientId}
                               </span>
                             </div>
@@ -327,11 +330,11 @@ export default function PatientCensusTable() {
                             <span className="text-slate-400 font-mono text-[11px] italic">[SHREDDED]</span>
                           ) : (
                             <div className="space-y-0.5">
-                              <span className="text-slate-700 font-medium block">
+                              <span className="text-slate-700 font-medium block whitespace-nowrap">
                                 {patient.gender || 'Unknown'} {age ? `• ${age} yrs` : ''}
                               </span>
                               {patient.dateOfBirth && (
-                                <span className="text-[11px] text-slate-400 block">
+                                <span className="text-[11px] text-slate-400 block whitespace-nowrap">
                                   DOB: {patient.dateOfBirth}
                                 </span>
                               )}
@@ -344,14 +347,14 @@ export default function PatientCensusTable() {
                           {isShredded ? (
                             <span className="text-slate-400 font-mono text-[11px] italic">[SHREDDED]</span>
                           ) : patient.gp ? (
-                            <div>
-                              <span className="font-medium text-slate-900 flex items-center gap-1">
+                            <div className="max-w-[170px]">
+                              <span className="font-medium text-slate-900 flex items-center gap-1 truncate" title={`Dr. ${patient.gp.firstName} ${patient.gp.lastName}`}>
                                 <Stethoscope className="h-3.5 w-3.5 text-blue-600 shrink-0" />
-                                Dr. {patient.gp.firstName} {patient.gp.lastName}
+                                <span className="truncate">Dr. {patient.gp.firstName} {patient.gp.lastName}</span>
                               </span>
-                              <span className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
-                                <Building2 className="h-3 w-3 text-slate-400" />
-                                {patient.gp.practiceName || `GMC: ${patient.gp.gmcNumber}`}
+                              <span className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5 truncate" title={patient.gp.practiceName || `GMC: ${patient.gp.gmcNumber}`}>
+                                <Building2 className="h-3 w-3 text-slate-400 shrink-0" />
+                                <span className="truncate">{patient.gp.practiceName || `GMC: ${patient.gp.gmcNumber}`}</span>
                               </span>
                             </div>
                           ) : (
@@ -364,17 +367,17 @@ export default function PatientCensusTable() {
                           {isShredded ? (
                             <span className="text-slate-400 font-mono text-[11px] italic">[SHREDDED]</span>
                           ) : (
-                            <div className="space-y-0.5 text-[11px]">
+                            <div className="space-y-0.5 text-[11px] max-w-[175px]">
                               {patient.phoneNumber && (
-                                <div className="text-slate-700 flex items-center gap-1">
-                                  <Phone className="h-3 w-3 text-slate-400" />
-                                  {patient.phoneNumber}
+                                <div className="text-slate-700 flex items-center gap-1.5 truncate" title={patient.phoneNumber}>
+                                  <Phone className="h-3 w-3 text-slate-400 shrink-0" />
+                                  <span className="truncate">{patient.phoneNumber}</span>
                                 </div>
                               )}
                               {patient.email && (
-                                <div className="text-slate-500 truncate max-w-[150px] flex items-center gap-1">
-                                  <Mail className="h-3 w-3 text-slate-400" />
-                                  {patient.email}
+                                <div className="text-slate-500 flex items-center gap-1.5 truncate" title={patient.email}>
+                                  <Mail className="h-3 w-3 text-slate-400 shrink-0" />
+                                  <span className="truncate">{patient.email}</span>
                                 </div>
                               )}
                             </div>
@@ -382,7 +385,7 @@ export default function PatientCensusTable() {
                         </td>
 
                         {/* 5. Status */}
-                        <td className="py-3.5 px-3">
+                        <td className="py-3.5 px-3 whitespace-nowrap">
                           {!isShredded ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-semibold">
                               <ShieldCheck className="h-3 w-3" /> Protected
