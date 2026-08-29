@@ -66,6 +66,24 @@ public class AdminBackupController {
     }
 
     /**
+     * Restore a specific backup bundle and re-sync database, WORM, and Merkle tree.
+     */
+    @PostMapping("/bundles/{bundleId}/restore")
+    public ResponseEntity<Map<String, Object>> restoreBundle(@PathVariable String bundleId) {
+        log.info("REST: Admin requested disaster recovery restore for bundle: {}", bundleId);
+        boolean success = backupManagementService.restoreBundle(bundleId);
+        int purgedKeys = merkleTombstoneReconciliationService.reconcileTombstones();
+        return ResponseEntity.ok(Map.of(
+                "bundleId", bundleId,
+                "status", success ? "RESTORED" : "FAILED",
+                "purgedZombieKeysCount", purgedKeys,
+                "restoredAt", LocalDateTime.now().toString(),
+                "message", success ? "Disaster recovery bundle restored successfully. Database, WORM, and Merkle states are synchronized."
+                        : "Restore failed."
+        ));
+    }
+
+    /**
      * Trigger immediate Merkle Tombstone reconciliation to purge any resurrected KMS keys.
      */
     @PostMapping("/reconcile-tombstones")
