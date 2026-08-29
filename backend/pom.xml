@@ -92,6 +92,16 @@
 			<version>2.6.0</version>
 		</dependency>
 
+		<!-- Spring Boot Actuator & Prometheus Observability -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-registry-prometheus</artifactId>
+		</dependency>
+
 		<!-- BouncyCastle Provider for PQC / Java 21 -->
 		<dependency>
 			<groupId>org.bouncycastle</groupId>

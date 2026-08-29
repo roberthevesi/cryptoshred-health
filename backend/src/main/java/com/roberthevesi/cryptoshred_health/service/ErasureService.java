@@ -52,6 +52,9 @@ public class ErasureService {
     private final ObjectMapper objectMapper;
     private final WormBackupExporterService wormBackupExporterService;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private CryptoMetricsService cryptoMetricsService;
+
     /**
      * Complete Patient Right-to-be-Forgotten:
      * Destroys the patient's master demographic Vault KEK, shreds all linked clinical visits and attachments,
@@ -59,6 +62,7 @@ public class ErasureService {
      */
     @Transactional
     public VerifiableDeletionProofDto forgetPatient(String patientId, String requestedBy) {
+        long totalStartTime = System.nanoTime();
         Patient patient = patientRepository.findByPatientId(patientId)
                 .orElseThrow(() -> new IllegalArgumentException("Patient not found: " + patientId));
 
@@ -121,6 +125,7 @@ public class ErasureService {
                         .build());
 
                 // Build audit trail, Merkle proof, RSA signature for this visit
+                long visitProofStartTime = System.nanoTime();
                 String visitAuditTrail = buildVisitAuditTrail(visit.getId(), requestedBy, timestamp);
                 String visitSha256 = sha256Hex(visitAuditTrail);
 
@@ -131,6 +136,10 @@ public class ErasureService {
                 String visitSignPayload = buildCanonicalSignPayload(visit.getId().toString(), timestamp, visitSha256, visitMerkleRoot);
                 String visitSignature = proofSigningService.sign(visitSignPayload);
                 String visitPqcSignature = proofSigningService.signPqc(visitSignPayload);
+
+                if (cryptoMetricsService != null) {
+                    cryptoMetricsService.recordMerkleProofMintDuration("CLINICAL_VISIT", System.nanoTime() - visitProofStartTime);
+                }
 
                 VerifiableDeletionProofDto visitProof = VerifiableDeletionProofDto.builder()
                         .proofVersion("1.0")
@@ -182,6 +191,7 @@ public class ErasureService {
                 .build());
 
         // 5. Build immutable audit trail, Merkle proof, and RSA digital signature
+        long patientProofStartTime = System.nanoTime();
         String auditTrail = buildPatientAuditTrail(patientId, visits.size(), requestedBy, timestamp);
         String sha256Hash = sha256Hex(auditTrail);
 
@@ -192,6 +202,10 @@ public class ErasureService {
         String canonicalPayload = buildCanonicalSignPayload(patientId, timestamp, sha256Hash, merkleRoot);
         String digitalSignature = proofSigningService.sign(canonicalPayload);
         String pqcSignature = proofSigningService.signPqc(canonicalPayload);
+
+        if (cryptoMetricsService != null) {
+            cryptoMetricsService.recordMerkleProofMintDuration("PATIENT_PROFILE", System.nanoTime() - patientProofStartTime);
+        }
 
         log.info("Full Patient crypto-shred complete for {}. Proof hash: {}, Signature: {}", patientId, sha256Hash, digitalSignature);
 
@@ -232,6 +246,10 @@ public class ErasureService {
 
         wormBackupExporterService.exportDeletionReceipt("PATIENT_PROFILE", patientId, vaultKeyName, requestedBy, sha256Hash, timestamp);
 
+        if (cryptoMetricsService != null) {
+            cryptoMetricsService.recordCryptoDuration("shred", System.nanoTime() - totalStartTime);
+        }
+
         return proof;
     }
 
@@ -242,6 +260,7 @@ public class ErasureService {
      */
     @Transactional
     public VerifiableDeletionProofDto forgetVisit(UUID visitId, String requestedBy) {
+        long totalStartTime = System.nanoTime();
         PatientVisit visit = patientVisitRepository.findById(visitId)
                 .orElseThrow(() -> new IllegalArgumentException("Patient visit not found: " + visitId));
 
@@ -266,6 +285,7 @@ public class ErasureService {
                 .build());
 
         // Build audit trail, Merkle tree leaf, and RSA signature
+        long proofStartTime = System.nanoTime();
         String auditTrail = buildVisitAuditTrail(visitId, requestedBy, timestamp);
         String sha256Hash = sha256Hex(auditTrail);
 
@@ -276,6 +296,10 @@ public class ErasureService {
         String canonicalPayload = buildCanonicalSignPayload(visitId.toString(), timestamp, sha256Hash, merkleRoot);
         String digitalSignature = proofSigningService.sign(canonicalPayload);
         String pqcSignature = proofSigningService.signPqc(canonicalPayload);
+
+        if (cryptoMetricsService != null) {
+            cryptoMetricsService.recordMerkleProofMintDuration("CLINICAL_VISIT", System.nanoTime() - proofStartTime);
+        }
 
         log.info("Visit erasure complete for visit {}. Proof hash: {}, Signature: {}", visitId, sha256Hash, digitalSignature);
 
@@ -317,6 +341,10 @@ public class ErasureService {
         }
 
         wormBackupExporterService.exportDeletionReceipt("CLINICAL_VISIT", visitId.toString(), vaultKeyName, requestedBy, sha256Hash, timestamp);
+
+        if (cryptoMetricsService != null) {
+            cryptoMetricsService.recordCryptoDuration("shred", System.nanoTime() - totalStartTime);
+        }
 
         return proof;
     }

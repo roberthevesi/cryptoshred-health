@@ -33,6 +33,16 @@ public class CryptoService {
     @Value("${app.crypto.blind-index-salt:${BLIND_INDEX_SALT:}}")
     private String configuredBlindIndexSalt;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private CryptoMetricsService cryptoMetricsService;
+
+    public CryptoService() {
+    }
+
+    public CryptoService(CryptoMetricsService cryptoMetricsService) {
+        this.cryptoMetricsService = cryptoMetricsService;
+    }
+
     public record EncryptedPayload(String ciphertextBase64, String ivBase64) {}
 
     /**
@@ -58,6 +68,7 @@ public class CryptoService {
         if (dek == null || dek.length == 0) {
             throw new IllegalArgumentException("DEK cannot be null or empty");
         }
+        long startTime = System.nanoTime();
         byte[] iv = new byte[GCM_IV_LENGTH];
         secureRandom.nextBytes(iv);
         try {
@@ -73,6 +84,10 @@ public class CryptoService {
             byte[] cipherText = cipher.doFinal(plaintext);
             String cipherTextBase64 = Base64.getEncoder().encodeToString(cipherText);
             String ivBase64 = Base64.getEncoder().encodeToString(iv);
+
+            if (cryptoMetricsService != null) {
+                cryptoMetricsService.recordCryptoDuration("encrypt", System.nanoTime() - startTime);
+            }
 
             return new EncryptedPayload(cipherTextBase64, ivBase64);
         } catch (Exception e) {
@@ -97,6 +112,7 @@ public class CryptoService {
         if (ciphertextBase64 == null || ivBase64 == null || dek == null) {
             throw new IllegalArgumentException("Ciphertext, IV, and DEK must not be null");
         }
+        long startTime = System.nanoTime();
         byte[] cipherText = null;
         byte[] iv = null;
         try {
@@ -112,7 +128,11 @@ public class CryptoService {
                 cipher.updateAAD(aad);
             }
 
-            return cipher.doFinal(cipherText);
+            byte[] decrypted = cipher.doFinal(cipherText);
+            if (cryptoMetricsService != null) {
+                cryptoMetricsService.recordCryptoDuration("decrypt", System.nanoTime() - startTime);
+            }
+            return decrypted;
         } catch (Exception e) {
             throw new IllegalStateException("AES-GCM decryption failed", e);
         } finally {
