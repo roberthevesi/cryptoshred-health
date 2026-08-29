@@ -430,7 +430,40 @@ public class BackupManagementService {
             throw new IllegalStateException("Database dump file missing in bundle: " + dbDumpPath);
         }
 
-        // 3. Restore WORM Encounters file
+        // 3. Restore Vault KMS Storage & Transit Keys
+        Path vaultSnapPath = targetBundleDir.resolve(VAULT_SNAPSHOT_FILENAME);
+        if (Files.exists(vaultSnapPath) && vaultOperations != null) {
+            try {
+                String snapJson = Files.readString(vaultSnapPath, StandardCharsets.UTF_8);
+                var jsonTree = objectMapper.readTree(snapJson);
+                var backupsNode = jsonTree.get("transit_key_backups");
+                if (backupsNode != null && backupsNode.isObject()) {
+                    var fields = backupsNode.fields();
+                    int restoredKeysCount = 0;
+                    while (fields.hasNext()) {
+                        var entry = fields.next();
+                        String keyName = entry.getKey();
+                        String backupBlob = entry.getValue().asText();
+                        try {
+                            vaultOperations.write("transit/restore/" + keyName, Map.of("backup", backupBlob, "force", true));
+                            restoredKeysCount++;
+                        } catch (Exception ex) {
+                            try {
+                                vaultOperations.write("transit/restore", Map.of("name", keyName, "backup", backupBlob, "force", true));
+                                restoredKeysCount++;
+                            } catch (Exception ex2) {
+                                log.debug("Vault transit key restore note for {}: {}", keyName, ex2.getMessage());
+                            }
+                        }
+                    }
+                    log.info("  ↳ ✅ Restored {} Vault Transit KEKs into Vault KMS.", restoredKeysCount);
+                }
+            } catch (Exception ex) {
+                log.warn("Vault Transit restore note: {}", ex.getMessage());
+            }
+        }
+
+        // 4. Restore WORM Encounters file
         Path wormPath = targetBundleDir.resolve(WORM_ENCOUNTERS_FILENAME);
         if (Files.exists(wormPath)) {
             try {
@@ -447,7 +480,7 @@ public class BackupManagementService {
             }
         }
 
-        // 4. Re-initialize Merkle Tree in memory from restored database nodes
+        // 5. Re-initialize Merkle Tree in memory from restored database nodes
         try {
             merkleTreeService.init();
             log.info("  ↳ ✅ Merkle Tree re-initialized with {} leaves. Active Root: {}",
@@ -648,14 +681,23 @@ public class BackupManagementService {
                 if (raftResp != null && raftResp.getData() != null) {
                     vaultSnapshot.put("raft_storage_snapshot", raftResp.getData());
                 } else {
-                    // Export Transit secrets engine metadata
+                    // Export Transit keys with full backup blobs and metadata
                     VaultResponse keysResp = vaultOperations.read("transit/keys?list=true");
+                    Map<String, String> transitKeyBackups = new LinkedHashMap<>();
                     Map<String, Object> transitKeysMetadata = new LinkedHashMap<>();
                     if (keysResp != null && keysResp.getData() != null && keysResp.getData().containsKey("keys")) {
                         Object keysObj = keysResp.getData().get("keys");
                         if (keysObj instanceof List<?> keyList) {
                             for (Object keyNameObj : keyList) {
                                 String keyName = String.valueOf(keyNameObj);
+                                try {
+                                    VaultResponse backupResp = vaultOperations.read("transit/backup/" + keyName);
+                                    if (backupResp != null && backupResp.getData() != null && backupResp.getData().containsKey("backup")) {
+                                        transitKeyBackups.put(keyName, String.valueOf(backupResp.getData().get("backup")));
+                                    }
+                                } catch (Exception ex) {
+                                    log.debug("Transit backup export check for {}: {}", keyName, ex.getMessage());
+                                }
                                 try {
                                     VaultResponse keyDetail = vaultOperations.read("transit/keys/" + keyName);
                                     if (keyDetail != null) {
@@ -665,6 +707,7 @@ public class BackupManagementService {
                             }
                         }
                     }
+                    vaultSnapshot.put("transit_key_backups", transitKeyBackups);
                     vaultSnapshot.put("transit_keys_metadata", transitKeysMetadata);
                 }
             } catch (Exception e) {
