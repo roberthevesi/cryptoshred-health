@@ -42,6 +42,9 @@ public class PatientService {
     private final PatientCacheService patientCacheService;
     private final EventLogPublisher eventLogPublisher;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private CryptoMetricsService cryptoMetricsService;
+
     @Autowired
     public PatientService(
             PatientRepository patientRepository,
@@ -64,6 +67,23 @@ public class PatientService {
         this.objectMapper = objectMapper;
         this.patientCacheService = patientCacheService;
         this.eventLogPublisher = eventLogPublisher;
+    }
+
+    public PatientService(
+            PatientRepository patientRepository,
+            GpRepository gpRepository,
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            VaultKmsService vaultKmsService,
+            EnvelopeEncryptionService envelopeEncryptionService,
+            CryptoService cryptoService,
+            ObjectMapper objectMapper,
+            PatientCacheService patientCacheService,
+            EventLogPublisher eventLogPublisher,
+            CryptoMetricsService cryptoMetricsService) {
+        this(patientRepository, gpRepository, userRepository, passwordEncoder, vaultKmsService,
+                envelopeEncryptionService, cryptoService, objectMapper, patientCacheService, eventLogPublisher);
+        this.cryptoMetricsService = cryptoMetricsService;
     }
 
     public PatientService(
@@ -130,6 +150,9 @@ public class PatientService {
         List<PatientResponse> results = new ArrayList<>();
 
         // 1. O(1) indexed lookup by NHS Number
+        if (cryptoMetricsService != null) {
+            cryptoMetricsService.recordBlindIndexLookup("nhs_number");
+        }
         patientRepository.findByBlindIndexNhs(blindIndex)
                 .filter(p -> p.isActive() && !p.isShredded())
                 .ifPresent(p -> {
@@ -138,6 +161,9 @@ public class PatientService {
                 });
 
         // 2. O(1) indexed lookup by MRN
+        if (cryptoMetricsService != null) {
+            cryptoMetricsService.recordBlindIndexLookup("mrn");
+        }
         patientRepository.findByBlindIndexMrn(blindIndex)
                 .filter(p -> p.isActive() && !p.isShredded() && !matchedPatientIds.contains(p.getPatientId()))
                 .ifPresent(p -> {
@@ -146,6 +172,9 @@ public class PatientService {
                 });
 
         // 3. O(1) indexed lookup by Surname
+        if (cryptoMetricsService != null) {
+            cryptoMetricsService.recordBlindIndexLookup("last_name");
+        }
         List<Patient> byLastName = patientRepository.findByBlindIndexLastName(blindIndex);
         for (Patient p : byLastName) {
             if (p.isActive() && !p.isShredded() && !matchedPatientIds.contains(p.getPatientId())) {
@@ -174,6 +203,9 @@ public class PatientService {
         if (nhsNumber == null || nhsNumber.isBlank()) {
             return Optional.empty();
         }
+        if (cryptoMetricsService != null) {
+            cryptoMetricsService.recordBlindIndexLookup("nhs_number");
+        }
         String blindIndex = cryptoService.computeBlindIndex(nhsNumber, null);
         return patientRepository.findByBlindIndexNhs(blindIndex)
                 .filter(p -> p.isActive() && !p.isShredded())
@@ -185,6 +217,9 @@ public class PatientService {
         if (mrn == null || mrn.isBlank()) {
             return Optional.empty();
         }
+        if (cryptoMetricsService != null) {
+            cryptoMetricsService.recordBlindIndexLookup("mrn");
+        }
         String blindIndex = cryptoService.computeBlindIndex(mrn, null);
         return patientRepository.findByBlindIndexMrn(blindIndex)
                 .filter(p -> p.isActive() && !p.isShredded())
@@ -195,6 +230,9 @@ public class PatientService {
     public List<PatientResponse> findByLastName(String lastName) {
         if (lastName == null || lastName.isBlank()) {
             return Collections.emptyList();
+        }
+        if (cryptoMetricsService != null) {
+            cryptoMetricsService.recordBlindIndexLookup("last_name");
         }
         String blindIndex = cryptoService.computeBlindIndex(lastName, null);
         return patientRepository.findByBlindIndexLastName(blindIndex).stream()

@@ -26,6 +26,10 @@ import java.util.List;
 public class MerkleTreeService {
 
     private final MerkleNodeRepository merkleNodeRepository;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private CryptoMetricsService cryptoMetricsService;
+
     private final List<String> leaves = new ArrayList<>();
 
     @PostConstruct
@@ -65,6 +69,7 @@ public class MerkleTreeService {
     }
 
     public synchronized List<String> getInclusionProof(String leafHash) {
+        long startTime = System.nanoTime();
         int index = leaves.indexOf(leafHash);
         if (index == -1) {
             return Collections.emptyList();
@@ -93,6 +98,10 @@ public class MerkleTreeService {
 
             index /= 2;
             currentLevel = nextLevel;
+        }
+
+        if (cryptoMetricsService != null) {
+            cryptoMetricsService.recordMerkleProofMintDuration("INCLUSION_PROOF", System.nanoTime() - startTime);
         }
 
         return proofPath;

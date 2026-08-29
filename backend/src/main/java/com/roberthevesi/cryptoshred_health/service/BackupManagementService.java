@@ -66,6 +66,9 @@ public class BackupManagementService {
     private final String backupBundleDirectory;
     private final ObjectMapper objectMapper;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private CryptoMetricsService cryptoMetricsService;
+
     @Autowired
     public BackupManagementService(
             DataSource dataSource,
@@ -86,6 +89,19 @@ public class BackupManagementService {
         this.objectMapper.registerModule(new JavaTimeModule());
     }
 
+    public BackupManagementService(
+            DataSource dataSource,
+            PatientVisitRepository patientVisitRepository,
+            MerkleNodeRepository merkleNodeRepository,
+            MerkleTreeService merkleTreeService,
+            ProofSigningService proofSigningService,
+            VaultOperations vaultOperations,
+            String backupBundleDirectory,
+            CryptoMetricsService cryptoMetricsService) {
+        this(dataSource, patientVisitRepository, merkleNodeRepository, merkleTreeService, proofSigningService, vaultOperations, backupBundleDirectory);
+        this.cryptoMetricsService = cryptoMetricsService;
+    }
+
     /**
      * Atomically creates a complete, coordinated disaster recovery backup bundle.
      *
@@ -93,6 +109,7 @@ public class BackupManagementService {
      */
     @Transactional(readOnly = true)
     public synchronized BackupBundleDto createAtomicBundle() {
+        long startTime = System.nanoTime();
         try {
             Path baseBundleDir = Paths.get(backupBundleDirectory);
             if (!Files.exists(baseBundleDir)) {
@@ -209,6 +226,10 @@ public class BackupManagementService {
 
             log.info("✅ [BACKUP COMPLETE] Atomic Bundle successfully sealed: {} (Total Size: {} bytes)",
                     bundleName, totalBytes);
+
+            if (cryptoMetricsService != null) {
+                cryptoMetricsService.recordBackupBundleDuration(System.nanoTime() - startTime);
+            }
 
             return bundleDto;
         } catch (Exception e) {

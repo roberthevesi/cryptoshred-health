@@ -30,6 +30,9 @@ public class MerkleTombstoneReconciliationService {
     private final MerkleNodeRepository merkleNodeRepository;
     private final VaultTransitService vaultTransitService;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private CryptoMetricsService cryptoMetricsService;
+
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReady() {
         log.info("🛡️ Initiating Merkle Deletion Tombstone Reconciliation audit on ApplicationReadyEvent...");
@@ -86,6 +89,9 @@ public class MerkleTombstoneReconciliationService {
                     log.warn("🚨 [TOMBSTONE ALERT] Resurrected Vault KEK detected for shredded entity: '{}'. Purging key immediately...", keyName);
                     vaultTransitService.destroyKey(keyName);
                     purgedCount++;
+                    if (cryptoMetricsService != null) {
+                        cryptoMetricsService.recordTombstonePurge();
+                    }
                     log.info("✅ Resurrected Vault KEK '{}' successfully destroyed.", keyName);
                 }
             } catch (Exception e) {
