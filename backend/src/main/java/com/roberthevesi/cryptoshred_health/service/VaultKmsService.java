@@ -43,6 +43,20 @@ public class VaultKmsService {
         }
     }
 
+    /** Checks if a named Transit key exists in Vault. */
+    public boolean keyExists(String keyName) {
+        if (keyName == null || keyName.isBlank()) {
+            return false;
+        }
+        try {
+            org.springframework.vault.support.VaultResponse response = vaultOperations.read("transit/keys/" + keyName);
+            return response != null && response.getData() != null && !response.getData().isEmpty();
+        } catch (Exception e) {
+            log.debug("Transit key {} does not exist in Vault: {}", keyName, e.getMessage());
+            return false;
+        }
+    }
+
     /** Wraps (encrypts) a raw DEK byte array using Vault Transit KEK. */
     public String wrapDek(String keyName, byte[] rawDek) {
         String base64Dek = Base64.getEncoder().encodeToString(rawDek);

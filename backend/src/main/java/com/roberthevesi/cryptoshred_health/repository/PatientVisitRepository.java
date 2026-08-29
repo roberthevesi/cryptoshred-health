@@ -14,6 +14,7 @@ import java.util.UUID;
 public interface PatientVisitRepository extends JpaRepository<PatientVisit, UUID> {
     List<PatientVisit> findByOwnerId(UUID ownerId);
     List<PatientVisit> findByShreddedFalse();
+    List<PatientVisit> findByShreddedTrue();
     Optional<PatientVisit> findByEncryptionKey(com.roberthevesi.cryptoshred_health.model.EncryptionKey encryptionKey);
 
     @Query("SELECT v FROM PatientVisit v WHERE v.patient.patientId = :patientId")

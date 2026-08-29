@@ -15,7 +15,11 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "patients")
+@Table(name = "patients", indexes = {
+    @Index(name = "idx_patient_blind_nhs", columnList = "blind_index_nhs"),
+    @Index(name = "idx_patient_blind_mrn", columnList = "blind_index_mrn"),
+    @Index(name = "idx_patient_blind_last_name", columnList = "blind_index_last_name")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -94,6 +98,18 @@ public class Patient {
     /** Cryptographic shredding status. */
     @Column(nullable = false)
     private boolean shredded = false;
+
+    /** HMAC-SHA256 Blind index of normalized NHS Number for O(1) encrypted searches */
+    @Column(name = "blind_index_nhs", length = 64)
+    private String blindIndexNhs;
+
+    /** HMAC-SHA256 Blind index of normalized MRN / Patient ID for O(1) encrypted searches */
+    @Column(name = "blind_index_mrn", length = 64)
+    private String blindIndexMrn;
+
+    /** HMAC-SHA256 Blind index of normalized Surname / Last Name for O(1) encrypted searches */
+    @Column(name = "blind_index_last_name", length = 64)
+    private String blindIndexLastName;
 
     /** Permanent JSON serialization of the GDPR Art. 17 verifiable deletion proof. */
     @Column(columnDefinition = "TEXT")

@@ -67,12 +67,6 @@ public class PatientVisitService {
                 : "unlinked";
         String keyId = visitUuid.toString();
         String vaultKeyName = "patient_" + patientUuidStr + "_visit_" + visitUuid;
-        byte[] dek = envelopeEncryptionService.generateDek();
-
-        // 3. Wrap DEK via Vault KEK
-        vaultKmsService.ensureKeyExists(vaultKeyName);
-        String wrappedDek = vaultKmsService.wrapDek(vaultKeyName, dek);
-
         String resolvedPatientName = request.getPatientName();
         if (linkedPatient != null) {
             PatientResponse pResp = patientService.toResponse(linkedPatient);
@@ -94,10 +88,16 @@ public class PatientVisitService {
         Map<String, Object> clinicalPayload = buildClinicalPayload(request, resolvedPatientName);
         clinicalPayload.put("mrn", resolvedMrn);
 
+        byte[] dek = envelopeEncryptionService.generateDek();
+        String wrappedDek = null;
         EnvelopeEncryptionService.EncryptedPayload encryptedPayload;
         String ciphertextBase64;
         String ivBase64;
         try {
+            // 3. Wrap DEK via Vault KEK
+            vaultKmsService.ensureKeyExists(vaultKeyName);
+            wrappedDek = vaultKmsService.wrapDek(vaultKeyName, dek);
+
             String jsonToEncrypt = objectMapper.writeValueAsString(clinicalPayload);
             byte[] aad = visitUuid.toString().getBytes(StandardCharsets.UTF_8);
             encryptedPayload =
@@ -107,6 +107,8 @@ public class PatientVisitService {
         } catch (Exception e) {
             log.error("Failed to encrypt clinical visit payload: {}", e.getMessage(), e);
             throw new IllegalStateException("Failed to encrypt clinical visit payload", e);
+        } finally {
+            Arrays.fill(dek, (byte) 0);
         }
 
         EncryptionKey encryptionKey = new EncryptionKey(keyId, vaultKeyName, wrappedDek, ivBase64);
@@ -331,8 +333,9 @@ public class PatientVisitService {
 
         // Re-encrypt clinical payload
         if (visit.getEncryptionKey() != null && !visit.getEncryptionKey().isInvalidated()) {
+            byte[] dek = null;
             try {
-                byte[] dek = vaultKmsService.unwrapDek(
+                dek = vaultKmsService.unwrapDek(
                         visit.getEncryptionKey().getVaultKeyName(),
                         visit.getEncryptionKey().getWrappedDek());
 
@@ -348,6 +351,10 @@ public class PatientVisitService {
             } catch (Exception e) {
                 log.error("Re-encryption failed for visit {}. Aborting update to preserve data integrity.", id, e);
                 throw new IllegalStateException("Clinical payload re-encryption failed; update aborted.", e);
+            } finally {
+                if (dek != null) {
+                    Arrays.fill(dek, (byte) 0);
+                }
             }
         }
 
@@ -468,12 +475,14 @@ public class PatientVisitService {
 
         // If encrypted data blob exists and key is valid, unwrap and decrypt
         if (!isShredded && v.getEncryptedDataBlob() != null && v.getEncryptionKey() != null) {
+            byte[] dek = null;
+            byte[] decryptedBytes = null;
             try {
-                byte[] dek = vaultKmsService.unwrapDek(
+                dek = vaultKmsService.unwrapDek(
                         v.getEncryptionKey().getVaultKeyName(),
                         v.getEncryptionKey().getWrappedDek());
                 byte[] aad = v.getId() != null ? v.getId().toString().getBytes(StandardCharsets.UTF_8) : null;
-                byte[] decryptedBytes = envelopeEncryptionService.decrypt(
+                decryptedBytes = envelopeEncryptionService.decrypt(
                         v.getEncryptedDataBlob(),
                         v.getEncryptionKey().getIv(),
                         dek,
@@ -515,6 +524,13 @@ public class PatientVisitService {
             } catch (Exception e) {
                 log.warn("Decryption failed for visit {}: Vault key shredded or invalid", v.getId());
                 isShredded = true;
+            } finally {
+                if (dek != null) {
+                    Arrays.fill(dek, (byte) 0);
+                }
+                if (decryptedBytes != null) {
+                    Arrays.fill(decryptedBytes, (byte) 0);
+                }
             }
         }
 

@@ -14,9 +14,11 @@ import java.time.LocalDateTime;
 public class ProofVerificationResponseDto {
     private boolean valid;
     private boolean signatureValid;
+    private boolean pqcSignatureValid;
     private boolean payloadIntegrityValid;
     private boolean merkleInclusionValid;
     private String verificationMessage;
     private LocalDateTime verifiedAt;
     private String verifiedByAlgorithm;
+    private String pqcAlgorithm;
 }

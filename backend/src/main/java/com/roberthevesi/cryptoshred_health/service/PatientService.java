@@ -37,9 +37,24 @@ public class PatientService {
     private final PasswordEncoder passwordEncoder;
     private final VaultKmsService vaultKmsService;
     private final EnvelopeEncryptionService envelopeEncryptionService;
+    private final CryptoService cryptoService;
     private final ObjectMapper objectMapper;
     private final PatientCacheService patientCacheService;
     private final EventLogPublisher eventLogPublisher;
+
+    public PatientService(
+            PatientRepository patientRepository,
+            GpRepository gpRepository,
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            VaultKmsService vaultKmsService,
+            EnvelopeEncryptionService envelopeEncryptionService,
+            ObjectMapper objectMapper,
+            PatientCacheService patientCacheService,
+            EventLogPublisher eventLogPublisher) {
+        this(patientRepository, gpRepository, userRepository, passwordEncoder, vaultKmsService,
+                envelopeEncryptionService, new CryptoService(), objectMapper, patientCacheService, eventLogPublisher);
+    }
 
     @Transactional(readOnly = true)
     public List<PatientResponse> findAll() {
@@ -84,13 +99,83 @@ public class PatientService {
         if (query == null || query.isBlank()) {
             return findAll(false);
         }
-        String q = query.trim().toLowerCase();
+        String q = query.trim();
+        String blindIndex = cryptoService.computeBlindIndex(q, null);
+
+        Set<String> matchedPatientIds = new HashSet<>();
+        List<PatientResponse> results = new ArrayList<>();
+
+        // 1. O(1) indexed lookup by NHS Number
+        patientRepository.findByBlindIndexNhs(blindIndex)
+                .filter(p -> p.isActive() && !p.isShredded())
+                .ifPresent(p -> {
+                    matchedPatientIds.add(p.getPatientId());
+                    results.add(resolvePatientResponse(p));
+                });
+
+        // 2. O(1) indexed lookup by MRN
+        patientRepository.findByBlindIndexMrn(blindIndex)
+                .filter(p -> p.isActive() && !p.isShredded() && !matchedPatientIds.contains(p.getPatientId()))
+                .ifPresent(p -> {
+                    matchedPatientIds.add(p.getPatientId());
+                    results.add(resolvePatientResponse(p));
+                });
+
+        // 3. O(1) indexed lookup by Surname
+        List<Patient> byLastName = patientRepository.findByBlindIndexLastName(blindIndex);
+        for (Patient p : byLastName) {
+            if (p.isActive() && !p.isShredded() && !matchedPatientIds.contains(p.getPatientId())) {
+                matchedPatientIds.add(p.getPatientId());
+                results.add(resolvePatientResponse(p));
+            }
+        }
+
+        if (!results.isEmpty()) {
+            return results;
+        }
+
+        // 4. Graceful in-memory fuzzy search fallback for substring matches
+        String qLower = q.toLowerCase();
         return findAll(false).stream()
                 .filter(p -> p.isActive() && !p.isShredded())
-                .filter(p -> (p.getPatientId() != null && p.getPatientId().toLowerCase().contains(q))
-                        || (p.getFirstName() != null && p.getFirstName().toLowerCase().contains(q))
-                        || (p.getLastName() != null && p.getLastName().toLowerCase().contains(q))
-                        || (p.getNhsNumber() != null && p.getNhsNumber().toLowerCase().contains(q)))
+                .filter(p -> (p.getPatientId() != null && p.getPatientId().toLowerCase().contains(qLower))
+                        || (p.getFirstName() != null && p.getFirstName().toLowerCase().contains(qLower))
+                        || (p.getLastName() != null && p.getLastName().toLowerCase().contains(qLower))
+                        || (p.getNhsNumber() != null && p.getNhsNumber().toLowerCase().contains(qLower)))
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<PatientResponse> findByNhsNumber(String nhsNumber) {
+        if (nhsNumber == null || nhsNumber.isBlank()) {
+            return Optional.empty();
+        }
+        String blindIndex = cryptoService.computeBlindIndex(nhsNumber, null);
+        return patientRepository.findByBlindIndexNhs(blindIndex)
+                .filter(p -> p.isActive() && !p.isShredded())
+                .map(this::resolvePatientResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<PatientResponse> findByMrn(String mrn) {
+        if (mrn == null || mrn.isBlank()) {
+            return Optional.empty();
+        }
+        String blindIndex = cryptoService.computeBlindIndex(mrn, null);
+        return patientRepository.findByBlindIndexMrn(blindIndex)
+                .filter(p -> p.isActive() && !p.isShredded())
+                .map(this::resolvePatientResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PatientResponse> findByLastName(String lastName) {
+        if (lastName == null || lastName.isBlank()) {
+            return Collections.emptyList();
+        }
+        String blindIndex = cryptoService.computeBlindIndex(lastName, null);
+        return patientRepository.findByBlindIndexLastName(blindIndex).stream()
+                .filter(p -> p.isActive() && !p.isShredded())
+                .map(this::resolvePatientResponse)
                 .collect(Collectors.toList());
     }
 
@@ -151,29 +236,30 @@ public class PatientService {
         String keyId = patientUuid.toString();
         String vaultKeyName = "patient_" + patientUuid;
         byte[] dek = envelopeEncryptionService.generateDek();
-        vaultKmsService.ensureKeyExists(vaultKeyName);
-        String wrappedDek = vaultKmsService.wrapDek(vaultKeyName, dek);
-
-        // 2. Build demographic PII JSON payload and envelope encrypt
-        Map<String, Object> piiPayload = new HashMap<>();
-        piiPayload.put("firstName", request.getFirstName());
-        piiPayload.put("lastName", request.getLastName());
-        piiPayload.put("dateOfBirth", request.getDateOfBirth());
-        piiPayload.put("gender", request.getGender());
-        piiPayload.put("email", request.getEmail());
-        piiPayload.put("phoneNumber", request.getPhoneNumber());
-        piiPayload.put("address", request.getAddress());
-        piiPayload.put("nhsNumber", request.getNhsNumber());
-        piiPayload.put("bloodType", request.getBloodType());
-        piiPayload.put("emergencyContactName", request.getEmergencyContactName());
-        piiPayload.put("emergencyContactPhone", request.getEmergencyContactPhone());
-        piiPayload.put("emergencyContactRelationship", request.getEmergencyContactRelationship());
-        piiPayload.put("insuranceProvider", request.getInsuranceProvider());
-        piiPayload.put("insurancePolicyNumber", request.getInsurancePolicyNumber());
-        piiPayload.put("insuranceGroupNumber", request.getInsuranceGroupNumber());
-
+        String wrappedDek = null;
         EnvelopeEncryptionService.EncryptedPayload encryptedPayload;
         try {
+            vaultKmsService.ensureKeyExists(vaultKeyName);
+            wrappedDek = vaultKmsService.wrapDek(vaultKeyName, dek);
+
+            // 2. Build demographic PII JSON payload and envelope encrypt
+            Map<String, Object> piiPayload = new HashMap<>();
+            piiPayload.put("firstName", request.getFirstName());
+            piiPayload.put("lastName", request.getLastName());
+            piiPayload.put("dateOfBirth", request.getDateOfBirth());
+            piiPayload.put("gender", request.getGender());
+            piiPayload.put("email", request.getEmail());
+            piiPayload.put("phoneNumber", request.getPhoneNumber());
+            piiPayload.put("address", request.getAddress());
+            piiPayload.put("nhsNumber", request.getNhsNumber());
+            piiPayload.put("bloodType", request.getBloodType());
+            piiPayload.put("emergencyContactName", request.getEmergencyContactName());
+            piiPayload.put("emergencyContactPhone", request.getEmergencyContactPhone());
+            piiPayload.put("emergencyContactRelationship", request.getEmergencyContactRelationship());
+            piiPayload.put("insuranceProvider", request.getInsuranceProvider());
+            piiPayload.put("insurancePolicyNumber", request.getInsurancePolicyNumber());
+            piiPayload.put("insuranceGroupNumber", request.getInsuranceGroupNumber());
+
             String piiJson = objectMapper.writeValueAsString(piiPayload);
             byte[] aad = patient.getPatientId() != null ? patient.getPatientId().getBytes(StandardCharsets.UTF_8) : null;
             encryptedPayload =
@@ -185,7 +271,14 @@ public class PatientService {
         } catch (Exception e) {
             log.error("Failed to encrypt patient demographics: {}", e.getMessage(), e);
             throw new IllegalStateException("Failed to encrypt patient demographics", e);
+        } finally {
+            Arrays.fill(dek, (byte) 0);
         }
+
+        // 3. Populate HMAC-SHA256 blind indexes for fast O(1) searches
+        patient.setBlindIndexNhs(cryptoService.computeBlindIndex(request.getNhsNumber(), null));
+        patient.setBlindIndexMrn(cryptoService.computeBlindIndex(patient.getPatientId(), null));
+        patient.setBlindIndexLastName(cryptoService.computeBlindIndex(request.getLastName(), null));
 
         patient.setFirstName(request.getFirstName());
         patient.setLastName(request.getLastName());
@@ -291,6 +384,11 @@ public class PatientService {
         patient.setInsurancePolicyNumber(request.getInsurancePolicyNumber());
         patient.setInsuranceGroupNumber(request.getInsuranceGroupNumber());
 
+        // Update HMAC-SHA256 blind indexes
+        patient.setBlindIndexNhs(cryptoService.computeBlindIndex(request.getNhsNumber(), null));
+        patient.setBlindIndexMrn(cryptoService.computeBlindIndex(patient.getPatientId(), null));
+        patient.setBlindIndexLastName(cryptoService.computeBlindIndex(request.getLastName(), null));
+
         if (request.getGpId() != null) {
             GP gp = gpRepository.findById(request.getGpId())
                     .orElseThrow(() -> new RuntimeException("GP not found: " + request.getGpId()));
@@ -305,8 +403,9 @@ public class PatientService {
 
         // Re-encrypt demographic PII
         if (patient.getEncryptionKey() != null && !patient.getEncryptionKey().isInvalidated()) {
+            byte[] dek = null;
             try {
-                byte[] dek = vaultKmsService.unwrapDek(
+                dek = vaultKmsService.unwrapDek(
                         patient.getEncryptionKey().getVaultKeyName(),
                         patient.getEncryptionKey().getWrappedDek());
 
@@ -337,6 +436,10 @@ public class PatientService {
             } catch (Exception e) {
                 log.error("Failed to re-encrypt demographic payload for patient {}: {}", patientId, e.getMessage(), e);
                 throw new IllegalStateException("Failed to re-encrypt patient demographics; update aborted.", e);
+            } finally {
+                if (dek != null) {
+                    Arrays.fill(dek, (byte) 0);
+                }
             }
         }
 
@@ -402,12 +505,14 @@ public class PatientService {
 
         // If encrypted data blob exists and key is valid, unwrap and verify via Vault
         if (!isShredded && patient.getEncryptedDataBlob() != null && patient.getEncryptionKey() != null) {
+            byte[] dek = null;
+            byte[] decryptedBytes = null;
             try {
-                byte[] dek = vaultKmsService.unwrapDek(
+                dek = vaultKmsService.unwrapDek(
                         patient.getEncryptionKey().getVaultKeyName(),
                         patient.getEncryptionKey().getWrappedDek());
                 byte[] aad = patient.getPatientId() != null ? patient.getPatientId().getBytes(StandardCharsets.UTF_8) : null;
-                byte[] decryptedBytes = envelopeEncryptionService.decrypt(
+                decryptedBytes = envelopeEncryptionService.decrypt(
                         patient.getEncryptedDataBlob(),
                         patient.getEncryptionKey().getIv(),
                         dek,
@@ -435,6 +540,13 @@ public class PatientService {
             } catch (Exception e) {
                 log.warn("Vault decryption failed for patient {}: key destroyed or invalid", patient.getPatientId());
                 isShredded = true;
+            } finally {
+                if (dek != null) {
+                    Arrays.fill(dek, (byte) 0);
+                }
+                if (decryptedBytes != null) {
+                    Arrays.fill(decryptedBytes, (byte) 0);
+                }
             }
         }
 

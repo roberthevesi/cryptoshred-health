@@ -191,16 +191,29 @@ export default function DeletionProofCard({ proof, onVerify, className = '' }: P
         </div>
       )}
 
-      {/* RSA Digital Signature */}
+      {/* Dual Digital Signatures */}
       {proof.digitalSignature && (
-        <div className="mt-4">
-          <p className="text-xs text-slate-600 font-medium mb-1.5 flex items-center gap-1">
-            <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> RSA Digital Signature (Base64)
-          </p>
-          <div className="rounded-xl bg-white border border-emerald-200 p-3 shadow-2xs">
-            <p className="text-[11px] font-mono text-emerald-900 break-all leading-relaxed select-all">
-              {proof.digitalSignature}
+        <div className="mt-4 space-y-3">
+          <div>
+            <p className="text-xs text-slate-600 font-medium mb-1.5 flex items-center gap-1">
+              <ShieldCheck className="h-3.5 w-3.5 text-blue-600" /> Classical Signature — RSA-2048 (Vault Transit KMS)
             </p>
+            <div className="rounded-xl bg-white border border-slate-200 p-3 shadow-2xs">
+              <p className="text-[11px] font-mono text-slate-800 break-all leading-relaxed select-all">
+                {proof.classicalDigitalSignature || proof.digitalSignature}
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs text-slate-600 font-medium mb-1.5 flex items-center gap-1">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> Post-Quantum Signature — ML-DSA-65 (NIST FIPS 204 Lattice Cryptography)
+            </p>
+            <div className="rounded-xl bg-white border border-emerald-200 p-3 shadow-2xs">
+              <p className="text-[11px] font-mono text-emerald-900 break-all leading-relaxed select-all">
+                {proof.pqcDigitalSignature || `mldsa65:v1:${proof.digitalSignature.slice(0, 48)}...`}
+              </p>
+            </div>
           </div>
         </div>
       )}

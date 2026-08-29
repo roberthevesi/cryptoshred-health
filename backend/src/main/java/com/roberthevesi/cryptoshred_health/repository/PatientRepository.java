@@ -18,5 +18,9 @@ public interface PatientRepository extends JpaRepository<Patient, UUID> {
     Optional<Patient> findByEncryptionKey(EncryptionKey encryptionKey);
     List<Patient> findByIsActiveTrue();
     List<Patient> findByGpId(UUID gpId);
+    Optional<Patient> findByBlindIndexNhs(String blindIndexNhs);
+    Optional<Patient> findByBlindIndexMrn(String blindIndexMrn);
+    List<Patient> findByBlindIndexLastName(String blindIndexLastName);
+    List<Patient> findByShreddedTrue();
     boolean existsByPatientId(String patientId);
 }

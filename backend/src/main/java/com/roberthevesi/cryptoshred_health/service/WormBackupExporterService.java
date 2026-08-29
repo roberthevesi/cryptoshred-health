@@ -211,14 +211,25 @@ public class WormBackupExporterService {
             }
 
             // Attempt decryption using Vault KEK unwrapping
-            byte[] dek = vaultKmsService.unwrapDek(targetVisit.getVaultKeyName(), targetVisit.getWrappedDek());
-            byte[] plaintextBytes = envelopeEncryptionService.decrypt(
-                    targetVisit.getEncryptedDataBlob(),
-                    targetVisit.getIv(),
-                    dek);
+            byte[] dek = null;
+            byte[] plaintextBytes = null;
+            try {
+                dek = vaultKmsService.unwrapDek(targetVisit.getVaultKeyName(), targetVisit.getWrappedDek());
+                plaintextBytes = envelopeEncryptionService.decrypt(
+                        targetVisit.getEncryptedDataBlob(),
+                        targetVisit.getIv(),
+                        dek);
 
-            String decryptedText = new String(plaintextBytes, StandardCharsets.UTF_8);
-            return "[WARNING_DECRYPTION_SUCCEEDED] Decrypted payload: " + decryptedText;
+                String decryptedText = new String(plaintextBytes, StandardCharsets.UTF_8);
+                return "[WARNING_DECRYPTION_SUCCEEDED] Decrypted payload: " + decryptedText;
+            } finally {
+                if (dek != null) {
+                    java.util.Arrays.fill(dek, (byte) 0);
+                }
+                if (plaintextBytes != null) {
+                    java.util.Arrays.fill(plaintextBytes, (byte) 0);
+                }
+            }
 
         } catch (Exception e) {
             log.info("Post-shred WORM decryption correctly failed for visit {} in snapshot {}: {}",

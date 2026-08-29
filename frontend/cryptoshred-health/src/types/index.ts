@@ -115,6 +115,15 @@ export interface DeletionProof {
   merklePath?: string[];
   signatureAlgorithm?: string;
   digitalSignature?: string;
+  // Dual Hybrid Cryptography Fields
+  classicalSignatureAlgorithm?: string;
+  classicalDigitalSignature?: string;
+  pqcSignatureAlgorithm?: string;
+  pqcDigitalSignature?: string;
+  pqcSecurityGuarantee?: string;
+  pqcLatticeSecurityLevel?: string;
+  pqcAlgorithm?: string;
+  pqcSignatureSnippet?: string;
 }
 
 export interface ErasureProofBundle {
@@ -132,6 +141,15 @@ export interface ProofVerificationResponse {
   verificationMessage: string;
   verifiedAt: string;
   verifiedByAlgorithm: string;
+  // Dual Cryptographic Verification Status
+  classicalSignatureValid?: boolean;
+  classicalAlgorithm?: string;
+  classicalSignatureSnippet?: string;
+  pqcSignatureValid?: boolean;
+  pqcAlgorithm?: string;
+  pqcSignatureSnippet?: string;
+  pqcSecurityGuarantee?: string;
+  pqcLatticeSecurityLevel?: string;
 }
 
 export interface ApiError {

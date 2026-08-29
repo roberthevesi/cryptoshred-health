@@ -106,7 +106,7 @@ class PatientKafkaEventStreamingTest {
         when(vaultKmsService.wrapDek(anyString(), any())).thenAnswer(inv -> {
             String keyName = inv.getArgument(0);
             byte[] dek = inv.getArgument(1);
-            vaultStorage.put(keyName, dek);
+            vaultStorage.put(keyName, dek != null ? dek.clone() : null);
             return "wrapped:" + keyName;
         });
 
@@ -115,7 +115,8 @@ class PatientKafkaEventStreamingTest {
             if (!vaultStorage.containsKey(keyName)) {
                 throw new RuntimeException("Vault key invalid or destroyed: " + keyName);
             }
-            return vaultStorage.get(keyName);
+            byte[] stored = vaultStorage.get(keyName);
+            return stored != null ? stored.clone() : null;
         });
 
         when(vaultKmsService.rewrapDek(anyString(), anyString())).thenAnswer(inv -> {

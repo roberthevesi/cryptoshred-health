@@ -47,13 +47,21 @@ public class AttachmentService {
         }
 
         // 1. Retrieve DEK via Vault KEK unwrap
-        byte[] dek = vaultKmsService.unwrapDek(
-                visit.getEncryptionKey().getVaultKeyName(),
-                visit.getEncryptionKey().getWrappedDek());
+        byte[] dek = null;
+        EnvelopeEncryptionService.EncryptedPayload encryptedPayload;
+        try {
+            dek = vaultKmsService.unwrapDek(
+                    visit.getEncryptionKey().getVaultKeyName(),
+                    visit.getEncryptionKey().getWrappedDek());
 
-        // 2. Encrypt file binary payload with AES-256-GCM
-        EnvelopeEncryptionService.EncryptedPayload encryptedPayload =
-                envelopeEncryptionService.encrypt(file.getBytes(), dek);
+            // 2. Encrypt file binary payload with AES-256-GCM
+            encryptedPayload =
+                    envelopeEncryptionService.encrypt(file.getBytes(), dek);
+        } finally {
+            if (dek != null) {
+                java.util.Arrays.fill(dek, (byte) 0);
+            }
+        }
 
         PatientAttachment attachment = new PatientAttachment();
         attachment.setFileName(file.getOriginalFilename() != null ? file.getOriginalFilename() : "attachment.pdf");
@@ -107,9 +115,10 @@ public class AttachmentService {
             throw new IllegalStateException("Attachment payload has been crypto-shredded and is irrecoverable");
         }
 
+        byte[] dek = null;
         try {
             // Unwrap DEK via Vault KEK
-            byte[] dek = vaultKmsService.unwrapDek(
+            dek = vaultKmsService.unwrapDek(
                     visit.getEncryptionKey().getVaultKeyName(),
                     visit.getEncryptionKey().getWrappedDek());
 
@@ -121,6 +130,10 @@ public class AttachmentService {
         } catch (Exception e) {
             log.warn("Failed to decrypt attachment {}: Vault key shredded or invalid", attachmentId);
             throw new IllegalStateException("Attachment decryption failed: key is destroyed or inaccessible", e);
+        } finally {
+            if (dek != null) {
+                java.util.Arrays.fill(dek, (byte) 0);
+            }
         }
     }
 

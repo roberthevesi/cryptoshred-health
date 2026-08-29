@@ -82,10 +82,12 @@ class PatientDemographicEncryptionTest {
 
         final byte[][] capturedDek = new byte[1][];
         when(vaultKmsService.wrapDek(anyString(), any())).thenAnswer(invocation -> {
-            capturedDek[0] = invocation.getArgument(1);
+            byte[] b = invocation.getArgument(1);
+            capturedDek[0] = (b != null) ? b.clone() : null;
             return "wrapped_dek_sample_123";
         });
-        when(vaultKmsService.unwrapDek(anyString(), anyString())).thenAnswer(invocation -> capturedDek[0]);
+        when(vaultKmsService.unwrapDek(anyString(), anyString())).thenAnswer(invocation ->
+                (capturedDek[0] != null) ? capturedDek[0].clone() : null);
 
         PatientResponse response = patientService.create(request);
 
@@ -130,7 +132,8 @@ class PatientDemographicEncryptionTest {
         when(patientRepository.save(any(Patient.class))).thenAnswer(inv -> inv.getArgument(0));
 
         byte[] rawDek = envelopeEncryptionService.generateDek();
-        when(vaultKmsService.unwrapDek(eq("patient_uuid_123"), eq("wrapped_dek_123"))).thenReturn(rawDek);
+        when(vaultKmsService.unwrapDek(eq("patient_uuid_123"), eq("wrapped_dek_123")))
+                .thenAnswer(inv -> rawDek.clone());
 
         PatientRequest updateReq = new PatientRequest();
         updateReq.setFirstName("NewFirst");
@@ -176,10 +179,12 @@ class PatientDemographicEncryptionTest {
 
         final byte[][] capturedDek = new byte[1][];
         when(vaultKmsService.wrapDek(anyString(), any())).thenAnswer(invocation -> {
-            capturedDek[0] = invocation.getArgument(1);
+            byte[] b = invocation.getArgument(1);
+            capturedDek[0] = (b != null) ? b.clone() : null;
             return "wrapped_dek_thomas";
         });
-        when(vaultKmsService.unwrapDek(anyString(), anyString())).thenAnswer(invocation -> capturedDek[0]);
+        when(vaultKmsService.unwrapDek(anyString(), anyString())).thenAnswer(invocation ->
+                (capturedDek[0] != null) ? capturedDek[0].clone() : null);
 
         PatientResponse response = patientService.create(request);
         assertEquals("Thomas", response.getFirstName());
