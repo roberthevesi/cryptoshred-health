@@ -53,11 +53,19 @@ public class EventLogConsumer {
             // 1. Unwrap DEK from Vault KMS
             byte[] dek = vaultKmsService.unwrapDek(event.getVaultKeyName(), event.getWrappedDek());
 
-            // 2. Decrypt ciphertext payload
+            // 2. Decrypt ciphertext payload with AAD
+            byte[] aad = null;
+            if (event.getVisitId() != null) {
+                aad = event.getVisitId().toString().getBytes(StandardCharsets.UTF_8);
+            } else if (event.getPatientId() != null) {
+                aad = event.getPatientId().getBytes(StandardCharsets.UTF_8);
+            }
+
             byte[] plaintextBytes = envelopeEncryptionService.decrypt(
                     event.getEncryptedDataBlob(),
                     event.getIv(),
-                    dek);
+                    dek,
+                    aad);
 
             return new String(plaintextBytes, StandardCharsets.UTF_8);
         } catch (Exception e) {

@@ -227,6 +227,47 @@ public class WormBackupExporterService {
         }
     }
 
+    /**
+     * Exports an immutable, read-only WORM deletion receipt recording a cryptographic erasure event.
+     */
+    public void exportDeletionReceipt(String scope, String entityId, String vaultKeyName, String requestedBy, String auditTrailHash, LocalDateTime timestamp) {
+        try {
+            Path backupDirPath = Paths.get(backupDirectory);
+            if (!Files.exists(backupDirPath)) {
+                Files.createDirectories(backupDirPath);
+            }
+
+            LocalDateTime receiptTime = timestamp != null ? timestamp : LocalDateTime.now();
+            String timeString = receiptTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"));
+            String sanitizedEntityId = entityId != null ? entityId.replaceAll("[^a-zA-Z0-9.-]", "_") : "unknown";
+            String fileName = String.format("deletion-receipt_%s_%s_%s.json", scope, sanitizedEntityId, timeString);
+            Path filePath = backupDirPath.resolve(fileName);
+
+            Map<String, Object> receiptMap = new LinkedHashMap<>();
+            receiptMap.put("scope", scope);
+            receiptMap.put("entityId", entityId);
+            receiptMap.put("vaultKeyNameDestroyed", vaultKeyName);
+            receiptMap.put("requestedBy", requestedBy);
+            receiptMap.put("auditTrailHash", auditTrailHash);
+            receiptMap.put("timestamp", receiptTime.toString());
+
+            String rawJson = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(receiptMap);
+            String fingerprint = computeSha256(rawJson);
+            receiptMap.put("sha256Fingerprint", fingerprint);
+
+            String finalJson = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(receiptMap);
+            Files.writeString(filePath, finalJson, StandardCharsets.UTF_8);
+
+            File file = filePath.toFile();
+            file.setReadOnly();
+
+            log.info("WORM Deletion Receipt exported: {} (Scope: {}, Entity: {}, SHA256: {})",
+                    fileName, scope, entityId, fingerprint);
+        } catch (Exception e) {
+            log.error("Failed to export WORM deletion receipt for {} ({}): {}", scope, entityId, e.getMessage(), e);
+        }
+    }
+
     private WormVisitEntryDto mapToEntry(PatientVisit visit) {
         EncryptionKey key = visit.getEncryptionKey();
         return WormVisitEntryDto.builder()

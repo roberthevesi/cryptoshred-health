@@ -33,8 +33,9 @@ class KafkaEventLogCryptoShredTest {
         // Arrange
         byte[] dek = envelopeEncryptionService.generateDek();
         String originalNotes = "Patient presented with acute migraines.";
+        UUID visitId = UUID.randomUUID();
         EnvelopeEncryptionService.EncryptedPayload encryptedPayload =
-                envelopeEncryptionService.encrypt(originalNotes.getBytes(StandardCharsets.UTF_8), dek);
+                envelopeEncryptionService.encrypt(originalNotes.getBytes(StandardCharsets.UTF_8), dek, visitId.toString().getBytes(StandardCharsets.UTF_8));
 
         String vaultKeyName = "patient_d3b07384-d113-4673-9080-87a41ec62762_visit_878a6e3b-5b44-4fc2-99ce-97894ee40a2d";
         String wrappedDek = "wrapped_dek_base64_sample";
@@ -43,7 +44,7 @@ class KafkaEventLogCryptoShredTest {
 
         PatientVisitEventDto event = PatientVisitEventDto.builder()
                 .eventId(UUID.randomUUID())
-                .visitId(UUID.randomUUID())
+                .visitId(visitId)
                 .patientId("PAT-10001")
                 .eventType("VISIT_CREATED")
                 .vaultKeyName(vaultKeyName)
@@ -65,8 +66,9 @@ class KafkaEventLogCryptoShredTest {
         // Arrange
         byte[] dek = envelopeEncryptionService.generateDek();
         String originalNotes = "Confidential psychiatric evaluation notes.";
+        UUID visitId = UUID.randomUUID();
         EnvelopeEncryptionService.EncryptedPayload encryptedPayload =
-                envelopeEncryptionService.encrypt(originalNotes.getBytes(StandardCharsets.UTF_8), dek);
+                envelopeEncryptionService.encrypt(originalNotes.getBytes(StandardCharsets.UTF_8), dek, visitId.toString().getBytes(StandardCharsets.UTF_8));
 
         String vaultKeyName = "patient_shredded-patient_visit_shredded-visit";
         String wrappedDek = "wrapped_dek_base64_sample";
@@ -79,7 +81,7 @@ class KafkaEventLogCryptoShredTest {
 
         PatientVisitEventDto event = PatientVisitEventDto.builder()
                 .eventId(UUID.randomUUID())
-                .visitId(UUID.randomUUID())
+                .visitId(visitId)
                 .patientId("PAT-99999")
                 .eventType("VISIT_CREATED")
                 .vaultKeyName(vaultKeyName)
@@ -103,8 +105,9 @@ class KafkaEventLogCryptoShredTest {
         // Arrange
         byte[] dek = envelopeEncryptionService.generateDek();
         String demographicPiiJson = "{\"firstName\":\"Arthur\",\"lastName\":\"Dent\",\"email\":\"arthur@galaxy.com\",\"nhsNumber\":\"999-000-111\"}";
+        String patientId = "PAT-42424";
         EnvelopeEncryptionService.EncryptedPayload encryptedPayload =
-                envelopeEncryptionService.encrypt(demographicPiiJson.getBytes(StandardCharsets.UTF_8), dek);
+                envelopeEncryptionService.encrypt(demographicPiiJson.getBytes(StandardCharsets.UTF_8), dek, patientId.getBytes(StandardCharsets.UTF_8));
 
         String vaultKeyName = "patient_a1b2c3d4-e5f6-7890-abcd-ef1234567890";
         String wrappedDek = "wrapped_dek_arthur_dent";
@@ -113,7 +116,7 @@ class KafkaEventLogCryptoShredTest {
 
         PatientVisitEventDto event = PatientVisitEventDto.builder()
                 .eventId(UUID.randomUUID())
-                .patientId("PAT-42424")
+                .patientId(patientId)
                 .eventType("PATIENT_CREATED")
                 .vaultKeyName(vaultKeyName)
                 .wrappedDek(wrappedDek)

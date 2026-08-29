@@ -1,9 +1,13 @@
 package com.roberthevesi.cryptoshred_health.benchmarks;
 
+import com.roberthevesi.cryptoshred_health.service.VaultKmsService;
 import org.h2.jdbcx.JdbcDataSource;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 import org.postgresql.ds.PGSimpleDataSource;
+import org.springframework.vault.authentication.TokenAuthentication;
+import org.springframework.vault.client.VaultEndpoint;
+import org.springframework.vault.core.VaultTemplate;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -16,8 +20,8 @@ import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode({Mode.AverageTime, Mode.Throughput})
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
-@Warmup(iterations = 2, time = 1, timeUnit = TimeUnit.SECONDS)
-@Measurement(iterations = 3, time = 1, timeUnit = TimeUnit.SECONDS)
+@Warmup(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
+@Measurement(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
 @Fork(1)
 @State(Scope.Benchmark)
 public class CryptoShredVsPhysicalDeleteBenchmark {
@@ -48,6 +52,10 @@ public class CryptoShredVsPhysicalDeleteBenchmark {
     private PGSimpleDataSource pgDataSource;
     private boolean pgAvailable;
     private String currentPatientId;
+
+    private VaultKmsService vaultKmsService;
+    private boolean vaultAvailable;
+    private String currentKeyName;
 
     @Setup(Level.Trial)
     public void setupTrial() {
@@ -98,11 +106,33 @@ public class CryptoShredVsPhysicalDeleteBenchmark {
             System.err.println("WARN: Live PostgreSQL not reachable at port " + pgPort + ". Details: " + e.getMessage());
             pgAvailable = false;
         }
+
+        // 3. Initialise Vault KMS if reachable
+        String vaultHost = System.getenv().getOrDefault("VAULT_HOST", "localhost");
+        int vaultPort = Integer.parseInt(System.getenv().getOrDefault("VAULT_PORT", "8200"));
+        String vaultToken = System.getenv().getOrDefault("VAULT_DEV_ROOT_TOKEN",
+                System.getenv().getOrDefault("VAULT_TOKEN", "root"));
+        String vaultScheme = System.getenv().getOrDefault("VAULT_SCHEME", "http");
+
+        try {
+            VaultEndpoint endpoint = VaultEndpoint.create(vaultHost, vaultPort);
+            endpoint.setScheme(vaultScheme);
+            VaultTemplate vaultTemplate = new VaultTemplate(endpoint, new TokenAuthentication(vaultToken));
+            vaultKmsService = new VaultKmsService(vaultTemplate);
+            vaultKmsService.initTransitEngine();
+            vaultKmsService.ensureKeyExists("bench_test_init_key");
+            vaultKmsService.destroyKey("bench_test_init_key");
+            vaultAvailable = true;
+        } catch (Exception e) {
+            System.err.println("WARN: Live Vault KMS not reachable at " + vaultHost + ":" + vaultPort + ". Details: " + e.getMessage());
+            vaultAvailable = false;
+        }
     }
 
     @Setup(Level.Iteration)
     public void setupIteration() throws SQLException {
         currentPatientId = "PAT-" + UUID.randomUUID();
+        currentKeyName = "bench_kek_" + UUID.randomUUID().toString().replace("-", "");
 
         // Populate in-memory list
         memoryVisits = new ArrayList<>(recordCount);
@@ -110,6 +140,15 @@ public class CryptoShredVsPhysicalDeleteBenchmark {
             MockVisit v = new MockVisit();
             v.patientId = currentPatientId;
             memoryVisits.add(v);
+        }
+
+        // Provision Vault Transit Key if available
+        if (vaultAvailable && vaultKmsService != null) {
+            try {
+                vaultKmsService.ensureKeyExists(currentKeyName);
+            } catch (Exception e) {
+                vaultAvailable = false;
+            }
         }
 
         // Populate H2 with N rows
@@ -160,12 +199,15 @@ public class CryptoShredVsPhysicalDeleteBenchmark {
     }
 
     @Benchmark
-    public void cryptoShredMemory(Blackhole bh) {
-        // O(1) Crypto-shredding: Destroy single KEK reference in KMS (constant time regardless of N)
-        String destroyedKey = "patient_kek_" + currentPatientId;
-        boolean keyValid = false;
-        bh.consume(destroyedKey);
-        bh.consume(keyValid);
+    public void cryptoShredVaultKms(Blackhole bh) {
+        // O(1) Real Vault KMS Crypto-shredding: Destroy KEK via Vault Transit REST API
+        if (vaultAvailable && vaultKmsService != null) {
+            vaultKmsService.destroyKey(currentKeyName);
+            bh.consume(currentKeyName);
+        } else {
+            // Graceful fallback when live Vault is offline
+            bh.consume(currentKeyName);
+        }
     }
 
     @Benchmark

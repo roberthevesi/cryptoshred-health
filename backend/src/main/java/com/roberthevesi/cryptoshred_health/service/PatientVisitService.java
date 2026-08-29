@@ -86,16 +86,22 @@ public class PatientVisitService {
             resolvedPatientName = "Unknown Patient";
         }
 
+        String resolvedMrn = patientIdentifier != null
+                ? patientIdentifier
+                : (linkedPatient != null ? linkedPatient.getPatientId() : "MRN-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase());
+
         // 4. Build comprehensive clinical payload to encrypt under AES-256-GCM
         Map<String, Object> clinicalPayload = buildClinicalPayload(request, resolvedPatientName);
+        clinicalPayload.put("mrn", resolvedMrn);
 
         EnvelopeEncryptionService.EncryptedPayload encryptedPayload;
         String ciphertextBase64;
         String ivBase64;
         try {
             String jsonToEncrypt = objectMapper.writeValueAsString(clinicalPayload);
+            byte[] aad = visitUuid.toString().getBytes(StandardCharsets.UTF_8);
             encryptedPayload =
-                    envelopeEncryptionService.encrypt(jsonToEncrypt.getBytes(StandardCharsets.UTF_8), dek);
+                    envelopeEncryptionService.encrypt(jsonToEncrypt.getBytes(StandardCharsets.UTF_8), dek, aad);
             ciphertextBase64 = encryptedPayload.ciphertextBase64();
             ivBase64 = encryptedPayload.ivBase64();
         } catch (Exception e) {
@@ -109,10 +115,6 @@ public class PatientVisitService {
         visit.setId(visitUuid);
         visit.setPatient(linkedPatient);
         visit.setPatientName(resolvedPatientName);
-
-        String resolvedMrn = patientIdentifier != null
-                ? patientIdentifier
-                : (linkedPatient != null ? linkedPatient.getPatientId() : "MRN-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase());
         visit.setMrn(resolvedMrn);
 
         // Clinical fields
@@ -337,8 +339,9 @@ public class PatientVisitService {
                 Map<String, Object> clinicalPayload = buildClinicalPayload(request, visit.getPatientName());
 
                 String jsonToEncrypt = objectMapper.writeValueAsString(clinicalPayload);
+                byte[] aad = visit.getId().toString().getBytes(StandardCharsets.UTF_8);
                 EnvelopeEncryptionService.EncryptedPayload encryptedPayload =
-                        envelopeEncryptionService.encrypt(jsonToEncrypt.getBytes(StandardCharsets.UTF_8), dek);
+                        envelopeEncryptionService.encrypt(jsonToEncrypt.getBytes(StandardCharsets.UTF_8), dek, aad);
 
                 visit.setEncryptedDataBlob(encryptedPayload.ciphertextBase64());
                 visit.getEncryptionKey().setIv(encryptedPayload.ivBase64());
@@ -392,8 +395,7 @@ public class PatientVisitService {
         if (user.getRole() == Role.PATIENT) {
             boolean hasAccess = (visit.getPatient() != null && visit.getPatient().getUser() != null && visit.getPatient().getUser().getId().equals(user.getId()))
                     || (visit.getOwner() != null && visit.getOwner().getId().equals(user.getId()))
-                    || (visit.getPatient() != null && patientRepository.findByUser(user).map(p -> p.getId().equals(visit.getPatient().getId())).orElse(false))
-                    || (visit.getMrn() != null && patientRepository.findByUser(user).map(p -> p.getPatientId().equalsIgnoreCase(visit.getMrn())).orElse(false));
+                    || (visit.getPatient() != null && patientRepository.findByUser(user).map(p -> p.getId().equals(visit.getPatient().getId())).orElse(false));
             if (!hasAccess) {
                 throw new AccessDeniedException("Not authorized to view this visit");
             }
@@ -401,6 +403,7 @@ public class PatientVisitService {
     }
 
     private void redactResponse(PatientVisitResponse r) {
+        r.setMrn("[SHREDDED]");
         r.setAllergies("[SHREDDED]");
         r.setPrescriptions("[SHREDDED]");
         r.setDiagnosis("[SHREDDED]");
@@ -434,6 +437,7 @@ public class PatientVisitService {
                 (v.getPatient() != null && v.getPatient().isShredded());
 
         String patientName = v.getPatientName();
+        String mrn = v.getMrn();
         String bloodPressure = v.getBloodPressure();
         Integer heartRate = v.getHeartRate();
         String respiratoryRate = v.getRespiratoryRate();
@@ -468,13 +472,16 @@ public class PatientVisitService {
                 byte[] dek = vaultKmsService.unwrapDek(
                         v.getEncryptionKey().getVaultKeyName(),
                         v.getEncryptionKey().getWrappedDek());
+                byte[] aad = v.getId() != null ? v.getId().toString().getBytes(StandardCharsets.UTF_8) : null;
                 byte[] decryptedBytes = envelopeEncryptionService.decrypt(
                         v.getEncryptedDataBlob(),
                         v.getEncryptionKey().getIv(),
-                        dek);
+                        dek,
+                        aad);
                 String json = new String(decryptedBytes, StandardCharsets.UTF_8);
                 Map<?, ?> map = objectMapper.readValue(json, Map.class);
                 if (map.containsKey("patientName")) patientName = (String) map.get("patientName");
+                if (map.containsKey("mrn")) mrn = (String) map.get("mrn");
                 if (map.containsKey("bloodPressure")) bloodPressure = (String) map.get("bloodPressure");
                 if (map.containsKey("heartRate")) {
                     Object hr = map.get("heartRate");
@@ -524,9 +531,9 @@ public class PatientVisitService {
 
         PatientVisitResponse resp = PatientVisitResponse.builder()
                 .id(v.getId())
-                .patientId(v.getPatient() != null ? v.getPatient().getPatientId() : v.getMrn())
+                .patientId(v.getPatient() != null ? v.getPatient().getPatientId() : (isShredded ? "[SHREDDED]" : mrn))
                 .patientName(resolvedPatientName)
-                .mrn(v.getMrn())
+                .mrn(isShredded ? "[SHREDDED]" : mrn)
                 .bloodPressure(isShredded ? null : bloodPressure)
                 .heartRate(isShredded ? null : heartRate)
                 .respiratoryRate(isShredded ? null : respiratoryRate)
@@ -571,6 +578,10 @@ public class PatientVisitService {
             payload.put("patientName", patientName);
         } else if (request.getPatientName() != null && !request.getPatientName().isBlank()) {
             payload.put("patientName", request.getPatientName());
+        }
+
+        if (request.getMrn() != null && !request.getMrn().isBlank()) {
+            payload.put("mrn", request.getMrn().trim());
         }
 
         if (request.getBloodPressure() != null) payload.put("bloodPressure", request.getBloodPressure());

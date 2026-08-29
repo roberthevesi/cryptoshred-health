@@ -175,8 +175,9 @@ public class PatientService {
         EnvelopeEncryptionService.EncryptedPayload encryptedPayload;
         try {
             String piiJson = objectMapper.writeValueAsString(piiPayload);
+            byte[] aad = patient.getPatientId() != null ? patient.getPatientId().getBytes(StandardCharsets.UTF_8) : null;
             encryptedPayload =
-                    envelopeEncryptionService.encrypt(piiJson.getBytes(StandardCharsets.UTF_8), dek);
+                    envelopeEncryptionService.encrypt(piiJson.getBytes(StandardCharsets.UTF_8), dek, aad);
 
             EncryptionKey encryptionKey = new EncryptionKey(keyId, vaultKeyName, wrappedDek, encryptedPayload.ivBase64());
             patient.setEncryptedDataBlob(encryptedPayload.ciphertextBase64());
@@ -327,8 +328,9 @@ public class PatientService {
                 piiPayload.put("insuranceGroupNumber", request.getInsuranceGroupNumber());
 
                 String piiJson = objectMapper.writeValueAsString(piiPayload);
+                byte[] aad = patient.getPatientId() != null ? patient.getPatientId().getBytes(StandardCharsets.UTF_8) : null;
                 EnvelopeEncryptionService.EncryptedPayload encryptedPayload =
-                    envelopeEncryptionService.encrypt(piiJson.getBytes(StandardCharsets.UTF_8), dek);
+                    envelopeEncryptionService.encrypt(piiJson.getBytes(StandardCharsets.UTF_8), dek, aad);
 
                 patient.setEncryptedDataBlob(encryptedPayload.ciphertextBase64());
                 patient.getEncryptionKey().setIv(encryptedPayload.ivBase64());
@@ -404,10 +406,12 @@ public class PatientService {
                 byte[] dek = vaultKmsService.unwrapDek(
                         patient.getEncryptionKey().getVaultKeyName(),
                         patient.getEncryptionKey().getWrappedDek());
+                byte[] aad = patient.getPatientId() != null ? patient.getPatientId().getBytes(StandardCharsets.UTF_8) : null;
                 byte[] decryptedBytes = envelopeEncryptionService.decrypt(
                         patient.getEncryptedDataBlob(),
                         patient.getEncryptionKey().getIv(),
-                        dek);
+                        dek,
+                        aad);
                 String piiJson = new String(decryptedBytes, StandardCharsets.UTF_8);
                 Map<?, ?> map = objectMapper.readValue(piiJson, Map.class);
                 firstName = (String) map.get("firstName");

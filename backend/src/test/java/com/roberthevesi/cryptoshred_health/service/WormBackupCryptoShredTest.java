@@ -130,4 +130,45 @@ class WormBackupCryptoShredTest {
         // Assert
         assertTrue(result.contains("[ZERO_PURGE_SUCCESS]"), "Expected [ZERO_PURGE_SUCCESS] in result but got: " + result);
     }
+
+    @Test
+    void testExportDeletionReceiptCreatesImmutableFileWithFingerprint(@TempDir Path tempDir) throws Exception {
+        WormBackupExporterService exporter = new WormBackupExporterService(
+                patientVisitRepository,
+                vaultKmsService,
+                envelopeEncryptionService,
+                tempDir.toString()
+        );
+
+        LocalDateTime now = LocalDateTime.now();
+        exporter.exportDeletionReceipt(
+                "PATIENT_PROFILE",
+                "PAT-10001",
+                "patient_key_10001",
+                "dpo_officer",
+                "a1b2c3d4e5f67890",
+                now
+        );
+
+        // Verify receipt file created
+        try (var stream = java.nio.file.Files.list(tempDir)) {
+            List<Path> files = stream.toList();
+            assertEquals(1, files.size());
+            Path receiptFile = files.get(0);
+            assertTrue(receiptFile.getFileName().toString().startsWith("deletion-receipt_PATIENT_PROFILE_PAT-10001_"));
+            assertTrue(receiptFile.getFileName().toString().endsWith(".json"));
+
+            // Verify content
+            String content = java.nio.file.Files.readString(receiptFile);
+            assertTrue(content.contains("\"scope\" : \"PATIENT_PROFILE\""));
+            assertTrue(content.contains("\"entityId\" : \"PAT-10001\""));
+            assertTrue(content.contains("\"vaultKeyNameDestroyed\" : \"patient_key_10001\""));
+            assertTrue(content.contains("\"requestedBy\" : \"dpo_officer\""));
+            assertTrue(content.contains("\"auditTrailHash\" : \"a1b2c3d4e5f67890\""));
+            assertTrue(content.contains("\"sha256Fingerprint\""));
+
+            // Verify read-only
+            assertFalse(receiptFile.toFile().canWrite(), "Deletion receipt file must be set to read-only (WORM)");
+        }
+    }
 }

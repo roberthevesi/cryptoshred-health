@@ -245,7 +245,7 @@ export function scenarioCryptoShredding(data) {
     });
 
     const isSuccess = check(res, {
-      'Crypto-shred HTTP status is 200 or 404': (r) => r.status === 200 || r.status === 404 || r.status === 500,
+      'Crypto-shred HTTP status is 200 or 404': (r) => r.status === 200 || r.status === 404,
       'Proof artifact signed with RSA': (r) => r.status !== 200 || (r.body && r.body.includes('digitalSignature')),
     });
 

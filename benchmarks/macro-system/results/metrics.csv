@@ -1,25 +1,25 @@
 ScenarioKey,ScenarioName,VUs,DurationSec,TotalRequests,RPS,ErrorRatePct,MinMs,MeanMs,p50Ms,p90Ms,p95Ms,p99Ms,p999Ms,MaxMs,StdDevMs,JitterMs
-scenario_1_read_cache,"Scenario 1: High-Concurrency Encrypted Reads (Cache Hit vs KMS Decrypt)",1,10.0,8542,854.2,0.0,0.65,1.17,1.15,1.48,1.62,2.12,2.95,3.45,0.32,0.28
-scenario_1_read_cache,"Scenario 1: High-Concurrency Encrypted Reads (Cache Hit vs KMS Decrypt)",10,10.0,81246,8124.6,0.0,0.72,1.23,1.21,1.56,1.74,2.38,3.65,4.82,0.36,0.31
-scenario_1_read_cache,"Scenario 1: High-Concurrency Encrypted Reads (Cache Hit vs KMS Decrypt)",50,10.0,328901,32890.1,0.0,0.85,1.52,1.48,1.94,2.18,3.12,5.10,7.20,0.48,0.41
-scenario_1_read_cache,"Scenario 1: High-Concurrency Encrypted Reads (Cache Hit vs KMS Decrypt)",100,10.0,512408,51240.8,0.0,0.98,1.95,1.88,2.52,2.89,4.15,7.80,11.45,0.68,0.58
-scenario_1_read_cache,"Scenario 1: High-Concurrency Encrypted Reads (Cache Hit vs KMS Decrypt)",250,10.0,793504,79350.4,0.0,1.25,3.15,3.02,4.18,4.82,6.94,12.50,18.20,1.15,0.98
-scenario_1_read_cache,"Scenario 1: High-Concurrency Encrypted Reads (Cache Hit vs KMS Decrypt)",500,10.0,968205,96820.5,0.0,1.80,5.16,4.92,7.10,8.35,12.40,21.00,29.80,2.10,1.75
-scenario_2_encrypted_ingestion,"Scenario 2: High-Concurrency Encrypted Ingestion (DEK + AES-GCM + Vault + Kafka)",1,10.0,1348,134.8,0.0,4.10,7.42,7.30,8.92,9.65,11.84,14.50,16.20,1.62,1.35
-scenario_2_encrypted_ingestion,"Scenario 2: High-Concurrency Encrypted Ingestion (DEK + AES-GCM + Vault + Kafka)",10,10.0,12654,1265.4,0.0,4.45,7.90,7.74,9.60,10.45,13.10,17.20,21.40,1.85,1.54
-scenario_2_encrypted_ingestion,"Scenario 2: High-Concurrency Encrypted Ingestion (DEK + AES-GCM + Vault + Kafka)",50,10.0,51102,5110.2,0.0,5.20,9.78,9.50,12.40,13.80,18.25,26.10,32.50,2.65,2.20
-scenario_2_encrypted_ingestion,"Scenario 2: High-Concurrency Encrypted Ingestion (DEK + AES-GCM + Vault + Kafka)",100,10.0,81905,8190.5,0.0,6.10,12.21,11.80,15.90,18.10,25.40,38.20,48.10,3.85,3.12
-scenario_2_encrypted_ingestion,"Scenario 2: High-Concurrency Encrypted Ingestion (DEK + AES-GCM + Vault + Kafka)",250,10.0,128700,12870.0,0.0,8.50,19.42,18.60,26.30,30.50,44.20,68.50,82.30,6.95,5.80
-scenario_2_encrypted_ingestion,"Scenario 2: High-Concurrency Encrypted Ingestion (DEK + AES-GCM + Vault + Kafka)",500,10.0,148902,14890.2,0.1,11.20,33.58,31.80,47.20,56.40,84.10,121.00,142.50,14.20,11.80
-scenario_3_crypto_shredding,"Scenario 3: Crypto-Shredding Key Revocation Under Load (Vault + Merkle + RSA)",1,10.0,1015,101.5,0.0,5.80,9.85,9.68,11.95,12.80,15.20,17.80,19.40,1.95,1.62
-scenario_3_crypto_shredding,"Scenario 3: Crypto-Shredding Key Revocation Under Load (Vault + Merkle + RSA)",10,10.0,9582,958.2,0.0,6.20,10.44,10.15,12.90,13.95,17.50,22.10,26.10,2.25,1.88
-scenario_3_crypto_shredding,"Scenario 3: Crypto-Shredding Key Revocation Under Load (Vault + Merkle + RSA)",50,10.0,39804,3980.4,0.0,7.10,12.56,12.10,16.10,17.80,23.40,32.50,39.80,3.42,2.85
-scenario_3_crypto_shredding,"Scenario 3: Crypto-Shredding Key Revocation Under Load (Vault + Merkle + RSA)",100,10.0,65408,6540.8,0.0,8.40,15.29,14.70,20.20,22.90,31.80,46.50,58.20,4.95,4.10
-scenario_3_crypto_shredding,"Scenario 3: Crypto-Shredding Key Revocation Under Load (Vault + Merkle + RSA)",250,10.0,106101,10610.1,0.0,11.20,23.56,22.40,32.10,37.40,53.90,81.00,96.50,8.85,7.40
-scenario_3_crypto_shredding,"Scenario 3: Crypto-Shredding Key Revocation Under Load (Vault + Merkle + RSA)",500,10.0,134207,13420.7,0.1,14.50,37.25,35.10,52.80,63.20,94.70,141.00,165.00,16.50,13.90
-scenario_4_failsafe_post_shred,"Scenario 4: Fail-Safe Post-Shred Read Attempts (Zero-Leakage Verification)",1,10.0,6897,689.7,0.0,0.80,1.45,1.42,1.84,2.01,2.58,3.45,4.10,0.38,0.33
-scenario_4_failsafe_post_shred,"Scenario 4: Fail-Safe Post-Shred Read Attempts (Zero-Leakage Verification)",10,10.0,64516,6451.6,0.0,0.88,1.55,1.51,1.98,2.18,2.92,4.30,5.80,0.42,0.37
-scenario_4_failsafe_post_shred,"Scenario 4: Fail-Safe Post-Shred Read Attempts (Zero-Leakage Verification)",50,10.0,274725,27472.5,0.0,1.05,1.82,1.76,2.35,2.64,3.75,6.20,8.90,0.56,0.48
-scenario_4_failsafe_post_shred,"Scenario 4: Fail-Safe Post-Shred Read Attempts (Zero-Leakage Verification)",100,10.0,444444,44444.4,0.0,1.18,2.25,2.15,2.98,3.42,4.95,9.40,13.20,0.82,0.70
-scenario_4_failsafe_post_shred,"Scenario 4: Fail-Safe Post-Shred Read Attempts (Zero-Leakage Verification)",250,10.0,694444,69444.4,0.0,1.45,3.60,3.42,4.85,5.60,8.10,14.80,21.50,1.42,1.21
-scenario_4_failsafe_post_shred,"Scenario 4: Fail-Safe Post-Shred Read Attempts (Zero-Leakage Verification)",500,10.0,892857,89285.7,0.0,2.10,5.60,5.30,7.90,9.30,13.90,24.50,34.20,2.45,2.05
+scenario_1_read_cache,"Scenario 1: High-Concurrency Encrypted Reads (Cache vs KMS Decrypt)",1,10,378,37.79,0,12.123,26.324,23.892,33.311,35.056,92.338,127.869,127.869,12.024,13.933
+scenario_1_read_cache,"Scenario 1: High-Concurrency Encrypted Reads (Cache vs KMS Decrypt)",10,10.14,1824,179.88,0,15.121,55.07,49.87,91.643,103.298,152.03,198.004,198.729,22.88,9.497
+scenario_1_read_cache,"Scenario 1: High-Concurrency Encrypted Reads (Cache vs KMS Decrypt)",50,10.25,2023,197.45,0,41.853,250.353,241.901,358.289,445.876,545.144,740.833,749.871,98.314,67.618
+scenario_1_read_cache,"Scenario 1: High-Concurrency Encrypted Reads (Cache vs KMS Decrypt)",100,10.54,1768,167.73,0,46.978,582.31,508.893,943.202,1147.591,1443.663,1845.446,2398.511,274.562,176.036
+scenario_1_read_cache,"Scenario 1: High-Concurrency Encrypted Reads (Cache vs KMS Decrypt)",250,11.06,2136,193.16,0,73.735,1231.372,1255.935,1805.047,2136.783,2443.948,3201.055,3302.113,488.722,378.451
+scenario_1_read_cache,"Scenario 1: High-Concurrency Encrypted Reads (Cache vs KMS Decrypt)",500,13.41,2061,153.75,0,92.173,2848.806,3043.187,3901.544,4086.597,4701.662,5149.04,5804.702,943.934,322.087
+scenario_2_encrypted_ingestion,"Scenario 2: High-Concurrency Encrypted Ingestion (DEK + AES-GCM + Vault + Kafka)",1,10.03,155,15.45,0,43.472,64.592,54.356,91.945,103.15,152.005,208.853,208.853,24.22,19.601
+scenario_2_encrypted_ingestion,"Scenario 2: High-Concurrency Encrypted Ingestion (DEK + AES-GCM + Vault + Kafka)",10,10.06,702,69.8,0,82.247,142.918,135.583,206.163,246.288,305.175,362.062,362.062,50.676,22.681
+scenario_2_encrypted_ingestion,"Scenario 2: High-Concurrency Encrypted Ingestion (DEK + AES-GCM + Vault + Kafka)",50,11.11,588,52.94,0,106.75,920.369,844.506,1479.785,1632.961,2021.703,2369.662,2369.662,405.205,161.646
+scenario_2_encrypted_ingestion,"Scenario 2: High-Concurrency Encrypted Ingestion (DEK + AES-GCM + Vault + Kafka)",100,11.54,696,60.31,0,88.206,1535.531,1503.404,2047.468,2210.049,2947.651,3211.011,3211.011,440.695,220.25
+scenario_2_encrypted_ingestion,"Scenario 2: High-Concurrency Encrypted Ingestion (DEK + AES-GCM + Vault + Kafka)",250,13.03,1029,78.95,0,189.503,2780.868,2993.552,3439.747,4018.259,4304.042,5207.26,5727.944,772.688,307.787
+scenario_2_encrypted_ingestion,"Scenario 2: High-Concurrency Encrypted Ingestion (DEK + AES-GCM + Vault + Kafka)",500,18.76,1270,67.69,0,311.503,5430.564,6057.198,8154.042,8960.836,9826.771,11267.088,11499.105,2237.089,356.29
+scenario_3_crypto_shredding,"Scenario 3: Crypto-Shredding Key Revocation Under Concurrent Load (Vault + Merkle + RSA)",1,10.04,62,6.18,0,121.405,161.771,149.775,201.247,219.156,332.161,332.161,332.161,37.3,25.701
+scenario_3_crypto_shredding,"Scenario 3: Crypto-Shredding Key Revocation Under Concurrent Load (Vault + Merkle + RSA)",10,11.56,72,6.23,0,378.231,1501.243,1426.419,2165.613,2551.131,3551.381,3551.381,3551.381,621.508,435.24
+scenario_3_crypto_shredding,"Scenario 3: Crypto-Shredding Key Revocation Under Concurrent Load (Vault + Merkle + RSA)",50,16.86,116,6.88,0,687.088,5805.627,6465.555,7539.704,7941.81,8548.913,8808.372,8808.372,1904.945,522.319
+scenario_3_crypto_shredding,"Scenario 3: Crypto-Shredding Key Revocation Under Concurrent Load (Vault + Merkle + RSA)",100,22.01,176,7.99,0,271.044,9043.344,11007.604,12601.417,13191.523,14216.692,14349.198,14349.198,3852.648,390.465
+scenario_3_crypto_shredding,"Scenario 3: Crypto-Shredding Key Revocation Under Concurrent Load (Vault + Merkle + RSA)",250,24.97,319,12.78,68.97,810.529,12645.383,15002.428,15069.463,15069.821,15070.101,15070.365,15070.365,4251.144,45.531
+scenario_3_crypto_shredding,"Scenario 3: Crypto-Shredding Key Revocation Under Concurrent Load (Vault + Merkle + RSA)",500,24.97,585,23.43,77.78,411.489,13468.846,15086.165,15128.605,15135.17,15140.852,15141.061,15141.061,3607.535,25.793
+scenario_4_failsafe_post_shred,"Scenario 4: Fail-Safe Post-Shred Read Attempts Under Concurrent Load (Zero-Leakage)",1,15,1,0.07,100,15000.751,15000.751,15000.751,15000.751,15000.751,15000.751,15000.751,15000.751,0,0
+scenario_4_failsafe_post_shred,"Scenario 4: Fail-Safe Post-Shred Read Attempts Under Concurrent Load (Zero-Leakage)",10,15,10,0.67,100,15000.303,15000.358,15000.362,15000.492,15000.492,15000.492,15000.492,15000.492,0.054,0.034
+scenario_4_failsafe_post_shred,"Scenario 4: Fail-Safe Post-Shred Read Attempts Under Concurrent Load (Zero-Leakage)",50,14.12,50,3.54,0,13843.439,14014.979,14035.494,14101.368,14108.053,14115.93,14115.93,14115.93,73.497,5.572
+scenario_4_failsafe_post_shred,"Scenario 4: Fail-Safe Post-Shred Read Attempts Under Concurrent Load (Zero-Leakage)",100,10.15,5548,546.65,0,13.464,181.301,174.8,248.778,276.91,344.703,427.416,607.388,52.97,39.833
+scenario_4_failsafe_post_shred,"Scenario 4: Fail-Safe Post-Shred Read Attempts Under Concurrent Load (Zero-Leakage)",250,10.35,5915,571.58,0,58.67,430.415,426.04,576.04,606.598,761.198,935.51,1025.382,113.361,83.103
+scenario_4_failsafe_post_shred,"Scenario 4: Fail-Safe Post-Shred Read Attempts Under Concurrent Load (Zero-Leakage)",500,10.85,6048,557.36,0,58.839,864.051,879.517,1042.518,1075.343,1232.651,1397.614,1754.465,163.855,81.962

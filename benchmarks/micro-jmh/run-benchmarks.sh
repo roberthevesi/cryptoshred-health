@@ -41,15 +41,12 @@ echo "============================================================"
 
 # 3. Build classpath manifest
 echo "  📦 Generating benchmark classpath..."
+./mvnw dependency:build-classpath -DincludeScope=test -Dmdep.outputFile=target/mvn_test_cp.txt -q
 python3 -c '
-import os, glob
-
-m2 = os.path.expanduser("~/.m2/repository")
-jars = glob.glob(m2 + "/**/*.jar", recursive=True)
-jars = [j for j in jars if not j.endswith("-sources.jar") and not j.endswith("-javadoc.jar")]
-cp = "target/test-classes:target/classes:" + ":".join(jars)
+with open("target/mvn_test_cp.txt") as f:
+    cp = f.read().strip()
 with open("target/cp.txt", "w") as f:
-    f.write(cp)
+    f.write("target/test-classes:target/classes:" + cp)
 '
 
 echo ""
@@ -59,16 +56,9 @@ echo "============================================================"
 
 RESULTS_JSON="$RESULTS_DIR/results.json"
 
-# Pass -f 0 by default so benchmarks run seamlessly without requiring local loopback socket forking
-EXTRA_ARGS=()
-if [[ "$*" != *"-f "* ]]; then
-    EXTRA_ARGS+=("-f" "0")
-fi
-
 java -cp @target/cp.txt \
     com.roberthevesi.cryptoshred_health.benchmarks.BenchmarkRunner \
     -rf json -rff "$RESULTS_JSON" \
-    "${EXTRA_ARGS[@]}" \
     "$@"
 
 echo ""

@@ -50,6 +50,7 @@ public class ErasureService {
     private final ProofSigningService proofSigningService;
     private final MerkleTreeService merkleTreeService;
     private final ObjectMapper objectMapper;
+    private final WormBackupExporterService wormBackupExporterService;
 
     /**
      * Complete Patient Right-to-be-Forgotten:
@@ -220,6 +221,8 @@ public class ErasureService {
             throw new RuntimeException("Failed to persist deletion proof: " + e.getMessage(), e);
         }
 
+        wormBackupExporterService.exportDeletionReceipt("PATIENT_PROFILE", patientId, vaultKeyName, requestedBy, sha256Hash, timestamp);
+
         return proof;
     }
 
@@ -301,6 +304,8 @@ public class ErasureService {
             throw new RuntimeException("Failed to persist deletion proof: " + e.getMessage(), e);
         }
 
+        wormBackupExporterService.exportDeletionReceipt("CLINICAL_VISIT", visitId.toString(), vaultKeyName, requestedBy, sha256Hash, timestamp);
+
         return proof;
     }
 
@@ -374,6 +379,7 @@ public class ErasureService {
 
     private void shredVisit(PatientVisit visit, LocalDateTime timestamp) {
         // Step 1: Nullify sensitive clinical fields & attachments
+        visit.setMrn("[SHREDDED]");
         visit.setDiagnosis("[SHREDDED]");
         visit.setMedicalNotes("[SHREDDED]");
         visit.setAllergies("[SHREDDED]");

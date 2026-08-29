@@ -1,3 +1,4 @@
+<!-- DEVTOOL ONLY: Offline research verification tool for thesis demonstrations. Do not deploy to public production endpoints. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,18 +10,23 @@
 <body class="bg-slate-900 text-slate-100 min-h-screen flex items-center justify-center p-6">
   <div class="max-w-2xl w-full bg-slate-800 border border-slate-700 rounded-2xl p-8 shadow-2xl space-y-6">
     <div class="border-b border-slate-700 pb-4">
-      <h1 class="text-xl font-bold text-blue-400 flex items-center gap-2">
-        🔓 CryptoShred 1-Click Decryptor
-      </h1>
+      <div class="flex items-center justify-between">
+        <h1 class="text-xl font-bold text-blue-400 flex items-center gap-2">
+          🔓 CryptoShred 1-Click Decryptor
+        </h1>
+        <span class="px-2 py-0.5 text-[10px] font-semibold tracking-wider uppercase bg-blue-950 text-blue-300 border border-blue-800 rounded-full">
+          WebCrypto AES-256-GCM
+        </span>
+      </div>
       <p class="text-xs text-slate-400 mt-1">
-        Paste the exact string copied from the HashiCorp Vault UI, your IV, and ciphertext blob. Decryption runs 100% locally in your browser via WebCrypto.
+        Paste the decrypted DEK from Vault, IV, ciphertext blob, and optional AAD (Entity ID). Decryption runs 100% locally in your browser.
       </p>
     </div>
 
     <div class="space-y-4">
       <div>
         <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-          Vault UI Decrypted Output (Key / DEK)
+          Vault UI Decrypted Output (Key / DEK) <span class="text-rose-400">*</span>
         </label>
         <input
           id="keyInput"
@@ -30,21 +36,36 @@
         />
       </div>
 
-      <div>
-        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-          IV (Initialization Vector)
-        </label>
-        <input
-          id="ivInput"
-          type="text"
-          placeholder="e.g. DlKpPgB6yPklLfaY"
-          class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs font-mono text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+            IV (Initialization Vector) <span class="text-rose-400">*</span>
+          </label>
+          <input
+            id="ivInput"
+            type="text"
+            placeholder="e.g. DlKpPgB6yPklLfaY"
+            class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs font-mono text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1 flex items-center justify-between">
+            <span>AAD / Entity ID</span>
+            <span class="text-[10px] text-slate-400 font-normal lowercase">(Optional for legacy)</span>
+          </label>
+          <input
+            id="aadInput"
+            type="text"
+            placeholder="e.g. Visit UUID or Patient ID (PAT-10001)"
+            class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs font-mono text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
       </div>
 
       <div>
         <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-          Encrypted Data Blob (Ciphertext)
+          Encrypted Data Blob (Ciphertext) <span class="text-rose-400">*</span>
         </label>
         <textarea
           id="blobInput"
@@ -57,16 +78,19 @@
       <button
         id="decryptBtn"
         onclick="runDecryption()"
-        class="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-xl shadow-lg transition duration-150"
+        class="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-xl shadow-lg transition duration-150 flex items-center justify-center gap-2"
       >
-        Decrypt Record
+        <span>🔓</span> Decrypt Record Locally
       </button>
     </div>
 
     <div id="outputContainer" class="hidden space-y-2 pt-2 border-t border-slate-700">
-      <label class="block text-xs font-semibold text-emerald-400 uppercase tracking-wider">
-        Decrypted Plaintext JSON:
-      </label>
+      <div class="flex items-center justify-between">
+        <label class="block text-xs font-semibold text-emerald-400 uppercase tracking-wider">
+          Decrypted Plaintext JSON:
+        </label>
+        <span id="aadBadge" class="text-[10px] px-2 py-0.5 bg-emerald-950 text-emerald-300 border border-emerald-800 rounded-md font-mono"></span>
+      </div>
       <pre id="outputPre" class="p-4 bg-slate-950 border border-emerald-500/30 rounded-xl text-xs font-mono text-emerald-300 overflow-x-auto whitespace-pre-wrap"></pre>
     </div>
 
@@ -88,6 +112,7 @@
       const errBox = document.getElementById('errorContainer');
       const outBox = document.getElementById('outputContainer');
       const outPre = document.getElementById('outputPre');
+      const aadBadge = document.getElementById('aadBadge');
       errBox.classList.add('hidden');
       outBox.classList.add('hidden');
 
@@ -95,6 +120,7 @@
         const keyRaw = document.getElementById('keyInput').value.trim();
         const ivRaw = document.getElementById('ivInput').value.trim();
         const blobRaw = document.getElementById('blobInput').value.trim();
+        const aadRaw = document.getElementById('aadInput').value.trim();
 
         if (!keyRaw || !ivRaw || !blobRaw) {
           throw new Error('Please fill in Key, IV, and Encrypted Data Blob.');
@@ -128,11 +154,34 @@
           ['decrypt']
         );
 
-        const decryptedBuffer = await window.crypto.subtle.decrypt(
-          { name: 'AES-GCM', iv: ivBytes },
-          cryptoKey,
-          cipherBytes
-        );
+        // Build AES-GCM decryption params with optional AAD
+        const decryptParams = { name: 'AES-GCM', iv: ivBytes };
+        if (aadRaw) {
+          decryptParams.additionalData = new TextEncoder().encode(aadRaw);
+        }
+
+        let decryptedBuffer;
+        try {
+          decryptedBuffer = await window.crypto.subtle.decrypt(
+            decryptParams,
+            cryptoKey,
+            cipherBytes
+          );
+        } catch (decryptErr) {
+          // If user didn't supply AAD, provide a helpful hint about AAD requirement
+          if (!aadRaw) {
+            throw new Error(
+              'Decryption failed (GCM authentication tag mismatch). ' +
+              'If this record was created with AAD context binding, please enter the Patient ID (e.g. PAT-10001) ' +
+              'or Visit UUID (e.g. 878a6e3b-5b44-4fc2-99ce-97894ee40a2d) in the AAD field.'
+            );
+          } else {
+            throw new Error(
+              'Decryption failed (GCM tag mismatch). The provided AAD ("' + aadRaw + '") does not match ' +
+              'the cryptographic context bound to this ciphertext.'
+            );
+          }
+        }
 
         const plaintext = new TextDecoder().decode(decryptedBuffer);
         try {
@@ -140,6 +189,15 @@
         } catch (_) {
           outPre.textContent = plaintext;
         }
+
+        if (aadRaw) {
+          aadBadge.textContent = '🔒 AAD Authenticated: ' + aadRaw;
+          aadBadge.classList.remove('hidden');
+        } else {
+          aadBadge.textContent = '🔓 No AAD (Legacy Mode)';
+          aadBadge.classList.remove('hidden');
+        }
+
         outBox.classList.remove('hidden');
       } catch (err) {
         errBox.textContent = '❌ Decryption Error: ' + err.message;

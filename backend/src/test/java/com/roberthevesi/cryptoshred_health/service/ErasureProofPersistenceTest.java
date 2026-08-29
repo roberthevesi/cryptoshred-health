@@ -31,6 +31,7 @@ class ErasureProofPersistenceTest {
     private ProofSigningService proofSigningService;
     private MerkleTreeService merkleTreeService;
     private ObjectMapper objectMapper;
+    private WormBackupExporterService wormBackupExporterService;
     private ErasureService erasureService;
 
     @BeforeEach
@@ -44,6 +45,7 @@ class ErasureProofPersistenceTest {
         PatientCacheService patientCacheService = mock(PatientCacheService.class);
         proofSigningService = mock(ProofSigningService.class);
         merkleTreeService = mock(MerkleTreeService.class);
+        wormBackupExporterService = mock(WormBackupExporterService.class);
         objectMapper = new ObjectMapper();
         objectMapper.findAndRegisterModules();
 
@@ -61,7 +63,8 @@ class ErasureProofPersistenceTest {
                 patientCacheService,
                 proofSigningService,
                 merkleTreeService,
-                objectMapper
+                objectMapper,
+                wormBackupExporterService
         );
     }
 
@@ -100,12 +103,14 @@ class ErasureProofPersistenceTest {
 
         // Verify cascaded visit proof
         assertTrue(visit.isShredded());
+        assertEquals("[SHREDDED]", visit.getMrn(), "Visit MRN must be shredded on patient forget");
         assertNotNull(visit.getDeletionProofJson());
         assertTrue(visit.getDeletionProofJson().contains("CLINICAL_VISIT"));
         assertTrue(visit.getDeletionProofJson().contains("Hypertension Consultation"));
 
         verify(patientRepository, atLeastOnce()).save(patient);
         verify(patientVisitRepository, atLeastOnce()).save(visit);
+        verify(wormBackupExporterService, times(1)).exportDeletionReceipt(eq("PATIENT_PROFILE"), eq(patientId), any(), eq("auditor_user"), anyString(), any());
 
         // Now test bundle retrieval
         ErasureProofBundleDto bundle = erasureService.getPatientDeletionProofBundle(patientId);
@@ -137,10 +142,12 @@ class ErasureProofPersistenceTest {
         assertEquals("CLINICAL_VISIT", proof.getScope());
         assertTrue(proof.getEntityDescription().contains("Routine Health Check"));
         assertTrue(visit.isShredded());
+        assertEquals("[SHREDDED]", visit.getMrn(), "Visit MRN must be shredded on visit forget");
         assertNotNull(visit.getDeletionProofJson());
         assertTrue(visit.getDeletionProofJson().contains("VISIT_DELETED"));
 
         verify(patientVisitRepository, atLeastOnce()).save(visit);
+        verify(wormBackupExporterService, times(1)).exportDeletionReceipt(eq("CLINICAL_VISIT"), eq(visitId.toString()), any(), eq("auditor_user"), anyString(), any());
 
         // Now test retrieval
         VerifiableDeletionProofDto retrievedProof = erasureService.getVisitDeletionProof(visitId);

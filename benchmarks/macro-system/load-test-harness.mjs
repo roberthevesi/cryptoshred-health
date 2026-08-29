@@ -289,11 +289,19 @@ export class MultiUserLoadTester {
   async checkBackendHealth() {
     console.log(`\n🔍 Checking backend connection at ${this.config.baseUrl}...`);
     try {
-      const res = await httpRequest({
+      let res = await httpRequest({
         url: `${this.config.baseUrl}/actuator/health`,
         method: 'GET',
         timeoutMs: 3000
       });
+
+      if (!res.success && res.statusCode !== 200) {
+        res = await httpRequest({
+          url: `${this.config.baseUrl}/api/erasure/public-key`,
+          method: 'GET',
+          timeoutMs: 3000
+        });
+      }
 
       if (res.success || res.statusCode === 200) {
         console.log(`✅ Backend is reachable! Status: ${res.statusCode}`);
@@ -304,8 +312,16 @@ export class MultiUserLoadTester {
       // Backend not running
     }
 
+    const allowSimulation = process.env.ALLOW_SIMULATION === 'true';
+    if (!allowSimulation) {
+      console.error(`\n❌ ERROR: Live CryptoShred Health backend is unreachable at ${this.config.baseUrl}.`);
+      console.error(`Please ensure the Spring Boot server and dependent infrastructure (PostgreSQL, Vault, Redis, Kafka) are running.`);
+      console.error(`Set ALLOW_SIMULATION=true only if you explicitly intend to run offline mock simulation.\n`);
+      throw new Error(`Live backend unreachable at ${this.config.baseUrl}`);
+    }
+
     console.log(`⚠️  Live backend on ${this.config.baseUrl} not responding.`);
-    console.log(`⚡ Utilizing High-Fidelity Empirical Simulation Engine calibrated with JMH microbenchmarks.\n`);
+    console.log(`⚡ Utilizing High-Fidelity Empirical Simulation Engine (ALLOW_SIMULATION=true).\n`);
     this.isLiveBackend = false;
     return false;
   }
@@ -487,10 +503,38 @@ export class MultiUserLoadTester {
     );
   }
 
+  async preseedShredPool(count) {
+    const token = this.authTokens.doctor;
+    const batchSize = 50;
+    for (let b = 0; b < count; b += batchSize) {
+      const chunk = Math.min(batchSize, count - b);
+      const promises = [];
+      for (let i = 0; i < chunk; i++) {
+        promises.push((async (idx) => {
+          const payload = generateClinicalVisitPayload(b + idx + (Date.now() % 100000));
+          const res = await httpRequest({
+            url: `${this.config.baseUrl}/api/visits`,
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: payload
+          });
+          if (res.success && res.json && res.json.id) {
+            this.unshreddedVisitPool.push(res.json.id);
+          }
+        })(i));
+      }
+      await Promise.all(promises);
+    }
+  }
+
   // ── Scenario 3: Crypto-Shredding Key Revocation Under Load ─────────────────
   async executeScenario3(vus, durationSec) {
     const token = this.authTokens.auditor || this.authTokens.doctor;
-    const visitIds = this.seededVisitIds.length > 0 ? this.seededVisitIds : ['sample-id-1'];
+    if (this.isLiveBackend) {
+      this.unshreddedVisitPool = [];
+      const requiredVisits = Math.min(1000, Math.max(100, vus * 8));
+      await this.preseedShredPool(requiredVisits);
+    }
 
     return this.runScenario(
       'scenario_3_crypto_shredding',
@@ -504,7 +548,25 @@ export class MultiUserLoadTester {
           return { success: true, statusCode: 200, latencyMs: lat };
         }
 
-        const visitId = visitIds[reqIndex % visitIds.length];
+        let visitId = this.unshreddedVisitPool ? this.unshreddedVisitPool.pop() : null;
+        if (!visitId) {
+          const createRes = await httpRequest({
+            url: `${this.config.baseUrl}/api/visits`,
+            method: 'POST',
+            headers: { Authorization: `Bearer ${this.authTokens.doctor}` },
+            body: generateClinicalVisitPayload(reqIndex + 50000)
+          });
+          if (createRes.success && createRes.json && createRes.json.id) {
+            visitId = createRes.json.id;
+          }
+        }
+        if (!visitId) {
+          visitId = this.seededVisitIds.length > 0
+            ? this.seededVisitIds[reqIndex % this.seededVisitIds.length]
+            : '00000000-0000-4000-8000-000000000001';
+        }
+
+        // Benchmark the live Crypto-Shredding operation (Vault destruction, Merkle leaf, RSA-2048 sign, DB update)
         const res = await httpRequest({
           url: `${this.config.baseUrl}/api/erasure/visits/${visitId}/forget`,
           method: 'DELETE',
@@ -591,6 +653,7 @@ export class MultiUserLoadTester {
         const result = await sc.fn(vus, duration);
         allResults.push(result);
         console.log(`Done! RPS: ${result.rps.toFixed(1).padStart(7)} | Mean: ${result.mean.toFixed(2).padStart(6)}ms | p95: ${result.p95.toFixed(2).padStart(6)}ms | p99: ${result.p99.toFixed(2).padStart(6)}ms | Err: ${result.errorRate}%`);
+        await new Promise(r => setTimeout(r, 1500)); // 1.5s cooldown for graceful socket/thread drainage
       }
     }
 

@@ -106,8 +106,6 @@ class PatientIsolationIntegrationTest {
                 patientVisitService,
                 patientVisitRepository,
                 gpRepository,
-                vaultKmsService,
-                envelopeEncryptionService,
                 objectMapper
         );
     }
@@ -129,6 +127,9 @@ class PatientIsolationIntegrationTest {
         when(envelopeEncryptionService.generateDek()).thenReturn(new byte[32]);
         when(vaultKmsService.wrapDek(anyString(), any())).thenReturn("wrapped_dek");
         when(envelopeEncryptionService.encrypt(any(), any())).thenReturn(
+                new EnvelopeEncryptionService.EncryptedPayload("cipher", "iv")
+        );
+        when(envelopeEncryptionService.encrypt(any(), any(), any())).thenReturn(
                 new EnvelopeEncryptionService.EncryptedPayload("cipher", "iv")
         );
 
@@ -309,13 +310,11 @@ class PatientIsolationIntegrationTest {
                 patientVisitService,
                 patientVisitRepository,
                 gpRepository,
-                vaultKmsService,
-                envelopeEncryptionService,
                 objectMapper
         );
 
         when(patientRepository.findByPatientId(patientId)).thenReturn(Optional.of(patient));
-        when(patientVisitRepository.findByPatientIdentifier(patientId)).thenReturn(Collections.emptyList());
+        when(patientVisitRepository.findAllByPatientComprehensive(any(), eq(patientId))).thenReturn(Collections.emptyList());
 
         PatientResponse patientResponse = PatientResponse.builder()
                 .patientId(patientId)
