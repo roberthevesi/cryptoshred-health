@@ -10,12 +10,6 @@ cat << EOF > /tmp/vault-config.json
       "node_id": "${NODE_NAME}"
     }
   },
-  "ha_storage": {
-    "raft": {
-      "path": "/vault/file",
-      "node_id": "${NODE_NAME}"
-    }
-  },
   "listener": {
     "tcp": {
       "address": "0.0.0.0:8200",
@@ -30,8 +24,7 @@ cat << EOF > /tmp/vault-config.json
   "cluster_addr": "http://${NODE_NAME}:8201",
   "telemetry": {
     "prometheus_retention_time": "30s",
-    "disable_hostname": true,
-    "unauthenticated_metrics_access": true
+    "disable_hostname": true
   },
   "default_lease_ttl": "720h",
   "max_lease_ttl": "8760h",
