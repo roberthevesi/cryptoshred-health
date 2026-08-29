@@ -1,6 +1,6 @@
 {
   "storage": {
-    "file": {
+    "raft": {
       "path": "/vault/file"
     }
   },

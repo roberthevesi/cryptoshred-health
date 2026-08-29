@@ -1,7 +1,47 @@
 #!/bin/sh
 
-echo "[Vault-Init] Starting HashiCorp Vault server with persistent file storage..."
-vault server -config=/vault/config/vault.json &
+NODE_NAME="${HOSTNAME:-vault-1}"
+
+cat << EOF > /tmp/vault-config.json
+{
+  "storage": {
+    "raft": {
+      "path": "/vault/file",
+      "node_id": "${NODE_NAME}"
+    }
+  },
+  "ha_storage": {
+    "raft": {
+      "path": "/vault/file",
+      "node_id": "${NODE_NAME}"
+    }
+  },
+  "listener": {
+    "tcp": {
+      "address": "0.0.0.0:8200",
+      "cluster_address": "0.0.0.0:8201",
+      "tls_disable": 1,
+      "telemetry": {
+        "unauthenticated_metrics_access": true
+      }
+    }
+  },
+  "api_addr": "http://${NODE_NAME}:8200",
+  "cluster_addr": "http://${NODE_NAME}:8201",
+  "telemetry": {
+    "prometheus_retention_time": "30s",
+    "disable_hostname": true,
+    "unauthenticated_metrics_access": true
+  },
+  "default_lease_ttl": "720h",
+  "max_lease_ttl": "8760h",
+  "ui": true,
+  "disable_mlock": false
+}
+EOF
+
+echo "[Vault-Init] Starting HashiCorp Vault server with Integrated Raft Storage on ${NODE_NAME}..."
+vault server -config=/tmp/vault-config.json &
 VAULT_PID=$!
 
 export VAULT_ADDR="http://127.0.0.1:8200"
