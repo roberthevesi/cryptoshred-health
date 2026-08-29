@@ -197,8 +197,10 @@ export default function RecordVisitModal({ onClose, editVisit, defaultPatient }:
         {/* Read-Only Master Patient Demographic Header Banner */}
         <div className="bg-slate-50 border-b border-slate-200 px-6 py-3 flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white font-bold text-sm shadow-xs">
-              {selectedPatient ? selectedPatient.firstName.charAt(0) : (form.patientName ? form.patientName.charAt(0) : 'P')}
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white font-bold text-xs shadow-xs">
+              {selectedPatient
+                ? `${selectedPatient.firstName?.charAt(0) || ''}${selectedPatient.lastName?.charAt(0) || ''}`.toUpperCase() || 'PT'
+                : (form.patientName ? form.patientName.slice(0, 2).toUpperCase() : 'PT')}
             </div>
             <div>
               <div className="flex items-center gap-2">
