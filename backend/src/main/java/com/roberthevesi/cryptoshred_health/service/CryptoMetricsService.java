@@ -32,6 +32,25 @@ public class CryptoMetricsService {
         this.meterRegistry = meterRegistry != null ? meterRegistry : new SimpleMeterRegistry();
     }
 
+    @jakarta.annotation.PostConstruct
+    public void initMeters() {
+        try {
+            for (String op : new String[]{"encrypt", "decrypt", "shred", "rotate"}) {
+                Timer.builder(METRIC_CRYPTO_OPERATIONS).description("Latency of cryptographic engine operations").tag("operation", op).register(meterRegistry);
+            }
+            for (String scope : new String[]{"PATIENT_PROFILE", "CLINICAL_VISIT"}) {
+                Timer.builder(METRIC_MERKLE_PROOF_MINT).description("Latency of Merkle tree inclusion proof minting").tag("scope", scope).register(meterRegistry);
+            }
+            for (String field : new String[]{"nhs_number", "mrn", "last_name"}) {
+                Counter.builder(METRIC_BLIND_INDEX_LOOKUPS).description("Count of HMAC-SHA256 blind index lookups performed").tag("field", field).register(meterRegistry);
+            }
+            Counter.builder(METRIC_TOMBSTONES_PURGED).description("Count of resurrected Vault KMS tombstones purged").register(meterRegistry);
+            Timer.builder(METRIC_BACKUP_BUNDLE_DURATION).description("Latency of disaster recovery atomic backup bundle capture").register(meterRegistry);
+        } catch (Exception e) {
+            log.debug("Could not pre-register metric meters: {}", e.getMessage());
+        }
+    }
+
     public MeterRegistry getMeterRegistry() {
         return meterRegistry;
     }

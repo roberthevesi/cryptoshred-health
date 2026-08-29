@@ -364,7 +364,7 @@
       "gridPos": { "h": 3, "w": 5, "x": 0, "y": 9 },
       "targets": [
         {
-          "expr": "sum(rate(cryptoshred_crypto_duration_seconds_count[1m])) or vector(0)",
+          "expr": "sum(rate(cryptoshred_crypto_operations_seconds_count[1m])) or vector(0)",
           "refId": "A"
         }
       ],
@@ -388,7 +388,7 @@
       "gridPos": { "h": 3, "w": 5, "x": 5, "y": 9 },
       "targets": [
         {
-          "expr": "(sum(rate(cryptoshred_crypto_duration_seconds_sum{operation=\"encrypt\"}[1m])) / sum(rate(cryptoshred_crypto_duration_seconds_count{operation=\"encrypt\"}[1m])) * 1000) or vector(0)",
+          "expr": "(sum(rate(cryptoshred_crypto_operations_seconds_sum{operation=\"encrypt\"}[1m])) / sum(rate(cryptoshred_crypto_operations_seconds_count{operation=\"encrypt\"}[1m])) * 1000) or vector(0)",
           "refId": "A"
         }
       ],
@@ -418,7 +418,7 @@
       "gridPos": { "h": 3, "w": 5, "x": 10, "y": 9 },
       "targets": [
         {
-          "expr": "(sum(rate(cryptoshred_crypto_duration_seconds_sum{operation=\"decrypt\"}[1m])) / sum(rate(cryptoshred_crypto_duration_seconds_count{operation=\"decrypt\"}[1m])) * 1000) or vector(0)",
+          "expr": "(sum(rate(cryptoshred_crypto_operations_seconds_sum{operation=\"decrypt\"}[1m])) / sum(rate(cryptoshred_crypto_operations_seconds_count{operation=\"decrypt\"}[1m])) * 1000) or vector(0)",
           "refId": "A"
         }
       ],
@@ -448,7 +448,7 @@
       "gridPos": { "h": 3, "w": 4, "x": 15, "y": 9 },
       "targets": [
         {
-          "expr": "sum(cryptoshred_merkle_proof_mint_duration_seconds_count) or vector(0)",
+          "expr": "sum(cryptoshred_merkle_proof_mint_seconds_count) or vector(0)",
           "refId": "A"
         }
       ],
@@ -472,7 +472,7 @@
       "gridPos": { "h": 3, "w": 5, "x": 19, "y": 9 },
       "targets": [
         {
-          "expr": "sum(cryptoshred_tombstones_purged_count_total) or vector(0)",
+          "expr": "sum(cryptoshred_tombstones_purged_total) or vector(0)",
           "refId": "A"
         }
       ],
@@ -510,7 +510,7 @@
       "gridPos": { "h": 7, "w": 8, "x": 0, "y": 12 },
       "targets": [
         {
-          "expr": "(rate(cryptoshred_crypto_duration_seconds_sum[1m]) / rate(cryptoshred_crypto_duration_seconds_count[1m])) * 1000",
+          "expr": "(rate(cryptoshred_crypto_operations_seconds_sum[1m]) / rate(cryptoshred_crypto_operations_seconds_count[1m])) * 1000",
           "legendFormat": "{{operation}}",
           "refId": "A"
         }
@@ -560,7 +560,7 @@
       "gridPos": { "h": 7, "w": 8, "x": 16, "y": 12 },
       "targets": [
         {
-          "expr": "rate(cryptoshred_blind_index_lookup_count_total[1m])",
+          "expr": "rate(cryptoshred_blind_index_lookups_total[1m]) or vector(0)",
           "legendFormat": "{{field}}",
           "refId": "A"
         }
