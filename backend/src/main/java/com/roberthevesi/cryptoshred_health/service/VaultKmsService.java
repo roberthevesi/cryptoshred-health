@@ -36,7 +36,15 @@ public class VaultKmsService {
     public void ensureKeyExists(String keyName) {
         try {
             vaultOperations.opsForTransit().createKey(keyName);
-            vaultOperations.write("transit/keys/" + keyName + "/config", Map.of("deletion_allowed", true));
+            try {
+                vaultOperations.write("transit/keys/" + keyName + "/config", Map.of(
+                        "deletion_allowed", true,
+                        "exportable", true,
+                        "allow_plaintext_backup", true
+                ));
+            } catch (Exception ignored) {
+                vaultOperations.write("transit/keys/" + keyName + "/config", Map.of("deletion_allowed", true));
+            }
             log.info("Transit key {} initialized in Vault", keyName);
         } catch (Exception e) {
             log.debug("Transit key {} initialization: {}", keyName, e.getMessage());
