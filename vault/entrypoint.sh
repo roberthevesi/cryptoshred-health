@@ -86,7 +86,32 @@ if [ -n "$VAULT_JOIN_ADDR" ]; then
   done
 else
   # Primary node (vault-1)
-  if [ -s "$INIT_FILE" ] && grep -q "Unseal Key 1:" "$INIT_FILE"; then
+  STATUS_OUT=$(vault status 2>&1 || true)
+  if ! echo "$STATUS_OUT" | grep -qi "Initialized.*true"; then
+    echo "[Vault-Init] First-time setup: Initializing Vault cluster leader..."
+    vault operator init -key-shares=1 -key-threshold=1 > /tmp/init.tmp 2>&1 || true
+    if grep -q "Unseal Key 1:" /tmp/init.tmp; then
+      cp /tmp/init.tmp "$INIT_FILE"
+      mkdir -p /vault/shared 2>/dev/null || true
+      cp /tmp/init.tmp "$SHARED_INIT_FILE" 2>/dev/null || true
+      chmod 600 "$INIT_FILE"
+      UNSEAL_KEY=$(grep -E 'Unseal Key 1:' "$INIT_FILE" | awk '{print $NF}' | tr -d '\r\n ')
+      ROOT_TOKEN=$(grep -E 'Initial Root Token:' "$INIT_FILE" | awk '{print $NF}' | tr -d '\r\n ')
+
+      echo "[Vault-Init] Unsealing Vault leader with generated key..."
+      vault operator unseal "$UNSEAL_KEY"
+      export VAULT_TOKEN="$ROOT_TOKEN"
+
+      TARGET_DEV_TOKEN="${VAULT_DEV_ROOT_TOKEN:-root}"
+      echo "[Vault-Init] Provisioning static root token '${TARGET_DEV_TOKEN}'..."
+      vault token create -id="$TARGET_DEV_TOKEN" -policy=root -orphan >/dev/null 2>&1 || true
+
+      echo "[Vault-Init] Mounting Transit secrets engine..."
+      vault secrets enable transit >/dev/null 2>&1 || true
+    else
+      echo "[Vault-Init] Initialization error: $(cat /tmp/init.tmp)"
+    fi
+  elif [ -s "$INIT_FILE" ] && grep -q "Unseal Key 1:" "$INIT_FILE"; then
     echo "[Vault-Init] Found existing unseal credentials in $INIT_FILE."
     mkdir -p /vault/shared 2>/dev/null || true
     cp "$INIT_FILE" "$SHARED_INIT_FILE" 2>/dev/null || true
@@ -103,34 +128,7 @@ else
       sleep 1
     done
   else
-    STATUS_OUT=$(vault status 2>&1 || true)
-    if ! echo "$STATUS_OUT" | grep -qi "Initialized.*true"; then
-      echo "[Vault-Init] First-time setup: Initializing Vault cluster leader..."
-      vault operator init -key-shares=1 -key-threshold=1 > /tmp/init.tmp 2>&1 || true
-      if grep -q "Unseal Key 1:" /tmp/init.tmp; then
-        cp /tmp/init.tmp "$INIT_FILE"
-        mkdir -p /vault/shared 2>/dev/null || true
-        cp /tmp/init.tmp "$SHARED_INIT_FILE" 2>/dev/null || true
-        chmod 600 "$INIT_FILE"
-        UNSEAL_KEY=$(grep -E 'Unseal Key 1:' "$INIT_FILE" | awk '{print $NF}' | tr -d '\r\n ')
-        ROOT_TOKEN=$(grep -E 'Initial Root Token:' "$INIT_FILE" | awk '{print $NF}' | tr -d '\r\n ')
-
-        echo "[Vault-Init] Unsealing Vault leader with generated key..."
-        vault operator unseal "$UNSEAL_KEY"
-        export VAULT_TOKEN="$ROOT_TOKEN"
-
-        TARGET_DEV_TOKEN="${VAULT_DEV_ROOT_TOKEN:-root}"
-        echo "[Vault-Init] Provisioning static root token '${TARGET_DEV_TOKEN}'..."
-        vault token create -id="$TARGET_DEV_TOKEN" -policy=root -orphan >/dev/null 2>&1 || true
-
-        echo "[Vault-Init] Mounting Transit secrets engine..."
-        vault secrets enable transit >/dev/null 2>&1 || true
-      else
-        echo "[Vault-Init] Initialization error: $(cat /tmp/init.tmp)"
-      fi
-    else
-      echo "[Vault-Init] Vault storage is initialized, but $INIT_FILE was empty or missing."
-    fi
+    echo "[Vault-Init] Vault storage is initialized, but $INIT_FILE was empty or missing."
   fi
 fi
 
