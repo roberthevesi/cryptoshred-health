@@ -7,11 +7,12 @@
   "listener": {
     "tcp": {
       "address": "0.0.0.0:8200",
+      "cluster_address": "0.0.0.0:8201",
       "tls_disable": 1
     }
   },
   "default_lease_ttl": "720h",
   "max_lease_ttl": "8760h",
   "ui": true,
-  "disable_mlock": true
+  "disable_mlock": false
 }

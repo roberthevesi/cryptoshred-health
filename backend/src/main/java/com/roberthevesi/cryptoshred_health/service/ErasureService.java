@@ -91,6 +91,9 @@ public class ErasureService {
         patient.setInsurancePolicyNumber(null);
         patient.setInsuranceGroupNumber(null);
         patient.setEncryptedDataBlob(null);
+        patient.setBlindIndexNhs(null);
+        patient.setBlindIndexMrn(null);
+        patient.setBlindIndexLastName(null);
         patient.setShredded(true);
         patient.setActive(false);
         patientRepository.save(patient);
@@ -127,6 +130,7 @@ public class ErasureService {
 
                 String visitSignPayload = buildCanonicalSignPayload(visit.getId().toString(), timestamp, visitSha256, visitMerkleRoot);
                 String visitSignature = proofSigningService.sign(visitSignPayload);
+                String visitPqcSignature = proofSigningService.signPqc(visitSignPayload);
 
                 VerifiableDeletionProofDto visitProof = VerifiableDeletionProofDto.builder()
                         .proofVersion("1.0")
@@ -152,6 +156,8 @@ public class ErasureService {
                         .merklePath(visitMerklePath)
                         .signatureAlgorithm("SHA256withRSA")
                         .digitalSignature(visitSignature)
+                        .pqcAlgorithm("ML-DSA-65 (NIST FIPS 204)")
+                        .pqcSignature(visitPqcSignature)
                         .build();
 
                 try {
@@ -185,6 +191,7 @@ public class ErasureService {
 
         String canonicalPayload = buildCanonicalSignPayload(patientId, timestamp, sha256Hash, merkleRoot);
         String digitalSignature = proofSigningService.sign(canonicalPayload);
+        String pqcSignature = proofSigningService.signPqc(canonicalPayload);
 
         log.info("Full Patient crypto-shred complete for {}. Proof hash: {}, Signature: {}", patientId, sha256Hash, digitalSignature);
 
@@ -210,6 +217,8 @@ public class ErasureService {
                 .merklePath(merklePath)
                 .signatureAlgorithm("SHA256withRSA")
                 .digitalSignature(digitalSignature)
+                .pqcAlgorithm("ML-DSA-65 (NIST FIPS 204)")
+                .pqcSignature(pqcSignature)
                 .build();
 
         try {
@@ -266,6 +275,7 @@ public class ErasureService {
 
         String canonicalPayload = buildCanonicalSignPayload(visitId.toString(), timestamp, sha256Hash, merkleRoot);
         String digitalSignature = proofSigningService.sign(canonicalPayload);
+        String pqcSignature = proofSigningService.signPqc(canonicalPayload);
 
         log.info("Visit erasure complete for visit {}. Proof hash: {}, Signature: {}", visitId, sha256Hash, digitalSignature);
 
@@ -293,6 +303,8 @@ public class ErasureService {
                 .merklePath(merklePath)
                 .signatureAlgorithm("SHA256withRSA")
                 .digitalSignature(digitalSignature)
+                .pqcAlgorithm("ML-DSA-65 (NIST FIPS 204)")
+                .pqcSignature(pqcSignature)
                 .build();
 
         try {
@@ -462,33 +474,48 @@ public class ErasureService {
         String canonicalPayload = buildCanonicalSignPayload(identifier, proof.getTimestamp(), proof.getAuditTrailHash(), proof.getMerkleRoot());
         boolean signatureValid = proofSigningService.verify(canonicalPayload, proof.getDigitalSignature());
 
-        // 3. Check Merkle inclusion if root and path provided
+        // 3. Check Post-Quantum ML-DSA Signature (if present)
+        boolean pqcSignatureValid = false;
+        if (proof.getPqcSignature() != null && !proof.getPqcSignature().isBlank()) {
+            pqcSignatureValid = proofSigningService.verifyPqc(canonicalPayload, proof.getPqcSignature());
+        }
+
+        // 4. Check Merkle inclusion if root and path provided
         boolean merkleValid = true;
         if (proof.getMerkleRoot() != null && proof.getMerklePath() != null) {
             merkleValid = merkleTreeService.verifyInclusion(proof.getAuditTrailHash(), proof.getMerklePath(), proof.getMerkleRoot());
         }
 
-        boolean overallValid = payloadIntegrityValid && signatureValid && merkleValid;
+        boolean overallValid = payloadIntegrityValid && signatureValid && merkleValid
+                && (proof.getPqcSignature() == null || pqcSignatureValid);
 
         String message;
         if (!payloadIntegrityValid) {
             message = "FAILED: Audit trail payload has been tampered with (SHA-256 hash mismatch).";
         } else if (!signatureValid) {
-            message = "FAILED: Digital signature is invalid or forged.";
+            message = "FAILED: Classical RSA digital signature is invalid or forged.";
+        } else if (proof.getPqcSignature() != null && !pqcSignatureValid) {
+            message = "FAILED: Post-Quantum ML-DSA-65 signature is invalid or forged.";
         } else if (!merkleValid) {
             message = "FAILED: Merkle tree inclusion path verification failed.";
         } else {
-            message = "SUCCESS: Deletion proof artifact is valid, untampered, and signed by system authority.";
+            message = "SUCCESS: Deletion proof artifact is valid, untampered, and verified under dual hybrid (Classical RSA + NIST FIPS 204 ML-DSA-65) signatures.";
         }
+
+        String verifiedAlgorithm = (proof.getPqcSignature() != null && pqcSignatureValid)
+                ? "Hybrid RSA-2048 + ML-DSA-65 (NIST FIPS 204)"
+                : (proof.getSignatureAlgorithm() != null ? proof.getSignatureAlgorithm() : "SHA256withRSA");
 
         return ProofVerificationResponseDto.builder()
                 .valid(overallValid)
-                .payloadIntegrityValid(payloadIntegrityValid)
                 .signatureValid(signatureValid)
+                .pqcSignatureValid(pqcSignatureValid)
+                .payloadIntegrityValid(payloadIntegrityValid)
                 .merkleInclusionValid(merkleValid)
                 .verificationMessage(message)
                 .verifiedAt(LocalDateTime.now())
-                .verifiedByAlgorithm(proof.getSignatureAlgorithm() != null ? proof.getSignatureAlgorithm() : "SHA256withRSA")
+                .verifiedByAlgorithm(verifiedAlgorithm)
+                .pqcAlgorithm(proof.getPqcAlgorithm() != null ? proof.getPqcAlgorithm() : "ML-DSA-65 (NIST FIPS 204)")
                 .build();
     }
 

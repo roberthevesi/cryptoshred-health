@@ -49,9 +49,11 @@ public class EventLogConsumer {
             throw new IllegalArgumentException("Event does not contain envelope encryption payload metadata");
         }
 
+        byte[] dek = null;
+        byte[] plaintextBytes = null;
         try {
             // 1. Unwrap DEK from Vault KMS
-            byte[] dek = vaultKmsService.unwrapDek(event.getVaultKeyName(), event.getWrappedDek());
+            dek = vaultKmsService.unwrapDek(event.getVaultKeyName(), event.getWrappedDek());
 
             // 2. Decrypt ciphertext payload with AAD
             byte[] aad = null;
@@ -61,7 +63,7 @@ public class EventLogConsumer {
                 aad = event.getPatientId().getBytes(StandardCharsets.UTF_8);
             }
 
-            byte[] plaintextBytes = envelopeEncryptionService.decrypt(
+            plaintextBytes = envelopeEncryptionService.decrypt(
                     event.getEncryptedDataBlob(),
                     event.getIv(),
                     dek,
@@ -72,6 +74,13 @@ public class EventLogConsumer {
             log.warn("Post-shred Kafka event log decryption attempt failed as expected for key {}: {}",
                     event.getVaultKeyName(), e.getMessage());
             throw new IllegalStateException("Kafka event log payload is un-decryptable (Vault KEK destroyed): " + e.getMessage(), e);
+        } finally {
+            if (dek != null) {
+                java.util.Arrays.fill(dek, (byte) 0);
+            }
+            if (plaintextBytes != null) {
+                java.util.Arrays.fill(plaintextBytes, (byte) 0);
+            }
         }
     }
 }

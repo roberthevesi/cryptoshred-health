@@ -42,4 +42,8 @@ public class VerifiableDeletionProofDto {
 
     private String signatureAlgorithm;
     private String digitalSignature;
+
+    /** Post-Quantum Cryptography Signature (NIST FIPS 204 ML-DSA-65 / CRYSTALS-Dilithium) */
+    private String pqcSignature;
+    private String pqcAlgorithm;
 }

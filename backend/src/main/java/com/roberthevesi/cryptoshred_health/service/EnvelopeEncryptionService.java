@@ -36,8 +36,8 @@ public class EnvelopeEncryptionService {
 
     /** Encrypts plaintext bytes using the provided DEK with AES-256-GCM and optional AAD (Additional Authenticated Data). */
     public EncryptedPayload encrypt(byte[] plaintext, byte[] dek, byte[] aad) {
+        byte[] iv = new byte[GCM_IV_LENGTH];
         try {
-            byte[] iv = new byte[GCM_IV_LENGTH];
             secureRandom.nextBytes(iv);
 
             SecretKey secretKey = new SecretKeySpec(dek, ALGORITHM);
@@ -57,6 +57,8 @@ public class EnvelopeEncryptionService {
             return new EncryptedPayload(cipherTextBase64, ivBase64);
         } catch (Exception e) {
             throw new IllegalStateException("AES-GCM encryption failed", e);
+        } finally {
+            java.util.Arrays.fill(iv, (byte) 0);
         }
     }
 
@@ -67,9 +69,11 @@ public class EnvelopeEncryptionService {
 
     /** Decrypts base64 ciphertext using the provided IV base64 and DEK with AES-256-GCM and optional AAD (Additional Authenticated Data). */
     public byte[] decrypt(String ciphertextBase64, String ivBase64, byte[] dek, byte[] aad) {
+        byte[] cipherText = null;
+        byte[] iv = null;
         try {
-            byte[] cipherText = Base64.getDecoder().decode(ciphertextBase64);
-            byte[] iv = Base64.getDecoder().decode(ivBase64);
+            cipherText = Base64.getDecoder().decode(ciphertextBase64);
+            iv = Base64.getDecoder().decode(ivBase64);
 
             SecretKey secretKey = new SecretKeySpec(dek, ALGORITHM);
             Cipher cipher = Cipher.getInstance(TRANSFORMATION);
@@ -83,6 +87,13 @@ public class EnvelopeEncryptionService {
             return cipher.doFinal(cipherText);
         } catch (Exception e) {
             throw new IllegalStateException("AES-GCM decryption failed", e);
+        } finally {
+            if (cipherText != null) {
+                java.util.Arrays.fill(cipherText, (byte) 0);
+            }
+            if (iv != null) {
+                java.util.Arrays.fill(iv, (byte) 0);
+            }
         }
     }
 }

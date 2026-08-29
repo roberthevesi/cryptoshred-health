@@ -35,7 +35,14 @@ import java.util.Set;
 @Slf4j
 public class ProofSigningService {
 
+    static {
+        if (Security.getProvider("BCPQC") == null) {
+            Security.addProvider(new org.bouncycastle.pqc.jcajce.provider.BouncyCastlePQCProvider());
+        }
+    }
+
     public static final String KEY_NAME = "proof-signing-key";
+    public static final String PQC_ALGORITHM_NAME = "ML-DSA-65 (NIST FIPS 204)";
 
     @Value("${app.signing.key-dir:backups/keys}")
     private String keyDir = "backups/keys";
@@ -44,6 +51,7 @@ public class ProofSigningService {
     private boolean vaultAvailable = false;
     private KeyPair keyPair;
     private PublicKey vaultPublicKey;
+    private KeyPair pqcKeyPair;
 
     @Autowired
     public ProofSigningService(@Autowired(required = false) VaultOperations vaultOperations) {
@@ -56,6 +64,9 @@ public class ProofSigningService {
 
     @PostConstruct
     public void init() {
+        // Initialize Post-Quantum ML-DSA-65 (Dilithium3) KeyPair
+        initPqcKeyPair();
+
         if (vaultOperations != null) {
             try {
                 // Ensure transit secrets engine is mounted
@@ -93,6 +104,47 @@ public class ProofSigningService {
 
         // Fallback: persistent filesystem RSA keypair
         initFilesystemKeyPair();
+    }
+
+    private void initPqcKeyPair() {
+        try {
+            Path dirPath = Paths.get(keyDir != null ? keyDir : "backups/keys");
+            if (!Files.exists(dirPath)) {
+                Files.createDirectories(dirPath);
+            }
+
+            Path privateKeyPath = dirPath.resolve("pqc_signing_private.key");
+            Path publicKeyPath = dirPath.resolve("pqc_signing_public.key");
+
+            if (Files.exists(privateKeyPath) && Files.exists(publicKeyPath)) {
+                byte[] privBytes = Files.readAllBytes(privateKeyPath);
+                byte[] pubBytes = Files.readAllBytes(publicKeyPath);
+
+                KeyFactory keyFactory = KeyFactory.getInstance("Dilithium3", "BCPQC");
+                PrivateKey privateKey = keyFactory.generatePrivate(new PKCS8EncodedKeySpec(privBytes));
+                PublicKey publicKey = keyFactory.generatePublic(new X509EncodedKeySpec(pubBytes));
+
+                this.pqcKeyPair = new KeyPair(publicKey, privateKey);
+                log.info("Loaded persisted ML-DSA-65 (Dilithium3) KeyPair for ProofSigningService from {}", keyDir);
+            } else {
+                KeyPairGenerator keyGen = KeyPairGenerator.getInstance("Dilithium3", "BCPQC");
+                this.pqcKeyPair = keyGen.generateKeyPair();
+
+                Files.write(privateKeyPath, this.pqcKeyPair.getPrivate().getEncoded());
+                try {
+                    Set<PosixFilePermission> perms = Set.of(
+                            PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
+                    Files.setPosixFilePermissions(privateKeyPath, perms);
+                } catch (UnsupportedOperationException ignored) {
+                    log.warn("Cannot set POSIX permissions on PQC private key file.");
+                }
+                Files.write(publicKeyPath, this.pqcKeyPair.getPublic().getEncoded());
+                log.info("Generated and persisted new ML-DSA-65 (Dilithium3) KeyPair to {}", keyDir);
+            }
+        } catch (Exception e) {
+            log.error("Failed to initialize PQC ML-DSA-65 keypair: {}", e.getMessage(), e);
+            throw new IllegalStateException("Failed to initialize ProofSigningService PQC keypair", e);
+        }
     }
 
     private void initFilesystemKeyPair() {
@@ -322,5 +374,72 @@ public class ProofSigningService {
         byte[] decoded = Base64.getDecoder().decode(cleanPem);
         KeyFactory keyFactory = KeyFactory.getInstance("RSA");
         return keyFactory.generatePublic(new X509EncodedKeySpec(decoded));
+    }
+
+    /**
+     * Signs data using NIST FIPS 204 ML-DSA-65 (CRYSTALS-Dilithium level 3) Post-Quantum signature.
+     */
+    public String signPqc(String data) {
+        if (pqcKeyPair == null) {
+            throw new IllegalStateException("ProofSigningService PQC keypair is not initialized");
+        }
+        try {
+            Signature pqcSig = Signature.getInstance("Dilithium3", "BCPQC");
+            pqcSig.initSign(pqcKeyPair.getPrivate());
+            pqcSig.update(data.getBytes(StandardCharsets.UTF_8));
+            byte[] signatureBytes = pqcSig.sign();
+            return Base64.getEncoder().encodeToString(signatureBytes);
+        } catch (Exception e) {
+            log.error("Failed to generate PQC ML-DSA-65 signature: {}", e.getMessage(), e);
+            throw new RuntimeException("Error signing proof artifact with PQC ML-DSA-65", e);
+        }
+    }
+
+    /**
+     * Verifies NIST FIPS 204 ML-DSA-65 Post-Quantum signature against input data.
+     */
+    public boolean verifyPqc(String data, String signature) {
+        return verifyPqc(data, signature, getPqcPublicKey());
+    }
+
+    /**
+     * Verifies NIST FIPS 204 ML-DSA-65 Post-Quantum signature against input data using a specific public key.
+     */
+    public boolean verifyPqc(String data, String signature, PublicKey publicKey) {
+        if (data == null || signature == null || signature.isBlank() || publicKey == null) {
+            return false;
+        }
+        try {
+            Signature pqcSig = Signature.getInstance("Dilithium3", "BCPQC");
+            pqcSig.initVerify(publicKey);
+            pqcSig.update(data.getBytes(StandardCharsets.UTF_8));
+            byte[] sigBytes = Base64.getDecoder().decode(signature);
+            return pqcSig.verify(sigBytes);
+        } catch (Exception e) {
+            log.warn("PQC ML-DSA-65 signature verification failed: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    public PublicKey getPqcPublicKey() {
+        return pqcKeyPair != null ? pqcKeyPair.getPublic() : null;
+    }
+
+    public KeyPair getPqcKeyPair() {
+        return pqcKeyPair;
+    }
+
+    /**
+     * Returns the PQC Public Key formatted as PEM string.
+     */
+    public String getPqcPublicKeyPem() {
+        PublicKey pubKey = getPqcPublicKey();
+        if (pubKey == null) {
+            return null;
+        }
+        String base64Key = Base64.getEncoder().encodeToString(pubKey.getEncoded());
+        return "-----BEGIN ML-DSA-65 PUBLIC KEY-----\n" +
+                base64Key.replaceAll("(.{64})", "$1\n") +
+                "\n-----END ML-DSA-65 PUBLIC KEY-----";
     }
 }
