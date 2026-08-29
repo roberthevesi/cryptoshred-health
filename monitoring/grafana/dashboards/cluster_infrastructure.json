@@ -11,18 +11,18 @@
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
       "id": 100,
-      "title": "🏛️ Vault 3-Node Raft KMS Cluster Nodes (Online / Chosen Leader)",
+      "title": "🧩 System Component Health & Status Overview (At-A-Glance)",
       "type": "row"
     },
     {
       "id": 1,
-      "title": "Vault Node 1 (:8200)",
+      "title": "☕ Spring Boot Backend",
       "type": "stat",
-      "description": "Availability for Vault Node 1",
-      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+      "description": "Spring Boot 3 REST application status (:8080)",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
       "targets": [
         {
-          "expr": "up{job=\"vault\", instance=~\"vault-1.*\"}",
+          "expr": "up{job=\"spring-boot\"}",
           "refId": "A"
         }
       ],
@@ -33,7 +33,7 @@
               "type": "value",
               "options": {
                 "0": { "color": "red", "text": "🔴 Offline" },
-                "1": { "color": "green", "text": "🟢 Online (Available)" }
+                "1": { "color": "green", "text": "🟢 Online (UP)" }
               }
             }
           ],
@@ -56,33 +56,24 @@
     },
     {
       "id": 2,
-      "title": "Vault Node 2 (:8202)",
+      "title": "🏛️ Active Vault KMS Leader",
       "type": "stat",
-      "description": "Availability for Vault Node 2",
-      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+      "description": "Displays the exact Vault node currently elected as the active leader",
+      "gridPos": { "h": 4, "w": 6, "x": 4, "y": 1 },
       "targets": [
         {
-          "expr": "up{job=\"vault\", instance=~\"vault-2.*\"}",
+          "expr": "vault_core_active{job=\"vault\"} == 1",
+          "legendFormat": "👑 {{instance}} (Leader)",
           "refId": "A"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "0": { "color": "red", "text": "🔴 Offline" },
-                "1": { "color": "green", "text": "🟢 Online (Available)" }
-              }
-            }
-          ],
+          "color": { "mode": "fixed", "fixedColor": "green" },
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [
-              { "color": "red", "value": null },
-              { "color": "green", "value": 1 }
-            ]
+            "steps": [{ "color": "green", "value": null }]
           }
         }
       },
@@ -91,18 +82,18 @@
         "graphMode": "none",
         "justifyMode": "center",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "auto"
+        "textMode": "name"
       }
     },
     {
       "id": 3,
-      "title": "Vault Node 3 (:8204)",
+      "title": "🗄️ PostgreSQL Database",
       "type": "stat",
-      "description": "Availability for Vault Node 3",
-      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
+      "description": "PostgreSQL 15 relational database status (:5433)",
+      "gridPos": { "h": 4, "w": 4, "x": 10, "y": 1 },
       "targets": [
         {
-          "expr": "up{job=\"vault\", instance=~\"vault-3.*\"}",
+          "expr": "up{job=\"postgres\"}",
           "refId": "A"
         }
       ],
@@ -113,7 +104,7 @@
               "type": "value",
               "options": {
                 "0": { "color": "red", "text": "🔴 Offline" },
-                "1": { "color": "green", "text": "🟢 Online (Available)" }
+                "1": { "color": "green", "text": "🟢 Online (UP)" }
               }
             }
           ],
@@ -136,14 +127,13 @@
     },
     {
       "id": 4,
-      "title": "👑 Elected Leader Node",
+      "title": "⚡ Redis L2 Cache",
       "type": "stat",
-      "description": "Indicates which Vault node is currently the active chosen leader",
-      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
+      "description": "Redis 7 cache status (:6379)",
+      "gridPos": { "h": 4, "w": 5, "x": 14, "y": 1 },
       "targets": [
         {
-          "expr": "vault_core_active{job=\"vault\"}",
-          "legendFormat": "{{instance}}",
+          "expr": "up{job=\"redis\"}",
           "refId": "A"
         }
       ],
@@ -153,22 +143,62 @@
             {
               "type": "value",
               "options": {
-                "0": { "color": "blue", "text": "Standby" },
-                "1": { "color": "green", "text": "👑 Chosen Leader" }
+                "0": { "color": "red", "text": "🔴 Offline" },
+                "1": { "color": "green", "text": "🟢 Online (UP)" }
               }
             }
           ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "blue", "value": null },
+              { "color": "red", "value": null },
               { "color": "green", "value": 1 }
             ]
           }
         }
       },
       "options": {
-        "colorMode": "value",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 5,
+      "title": "📬 Apache Kafka KRaft",
+      "type": "stat",
+      "description": "Kafka 3.7 event streaming broker status (:9092)",
+      "gridPos": { "h": 4, "w": 5, "x": 19, "y": 1 },
+      "targets": [
+        {
+          "expr": "up{job=\"kafka\"}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": { "color": "red", "text": "🔴 Offline" },
+                "1": { "color": "green", "text": "🟢 Online (UP)" }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background",
         "graphMode": "none",
         "justifyMode": "center",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
@@ -179,15 +209,142 @@
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
       "id": 200,
-      "title": "🧠 JVM Memory Zeroization & Garbage Collection",
+      "title": "🏛️ HashiCorp Vault 3-Node Raft Cluster Nodes (Individual State)",
       "type": "row"
     },
     {
-      "id": 5,
-      "title": "JVM Heap Memory Allocation",
+      "id": 6,
+      "title": "Vault Node 1 (vault-1 :8200)",
+      "type": "stat",
+      "description": "Availability and role for Vault Node 1",
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 6 },
+      "targets": [
+        {
+          "expr": "up{job=\"vault\", instance=~\"vault-1.*\"}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": { "color": "red", "text": "🔴 Offline" },
+                "1": { "color": "green", "text": "🟢 Online (Leader / Unsealed)" }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 7,
+      "title": "Vault Node 2 (vault-2 :8202)",
+      "type": "stat",
+      "description": "Availability and role for Vault Node 2",
+      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 6 },
+      "targets": [
+        {
+          "expr": "up{job=\"vault\", instance=~\"vault-2.*\"}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": { "color": "red", "text": "🔴 Offline" },
+                "1": { "color": "blue", "text": "🟢 Online (Standby / In-Sync)" }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "blue", "value": 1 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 8,
+      "title": "Vault Node 3 (vault-3 :8204)",
+      "type": "stat",
+      "description": "Availability and role for Vault Node 3",
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 6 },
+      "targets": [
+        {
+          "expr": "up{job=\"vault\", instance=~\"vault-3.*\"}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": { "color": "red", "text": "🔴 Offline" },
+                "1": { "color": "blue", "text": "🟢 Online (Standby / In-Sync)" }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "blue", "value": 1 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 10 },
+      "id": 300,
+      "title": "🧠 Spring Boot JVM Telemetry & Memory Zeroization",
+      "type": "row"
+    },
+    {
+      "id": 9,
+      "title": "JVM Heap Allocation (Used vs Committed vs Max)",
       "type": "timeseries",
-      "description": "Verifies that scoped byte[] memory zeroization leaves no residual heap leaks",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "description": "Verifies that scoped byte[] memory zeroization leaves no residual heap memory leaks",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 11 },
       "targets": [
         {
           "expr": "jvm_memory_used_bytes{area=\"heap\"}",
@@ -218,11 +375,11 @@
       }
     },
     {
-      "id": 6,
-      "title": "JVM Garbage Collection Pause Times (ms)",
+      "id": 10,
+      "title": "JVM Garbage Collection Pause Durations (ms)",
       "type": "timeseries",
       "description": "Garbage collector pause durations in milliseconds",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 11 },
       "targets": [
         {
           "expr": "(rate(jvm_gc_pause_seconds_sum[1m]) / rate(jvm_gc_pause_seconds_count[1m])) * 1000",
@@ -243,17 +400,17 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
-      "id": 300,
-      "title": "🗄️ Database Connection Pool & Storage Health",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 19 },
+      "id": 400,
+      "title": "🗄️ PostgreSQL Database & HikariCP Connection Pool",
       "type": "row"
     },
     {
-      "id": 7,
-      "title": "HikariCP PostgreSQL Connection Pool",
+      "id": 11,
+      "title": "HikariCP JDBC Connection Pool (Active / Idle / Pending)",
       "type": "timeseries",
-      "description": "Active, Idle, and Pending database JDBC connections",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
+      "description": "Active, Idle, and Pending PostgreSQL JDBC connections",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
       "targets": [
         {
           "expr": "hikaricp_connections_active",
@@ -283,11 +440,47 @@
       }
     },
     {
-      "id": 8,
-      "title": "Redis L2 Cache & Kafka Event Log Health",
+      "id": 12,
+      "title": "PostgreSQL Transaction Throughput (Commits / Rollbacks / Sec)",
       "type": "timeseries",
-      "description": "Redis memory footprint and Kafka audit stream status",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
+      "description": "Transaction commits and rollbacks rate from postgres-exporter",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "targets": [
+        {
+          "expr": "rate(pg_stat_database_xact_commit{datname=\"healthdb\"}[1m]) or rate(pg_stat_database_xact_commit[1m])",
+          "legendFormat": "Commits/sec",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(pg_stat_database_xact_rollback{datname=\"healthdb\"}[1m]) or rate(pg_stat_database_xact_rollback[1m])",
+          "legendFormat": "Rollbacks/sec",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10
+          },
+          "unit": "ops"
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 28 },
+      "id": 500,
+      "title": "⚡ Redis L2 Cache & 📬 Apache Kafka Event Stream Stats",
+      "type": "row"
+    },
+    {
+      "id": 13,
+      "title": "Redis Memory Footprint & Connected Clients",
+      "type": "timeseries",
+      "description": "Redis memory consumption in bytes and active client connections",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 29 },
       "targets": [
         {
           "expr": "redis_memory_used_bytes",
@@ -296,7 +489,7 @@
         },
         {
           "expr": "redis_connected_clients",
-          "legendFormat": "Redis Clients",
+          "legendFormat": "Connected Clients",
           "refId": "B"
         }
       ],
@@ -310,15 +503,44 @@
           "unit": "bytes"
         }
       }
+    },
+    {
+      "id": 14,
+      "title": "Kafka Topic Partitions & Audit Event Activity",
+      "type": "timeseries",
+      "description": "Partition status for patient-record-events topic and audit throughput",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 29 },
+      "targets": [
+        {
+          "expr": "kafka_topic_partitions{topic=\"patient-record-events\"} or kafka_topic_partitions",
+          "legendFormat": "Topic Partitions ({{topic}})",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(kafka_topic_partition_current_offset[1m])) or vector(0)",
+          "legendFormat": "Kafka Msg Ingestion Rate",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10
+          },
+          "unit": "short"
+        }
+      }
     }
   ],
-  "refresh": "10s",
+  "refresh": "5s",
   "schemaVersion": 39,
-  "tags": ["cryptoshred", "infrastructure", "jvm", "redis", "postgres", "vault"],
+  "tags": ["cryptoshred", "infrastructure", "jvm", "redis", "postgres", "kafka", "vault"],
   "time": { "from": "now-15m", "to": "now" },
   "timepicker": { "refresh_intervals": ["5s", "10s", "30s", "1m"] },
   "timezone": "browser",
   "title": "⚙️ Cluster Infrastructure & Storage Health",
   "uid": "cluster-infrastructure",
-  "version": 4
+  "version": 5
 }
