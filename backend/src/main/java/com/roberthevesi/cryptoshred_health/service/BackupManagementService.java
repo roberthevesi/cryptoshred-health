@@ -26,6 +26,7 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.PublicKey;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
@@ -356,7 +357,17 @@ public class BackupManagementService {
                     sortedFiles);
 
             if (manifest.getSignature() != null && !manifest.getSignature().isBlank()) {
-                boolean rsaValid = proofSigningService.verify(canonicalData, manifest.getSignature());
+                PublicKey rsaPubKey = null;
+                if (manifest.getSigningPublicKey() != null && !manifest.getSigningPublicKey().isBlank()) {
+                    try {
+                        rsaPubKey = proofSigningService.parsePublicKeyFromPem(manifest.getSigningPublicKey());
+                    } catch (Exception ignored) {}
+                }
+                if (rsaPubKey == null) {
+                    rsaPubKey = proofSigningService.getPublicKey();
+                }
+
+                boolean rsaValid = proofSigningService.verify(canonicalData, manifest.getSignature(), rsaPubKey);
                 if (!rsaValid) {
                     log.warn("🚨 [INTEGRITY FAILURE] RSA/Vault signature verification failed for bundle: {}", manifest.getBundleId());
                     return false;
@@ -364,7 +375,15 @@ public class BackupManagementService {
             }
 
             if (manifest.getPqcSignature() != null && !manifest.getPqcSignature().isBlank()) {
-                boolean pqcValid = proofSigningService.verifyPqc(canonicalData, manifest.getPqcSignature());
+                PublicKey pqcPubKey = null;
+                if (manifest.getPqcPublicKey() != null && !manifest.getPqcPublicKey().isBlank()) {
+                    pqcPubKey = proofSigningService.parsePqcPublicKeyFromPem(manifest.getPqcPublicKey());
+                }
+                if (pqcPubKey == null) {
+                    pqcPubKey = proofSigningService.getPqcPublicKey();
+                }
+
+                boolean pqcValid = proofSigningService.verifyPqc(canonicalData, manifest.getPqcSignature(), pqcPubKey);
                 if (!pqcValid) {
                     log.warn("🚨 [INTEGRITY FAILURE] PQC ML-DSA-65 signature verification failed for bundle: {}", manifest.getBundleId());
                     return false;
