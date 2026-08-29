@@ -364,9 +364,9 @@ public class SecurityRbacHttpIntegrationTest {
     }
 
     @Test
-    @WithMockUser(username = "doctor@hospital.org", roles = {"DOCTOR"})
-    @DisplayName("RBAC 200: DOCTOR can trigger KMS key rotation (POST /api/keys/rotate)")
-    void testDoctorCanRotateKeys() throws Exception {
+    @WithMockUser(username = "admin@cryptoshred.health", roles = {"ADMIN"})
+    @DisplayName("RBAC 200: ADMIN can trigger KMS key rotation (POST /api/keys/rotate)")
+    void testAdminCanRotateKeys() throws Exception {
         KeyRotationResponseDto response = KeyRotationResponseDto.builder()
                 .status("SUCCESS")
                 .scope("ALL")
@@ -382,21 +382,37 @@ public class SecurityRbacHttpIntegrationTest {
     }
 
     @Test
-    @WithMockUser(username = "auditor@hospital.org", roles = {"AUDITOR"})
-    @DisplayName("RBAC 200: AUDITOR can trigger KMS key rotation (POST /api/keys/rotate)")
-    void testAuditorCanRotateKeys() throws Exception {
-        KeyRotationResponseDto response = KeyRotationResponseDto.builder()
-                .status("SUCCESS")
-                .scope("ALL")
-                .rotatedCount(5)
-                .totalProcessed(5)
-                .build();
-        when(keyManagementService.rotateKeys(any())).thenReturn(response);
+    @WithMockUser(username = "admin@cryptoshred.health", roles = {"ADMIN"})
+    @DisplayName("RBAC 200: ADMIN can view KMS key summary (GET /api/keys/summary)")
+    void testAdminCanGetKeySummary() throws Exception {
+        when(keyManagementService.getKeySummary()).thenReturn(com.roberthevesi.cryptoshred_health.dto.KeyStatusSummaryDto.builder()
+                .totalKeys(100)
+                .activeKeys(100)
+                .shreddedKeys(0)
+                .build());
 
+        mockMvc.perform(get("/api/keys/summary"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "doctor@hospital.org", roles = {"DOCTOR"})
+    @DisplayName("RBAC 403: DOCTOR cannot trigger KMS key rotation (POST /api/keys/rotate)")
+    void testDoctorCannotRotateKeys() throws Exception {
         mockMvc.perform(post("/api/keys/rotate")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
-                .andExpect(status().isOk());
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "auditor@hospital.org", roles = {"AUDITOR"})
+    @DisplayName("RBAC 403: AUDITOR cannot trigger KMS key rotation (POST /api/keys/rotate)")
+    void testAuditorCannotRotateKeys() throws Exception {
+        mockMvc.perform(post("/api/keys/rotate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isForbidden());
     }
 
     @Test
