@@ -93,6 +93,9 @@ public class SecurityRbacHttpIntegrationTest {
     @MockBean
     private AuthService authService;
 
+    @MockBean
+    private DataPopulationService dataPopulationService;
+
     @BeforeEach
     void setUp() {
         when(proofSigningService.getPublicKeyPem()).thenReturn("-----BEGIN PUBLIC KEY-----\nMOCK\n-----END PUBLIC KEY-----");

@@ -5,6 +5,7 @@ import com.roberthevesi.cryptoshred_health.dto.AdminUserResponse;
 import com.roberthevesi.cryptoshred_health.model.Role;
 import com.roberthevesi.cryptoshred_health.model.User;
 import com.roberthevesi.cryptoshred_health.repository.UserRepository;
+import com.roberthevesi.cryptoshred_health.service.DataPopulationService;
 import com.roberthevesi.cryptoshred_health.util.TemporaryPasswordGenerator;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -15,11 +16,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * Admin-only endpoint for provisioning staff accounts (DOCTOR, AUDITOR, ADMIN).
+ * Admin-only endpoint for provisioning staff accounts (DOCTOR, AUDITOR, ADMIN)
+ * and triggering on-demand synthetic clinical data population.
  * Public self-registration is disabled; patient accounts are provisioned via clinical registration.
  */
 @RestController
@@ -30,6 +33,15 @@ public class AdminController {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final DataPopulationService dataPopulationService;
+
+    /**
+     * Trigger on-demand pre-population of synthetic clinical data (100 patients, 1,000 visits, attachments, 25 shredded records).
+     */
+    @PostMapping("/seed-data")
+    public ResponseEntity<Map<String, Object>> populateSyntheticData() {
+        return ResponseEntity.ok(dataPopulationService.populateSyntheticData());
+    }
 
     /** List all registered staff users (excluding PATIENT accounts). */
     @GetMapping("/users")

@@ -27,15 +27,17 @@ class AdminStaffProvisioningTest {
 
     private UserRepository userRepository;
     private PasswordEncoder passwordEncoder;
+    private DataPopulationService dataPopulationService;
     private AdminController adminController;
 
     @BeforeEach
     void setUp() {
         userRepository = mock(UserRepository.class);
         passwordEncoder = mock(PasswordEncoder.class);
+        dataPopulationService = mock(DataPopulationService.class);
         when(passwordEncoder.encode(anyString())).thenAnswer(invocation -> "encoded_" + invocation.getArgument(0));
 
-        adminController = new AdminController(userRepository, passwordEncoder);
+        adminController = new AdminController(userRepository, passwordEncoder, dataPopulationService);
     }
 
     @Test
