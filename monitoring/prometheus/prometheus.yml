@@ -7,13 +7,14 @@ scrape_configs:
     metrics_path: '/actuator/prometheus'
     scrape_interval: 5s
     static_configs:
-      - targets: ['cryptoshred_backend:8080', 'host.docker.internal:8080']
+      - targets: ['host.docker.internal:8080']
 
   - job_name: 'vault'
     metrics_path: '/v1/sys/metrics'
     params:
       format: ['prometheus']
     scrape_interval: 10s
+    bearer_token: 'root-vault-token'
     static_configs:
       - targets: ['vault-1:8200']
 
