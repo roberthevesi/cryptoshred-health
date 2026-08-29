@@ -1,0 +1,647 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "title": "🧩 System Component Health & Status",
+      "type": "row"
+    },
+    {
+      "id": 1,
+      "title": "☕ Backend API",
+      "type": "stat",
+      "description": "Spring Boot 3 Core (:8080)",
+      "gridPos": { "h": 3, "w": 4, "x": 0, "y": 1 },
+      "targets": [
+        {
+          "expr": "up{job=\"spring-boot\"}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": { "color": "red", "text": "🔴 Offline" },
+                "1": { "color": "green", "text": "🟢 Online (:8080)" }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 2,
+      "title": "🏛️ Vault KMS Primary",
+      "type": "stat",
+      "description": "HashiCorp Vault Transit Node 1 (:8200)",
+      "gridPos": { "h": 3, "w": 5, "x": 4, "y": 1 },
+      "targets": [
+        {
+          "expr": "up{job=\"vault\", instance=~\"vault-1.*\"}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": { "color": "red", "text": "🔴 Offline" },
+                "1": { "color": "green", "text": "👑 Online (vault-1)" }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 3,
+      "title": "🗄️ PostgreSQL DB",
+      "type": "stat",
+      "description": "PostgreSQL 15 Zero-Plaintext DB (:5433)",
+      "gridPos": { "h": 3, "w": 5, "x": 9, "y": 1 },
+      "targets": [
+        {
+          "expr": "up{job=\"postgres\"}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": { "color": "red", "text": "🔴 Offline" },
+                "1": { "color": "green", "text": "🟢 Online (:5433)" }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 4,
+      "title": "⚡ Redis L2 Cache",
+      "type": "stat",
+      "description": "Redis 7 In-Memory Cache (:6379)",
+      "gridPos": { "h": 3, "w": 5, "x": 14, "y": 1 },
+      "targets": [
+        {
+          "expr": "up{job=\"redis\"}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": { "color": "red", "text": "🔴 Offline" },
+                "1": { "color": "green", "text": "🟢 Online (:6379)" }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 5,
+      "title": "📬 Kafka Event Log",
+      "type": "stat",
+      "description": "Apache Kafka 3.7 KRaft Broker (:9092)",
+      "gridPos": { "h": 3, "w": 5, "x": 19, "y": 1 },
+      "targets": [
+        {
+          "expr": "up{job=\"kafka\"}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": { "color": "red", "text": "🔴 Offline" },
+                "1": { "color": "green", "text": "🟢 Online (:9092)" }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 4 },
+      "id": 200,
+      "title": "🔐 Cryptographic Performance & Clinical Traffic",
+      "type": "row"
+    },
+    {
+      "id": 6,
+      "title": "⚡ Active Crypto Ops",
+      "type": "stat",
+      "gridPos": { "h": 3, "w": 5, "x": 0, "y": 5 },
+      "targets": [
+        {
+          "expr": "sum(rate(cryptoshred_crypto_duration_seconds_count[1m])) or vector(0)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "color": { "mode": "palette-classic" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      }
+    },
+    {
+      "id": 7,
+      "title": "🔒 Avg Encryption Time",
+      "type": "stat",
+      "gridPos": { "h": 3, "w": 5, "x": 5, "y": 5 },
+      "targets": [
+        {
+          "expr": "(sum(rate(cryptoshred_crypto_duration_seconds_sum{operation=\"encrypt\"}[1m])) / sum(rate(cryptoshred_crypto_duration_seconds_count{operation=\"encrypt\"}[1m])) * 1000) or vector(0)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 15 },
+              { "color": "red", "value": 50 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      }
+    },
+    {
+      "id": 8,
+      "title": "🔓 Avg Decryption Time",
+      "type": "stat",
+      "gridPos": { "h": 3, "w": 5, "x": 10, "y": 5 },
+      "targets": [
+        {
+          "expr": "(sum(rate(cryptoshred_crypto_duration_seconds_sum{operation=\"decrypt\"}[1m])) / sum(rate(cryptoshred_crypto_duration_seconds_count{operation=\"decrypt\"}[1m])) * 1000) or vector(0)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 15 },
+              { "color": "red", "value": 50 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      }
+    },
+    {
+      "id": 9,
+      "title": "🌲 Merkle Proofs Minted",
+      "type": "stat",
+      "gridPos": { "h": 3, "w": 4, "x": 15, "y": 5 },
+      "targets": [
+        {
+          "expr": "sum(cryptoshred_merkle_proof_mint_duration_seconds_count) or vector(0)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "palette-classic" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      }
+    },
+    {
+      "id": 10,
+      "title": "🛡️ Resurrected Key Purges",
+      "type": "stat",
+      "gridPos": { "h": 3, "w": 5, "x": 19, "y": 5 },
+      "targets": [
+        {
+          "expr": "sum(cryptoshred_tombstones_purged_count_total) or vector(0)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": { "color": "green", "text": "✅ 0 (Healthy)" }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      }
+    },
+    {
+      "id": 11,
+      "title": "Cryptographic Operations Latency (ms)",
+      "type": "timeseries",
+      "description": "AES-256-GCM encryption, decryption, key rotation, and O(1) crypto-shredding latencies",
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "(rate(cryptoshred_crypto_duration_seconds_sum[1m]) / rate(cryptoshred_crypto_duration_seconds_count[1m])) * 1000",
+          "legendFormat": "{{operation}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 15
+          },
+          "unit": "ms"
+        }
+      }
+    },
+    {
+      "id": 12,
+      "title": "Clinical API Request Rate (Req/Sec)",
+      "type": "timeseries",
+      "description": "Throughput across clinical REST endpoints (/api/patients, /api/erasure, /api/gp, /api/fhir)",
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/.*\"}[1m])) by (uri)",
+          "legendFormat": "{{uri}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 10
+          },
+          "unit": "reqps"
+        }
+      }
+    },
+    {
+      "id": 13,
+      "title": "HMAC Blind Index Searches (Lookups/Sec)",
+      "type": "timeseries",
+      "description": "O(1) B-tree blind index lookups preserving zero plaintext in database",
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 8 },
+      "targets": [
+        {
+          "expr": "rate(cryptoshred_blind_index_lookup_count_total[1m])",
+          "legendFormat": "{{field}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 40
+          },
+          "unit": "ops"
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 15 },
+      "id": 300,
+      "title": "🧠 JVM Memory & Database Pool (Deduplicated & Clean)",
+      "type": "row"
+    },
+    {
+      "id": 14,
+      "title": "JVM Heap Memory Allocation",
+      "type": "timeseries",
+      "description": "Aggregated JVM heap memory confirming scoped zeroization leaves zero leaks",
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 16 },
+      "targets": [
+        {
+          "expr": "sum(jvm_memory_used_bytes{area=\"heap\"})",
+          "legendFormat": "Heap Used",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(jvm_memory_committed_bytes{area=\"heap\"})",
+          "legendFormat": "Heap Committed",
+          "refId": "B"
+        },
+        {
+          "expr": "sum(jvm_memory_max_bytes{area=\"heap\"})",
+          "legendFormat": "Heap Max",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 15
+          },
+          "unit": "bytes"
+        }
+      }
+    },
+    {
+      "id": 15,
+      "title": "JVM Garbage Collection Pause Time (ms)",
+      "type": "timeseries",
+      "description": "Clean average GC pause duration in milliseconds",
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 16 },
+      "targets": [
+        {
+          "expr": "(sum(rate(jvm_gc_pause_seconds_sum[1m])) / sum(rate(jvm_gc_pause_seconds_count[1m])) * 1000) or vector(0)",
+          "legendFormat": "Average GC Pause",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10
+          },
+          "unit": "ms"
+        }
+      }
+    },
+    {
+      "id": 16,
+      "title": "HikariCP PostgreSQL Connection Pool",
+      "type": "timeseries",
+      "description": "Active, Idle, and Pending PostgreSQL JDBC connections",
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 16 },
+      "targets": [
+        {
+          "expr": "hikaricp_connections_active",
+          "legendFormat": "Active Connections",
+          "refId": "A"
+        },
+        {
+          "expr": "hikaricp_connections_idle",
+          "legendFormat": "Idle Connections",
+          "refId": "B"
+        },
+        {
+          "expr": "hikaricp_connections_pending",
+          "legendFormat": "Pending (Waiting)",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10
+          },
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 },
+      "id": 400,
+      "title": "🗄️ Database, Redis & Kafka Event Log (Deduplicated)",
+      "type": "row"
+    },
+    {
+      "id": 17,
+      "title": "PostgreSQL Transactions Throughput (healthdb)",
+      "type": "timeseries",
+      "description": "Deduplicated transaction rate specifically for healthdb database",
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 24 },
+      "targets": [
+        {
+          "expr": "sum(rate(pg_stat_database_xact_commit{datname=\"healthdb\"}[1m])) or vector(0)",
+          "legendFormat": "Commits/sec",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(pg_stat_database_xact_rollback{datname=\"healthdb\"}[1m])) or vector(0)",
+          "legendFormat": "Rollbacks/sec",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10
+          },
+          "unit": "ops"
+        }
+      }
+    },
+    {
+      "id": 18,
+      "title": "Redis L2 Cache Memory & Client Activity",
+      "type": "timeseries",
+      "description": "Redis memory consumption in bytes and active connected clients",
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 24 },
+      "targets": [
+        {
+          "expr": "redis_memory_used_bytes",
+          "legendFormat": "Redis Memory Used",
+          "refId": "A"
+        },
+        {
+          "expr": "redis_connected_clients",
+          "legendFormat": "Connected Clients",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10
+          },
+          "unit": "bytes"
+        }
+      }
+    },
+    {
+      "id": 19,
+      "title": "Kafka Topic Partitions & Audit Event Activity",
+      "type": "timeseries",
+      "description": "Partition topology for patient-record-events and message throughput",
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 24 },
+      "targets": [
+        {
+          "expr": "kafka_topic_partitions{topic=\"patient-record-events\"}",
+          "legendFormat": "Topic Partitions",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(kafka_topic_partition_current_offset[1m])) or vector(0)",
+          "legendFormat": "Msg Ingestion Rate",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10
+          },
+          "unit": "short"
+        }
+      }
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 39,
+  "tags": ["cryptoshred", "unified", "clinical", "security", "infrastructure"],
+  "time": { "from": "now-15m", "to": "now" },
+  "timepicker": { "refresh_intervals": ["5s", "10s", "30s", "1m"] },
+  "timezone": "browser",
+  "title": "🏥 CryptoShred Health — Unified Mission Control",
+  "uid": "cryptoshred-unified",
+  "version": 1
+}

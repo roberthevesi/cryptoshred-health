@@ -47,22 +47,17 @@ docker compose --profile monitoring up -d
 
 ---
 
-## 🧭 Pre-Provisioned Grafana Dashboards
+## 🧭 Pre-Provisioned Grafana Dashboard
 
-When Grafana boots up, the following **2 streamlined, intuitive dashboards** are automatically loaded under folder **`CryptoShred`**:
+When Grafana boots up, a single, all-in-one **Unified Mission Control Dashboard** is automatically loaded under folder **`CryptoShred`**:
 
-### 1. 🏥 Executive & Cryptographic Overview (`cryptoshred_overview.json`)
-- **Key Performance Stat Cards**: Live rates for active crypto ops/sec, average encryption/decryption latencies in ms, total Merkle deletion proofs minted, blind index searches/sec, and tombstone resurrection alerts (`✅ 0 Healthy`).
-- **Cryptographic Latency Curves**: Millisecond-level tracking of AES-256-GCM envelope encryption vs decryption vs key rotation vs $\mathcal{O}(1)$ crypto-shredding.
-- **Merkle Proof Minting Latency**: Directional binary Merkle DAG proof generation duration.
-- **Clinical API Throughput**: Request rate (req/s) broken down across `/api/patients`, `/api/erasure`, `/api/gp`, `/api/fhir`.
-- **HMAC Blind Index Searches**: High-speed $\mathcal{O}(1)$ B-tree lookups over `nhs_number`, `mrn`, and `last_name`.
-
-### 2. ⚙️ Cluster Infrastructure & Storage Health (`cluster_infrastructure.json`)
-- **JVM Heap Allocation & Memory Zeroization**: Heap memory usage (used vs committed vs max) confirming scoped zeroization leaves zero residual memory leaks.
-- **Garbage Collection Dynamics**: GC pause durations in milliseconds.
-- **HikariCP PostgreSQL Connection Pool**: Active, idle, and pending database JDBC connections.
-- **Redis L2 Cache & Kafka Event Log**: Memory footprint, connected clients, and streaming event throughput.
+### 🏥 Unified Mission Control (`cryptoshred_unified.json`)
+* **🧩 System Component Status**: Live 5-card status banner across Spring Boot API (`:8080`), Vault KMS Primary (`:8200`), PostgreSQL DB (`:5433`), Redis L2 Cache (`:6379`), and Kafka Event Log (`:9092`).
+* **🔐 Cryptographic & Clinical KPIs**: Live numbers for active crypto ops/sec, average AES-256-GCM encryption/decryption times in ms, Merkle deletion proofs minted, and tombstone resurrection alerts (`✅ 0 Healthy`).
+* **📈 Real-Time Operation Latencies**: Millisecond latency curves for encryption, decryption, key rotation, and $\mathcal{O}(1)$ crypto-shredding alongside clinical REST API request rates (`/api/patients`, `/api/erasure`, `/api/gp`, `/api/fhir`).
+* **🧠 JVM Heap & Memory Zeroization**: Clean, aggregated heap memory curves (`sum(jvm_memory_used_bytes)`) and clear average GC pause durations.
+* **🗄️ Database & Storage Telemetry**: HikariCP connection pool (Active vs Idle vs Pending) and deduplicated `healthdb` transaction throughput (Commits/sec vs Rollbacks/sec).
+* **⚡ Redis & Kafka Activity**: Redis memory usage and Kafka topic partition metrics.
 
 ---
 
