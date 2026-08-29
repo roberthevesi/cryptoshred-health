@@ -8,14 +8,15 @@ import com.roberthevesi.cryptoshred_health.dto.GpResponse;
 import com.roberthevesi.cryptoshred_health.dto.PatientRequest;
 import com.roberthevesi.cryptoshred_health.dto.PatientResponse;
 import com.roberthevesi.cryptoshred_health.dto.PatientVisitRequest;
+import com.roberthevesi.cryptoshred_health.model.Patient;
+import com.roberthevesi.cryptoshred_health.model.PatientVisit;
 import com.roberthevesi.cryptoshred_health.model.Role;
 import com.roberthevesi.cryptoshred_health.model.User;
+import com.roberthevesi.cryptoshred_health.repository.MerkleNodeRepository;
 import com.roberthevesi.cryptoshred_health.repository.PatientRepository;
+import com.roberthevesi.cryptoshred_health.repository.PatientVisitRepository;
 import com.roberthevesi.cryptoshred_health.repository.UserRepository;
-import com.roberthevesi.cryptoshred_health.service.AttachmentService;
-import com.roberthevesi.cryptoshred_health.service.GpService;
-import com.roberthevesi.cryptoshred_health.service.PatientService;
-import com.roberthevesi.cryptoshred_health.service.PatientVisitService;
+import com.roberthevesi.cryptoshred_health.service.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -34,10 +35,14 @@ public class DataInitializer implements CommandLineRunner {
 
     private final UserRepository userRepository;
     private final PatientRepository patientRepository;
+    private final PatientVisitRepository patientVisitRepository;
     private final PatientService patientService;
     private final PatientVisitService visitService;
     private final GpService gpService;
     private final AttachmentService attachmentService;
+    private final ErasureService erasureService;
+    private final MerkleNodeRepository merkleNodeRepository;
+    private final MerkleTreeService merkleTreeService;
     private final PasswordEncoder passwordEncoder;
     private final JdbcTemplate jdbcTemplate;
     private final SyntheticMedicalDataGenerator dataGenerator;
@@ -162,7 +167,71 @@ public class DataInitializer implements CommandLineRunner {
             log.info("Database already contains {} patients. Skipping synthetic data seeding.", currentPatientCount);
         }
 
-        // 4. Warm Redis cache for active patient demographics
+        // 4. Seed Historical GDPR Art. 17 Deletions & Merkle Tree DAG if Merkle tree is empty
+        long currentMerkleLeaves = merkleNodeRepository.count();
+        if (currentMerkleLeaves < 25) {
+            log.info("Initializing Historical Merkle DAG & GDPR Art. 17 Deletion Ledger (current leaves: {})...", currentMerkleLeaves);
+
+            // A. Seed and crypto-shred 15 whole-patient profiles (PAT-10101 to PAT-10115) + their cascaded visits
+            List<PatientTemplate> historicalPatients = dataGenerator.getHistoricalErasurePatients();
+            for (int i = 0; i < historicalPatients.size(); i++) {
+                PatientTemplate pt = historicalPatients.get(i);
+                Patient existingPatient = patientRepository.findByPatientId(pt.patientId()).orElse(null);
+                if (existingPatient == null) {
+                    try {
+                        PatientRequest pReq = dataGenerator.toPatientRequest(pt, seededGps);
+                        PatientResponse savedPatient = patientService.create(pReq);
+
+                        // Seed 5 visits for this patient
+                        List<PatientVisitRequest> visits = dataGenerator.generateVisitsForPatient(pt, i + 100, seededGps).subList(0, 5);
+                        for (PatientVisitRequest vReq : visits) {
+                            visitService.create(vReq, doctor.getEmail());
+                        }
+
+                        // Execute Verifiable Crypto-Shredding (destroys Vault KEK, cascaded visit KEKs, mints proofs, updates Merkle DAG)
+                        erasureService.forgetPatient(
+                                pt.patientId(),
+                                "dpo@hospital.nhs.uk"
+                        );
+                    } catch (Exception e) {
+                        log.warn("Could not pre-shred patient {}: {}", pt.patientId(), e.getMessage());
+                    }
+                } else if (!existingPatient.isShredded()) {
+                    try {
+                        erasureService.forgetPatient(
+                                pt.patientId(),
+                                "dpo@hospital.nhs.uk"
+                        );
+                    } catch (Exception e) {
+                        log.warn("Could not pre-shred existing patient {}: {}", pt.patientId(), e.getMessage());
+                    }
+                }
+            }
+
+            // B. Crypto-shred 10 individual clinical encounters on active patients (PAT-10002 to PAT-10011)
+            for (int i = 2; i <= 11; i++) {
+                String pid = String.format("PAT-10%03d", i);
+                List<PatientVisit> visits = patientVisitRepository.findByPatientIdentifier(pid);
+                if (!visits.isEmpty()) {
+                    PatientVisit v = visits.get(0);
+                    if (!v.isShredded()) {
+                        try {
+                            erasureService.forgetVisit(
+                                    v.getId(),
+                                    "patient@health.org"
+                            );
+                        } catch (Exception ex) {
+                            log.warn("Could not pre-shred visit {}: {}", v.getId(), ex.getMessage());
+                        }
+                    }
+                }
+            }
+
+            log.info("Historical Merkle DAG and GDPR Art. 17 Deletion Ledger initialized with {} verifiable deletion proofs (Active Root R: {}).",
+                    merkleNodeRepository.count(), merkleTreeService.getMerkleRoot());
+        }
+
+        // 5. Warm Redis cache for active patient demographics
         try {
             patientService.findAll(false);
             log.info("Redis L2 cache warmed for all active patient demographic profiles (patient:*).");
