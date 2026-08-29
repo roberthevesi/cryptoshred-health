@@ -41,8 +41,7 @@ services:
     hostname: vault-1
     restart: always
     ports:
-      - "8211:8200"
-      - "8201:8201"
+      - "8201:8200"
     environment:
       VAULT_DEV_ROOT_TOKEN: "${VAULT_DEV_ROOT_TOKEN}"
       VAULT_ADDR: "http://127.0.0.1:8200"
@@ -92,7 +91,6 @@ services:
     restart: always
     ports:
       - "8202:8200"
-      - "8203:8201"
     environment:
       VAULT_DEV_ROOT_TOKEN: "${VAULT_DEV_ROOT_TOKEN}"
       VAULT_ADDR: "http://127.0.0.1:8200"
@@ -141,8 +139,7 @@ services:
     hostname: vault-3
     restart: always
     ports:
-      - "8204:8200"
-      - "8205:8201"
+      - "8203:8200"
     environment:
       VAULT_DEV_ROOT_TOKEN: "${VAULT_DEV_ROOT_TOKEN}"
       VAULT_ADDR: "http://127.0.0.1:8200"
