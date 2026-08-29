@@ -69,13 +69,20 @@ public class MerkleTombstoneReconciliationService {
 
         log.info("Auditing {} tombstone KEK references against Vault Transit...", tombstoneKeyNames.size());
 
-        // 3. Inspect each tombstone key against Vault KMS
+        // 3. Inspect tombstone keys against Vault KMS in memory
+        List<String> existingVaultKeys = vaultTransitService.listKeys();
+        Set<String> existingVaultKeySet = new HashSet<>(existingVaultKeys);
+
         for (String keyName : tombstoneKeyNames) {
             if (keyName == null || keyName.isBlank()) {
                 continue;
             }
             try {
-                if (vaultTransitService.keyExists(keyName)) {
+                boolean exists = !existingVaultKeySet.isEmpty()
+                        ? existingVaultKeySet.contains(keyName)
+                        : vaultTransitService.keyExists(keyName);
+
+                if (exists) {
                     log.warn("🚨 [TOMBSTONE ALERT] Resurrected Vault KEK detected for shredded entity: '{}'. Purging key immediately...", keyName);
                     vaultTransitService.destroyKey(keyName);
                     purgedCount++;
@@ -86,6 +93,8 @@ public class MerkleTombstoneReconciliationService {
             }
         }
 
+        log.info("🛡️ [RECONCILIATION COMPLETE] Audited {} tombstones against Vault Transit. Resurrected keys purged: {}",
+                tombstoneKeyNames.size(), purgedCount);
         return purgedCount;
     }
 }
