@@ -42,4 +42,8 @@ public class VaultTransitService {
     public String rewrapDek(String keyName, String wrappedDek) {
         return vaultKmsService.rewrapDek(keyName, wrappedDek);
     }
+
+    public java.util.List<String> listKeys() {
+        return vaultKmsService.listKeys();
+    }
 }

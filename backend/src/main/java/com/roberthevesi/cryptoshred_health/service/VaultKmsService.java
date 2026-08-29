@@ -133,6 +133,24 @@ public class VaultKmsService {
             throw new IllegalStateException("Vault Transit DEK rewrap failed for key: " + keyName, e);
         }
     }
+
+    /**
+     * Lists all transit key names currently present in Vault.
+     */
+    public java.util.List<String> listKeys() {
+        try {
+            org.springframework.vault.support.VaultResponse response = vaultOperations.read("transit/keys?list=true");
+            if (response != null && response.getData() != null && response.getData().containsKey("keys")) {
+                Object keysObj = response.getData().get("keys");
+                if (keysObj instanceof java.util.List<?> list) {
+                    return list.stream().map(String::valueOf).toList();
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Vault key listing note: {}", e.getMessage());
+        }
+        return java.util.Collections.emptyList();
+    }
 }
 
 
