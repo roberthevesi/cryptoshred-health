@@ -31,3 +31,10 @@ scrape_configs:
     scrape_interval: 10s
     static_configs:
       - targets: ['kafka-exporter:9308']
+
+  - job_name: 'frontend'
+    metrics_path: '/'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['host.docker.internal:5173']
+

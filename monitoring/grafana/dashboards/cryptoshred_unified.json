@@ -15,11 +15,51 @@
       "type": "row"
     },
     {
+      "id": 50,
+      "title": "⚛️ React Frontend UI",
+      "type": "stat",
+      "description": "React 19 Vite Dashboard (:5173)",
+      "gridPos": { "h": 3, "w": 4, "x": 0, "y": 1 },
+      "targets": [
+        {
+          "expr": "clamp_max(sum(up{job=\"frontend\"}) or vector(0), 1)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": { "color": "red", "text": "🔴 Offline" },
+                "1": { "color": "green", "text": "🟢 Online (:5173)" }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      }
+    },
+    {
       "id": 1,
       "title": "☕ Spring Boot API",
       "type": "stat",
       "description": "Spring Boot 3 Core (:8080)",
-      "gridPos": { "h": 3, "w": 4, "x": 0, "y": 1 },
+      "gridPos": { "h": 3, "w": 4, "x": 4, "y": 1 },
       "targets": [
         {
           "expr": "up{job=\"spring-boot\"}",
@@ -59,7 +99,7 @@
       "title": "⚖️ Vault HA Proxy",
       "type": "stat",
       "description": "HAProxy Zero-Downtime LB (:8200)",
-      "gridPos": { "h": 3, "w": 5, "x": 4, "y": 1 },
+      "gridPos": { "h": 3, "w": 4, "x": 8, "y": 1 },
       "targets": [
         {
           "expr": "clamp_max(sum(up{job=\"vault\"}), 1)",
@@ -99,7 +139,7 @@
       "title": "🗄️ PostgreSQL DB",
       "type": "stat",
       "description": "PostgreSQL 15 DB (:5433)",
-      "gridPos": { "h": 3, "w": 5, "x": 9, "y": 1 },
+      "gridPos": { "h": 3, "w": 4, "x": 12, "y": 1 },
       "targets": [
         {
           "expr": "up{job=\"postgres\"}",
@@ -139,7 +179,7 @@
       "title": "⚡ Redis L2 Cache",
       "type": "stat",
       "description": "Redis 7 In-Memory Cache (:6379)",
-      "gridPos": { "h": 3, "w": 5, "x": 14, "y": 1 },
+      "gridPos": { "h": 3, "w": 4, "x": 16, "y": 1 },
       "targets": [
         {
           "expr": "up{job=\"redis\"}",
@@ -179,7 +219,7 @@
       "title": "📬 Kafka Event Log",
       "type": "stat",
       "description": "Apache Kafka 3.7 KRaft Broker (:9092)",
-      "gridPos": { "h": 3, "w": 5, "x": 19, "y": 1 },
+      "gridPos": { "h": 3, "w": 4, "x": 20, "y": 1 },
       "targets": [
         {
           "expr": "up{job=\"kafka\"}",
