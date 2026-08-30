@@ -52,7 +52,7 @@ docker compose --profile monitoring up -d
 When Grafana boots up, a single, all-in-one **Unified Mission Control Dashboard** is automatically loaded under folder **`CryptoShred`**:
 
 ### 🏥 Unified Mission Control (`cryptoshred_unified.json`)
-* **🧩 System Component Status**: Live 5-card status banner across Spring Boot API (`:8080`), Vault KMS Primary (`:8200`), PostgreSQL DB (`:5433`), Redis L2 Cache (`:6379`), and Kafka Event Log (`:9092`).
+* **🧩 System Component Status**: Live 6-card status banner across React Frontend UI (`:5173`), Spring Boot API (`:8080`), Vault KMS Primary (`:8200`), PostgreSQL DB (`:5433`), Redis L2 Cache (`:6379`), and Kafka Event Log (`:9092`).
 * **🔐 Cryptographic & Clinical KPIs**: Live numbers for active crypto ops/sec, average AES-256-GCM encryption/decryption times in ms, Merkle deletion proofs minted, and tombstone resurrection alerts (`✅ 0 Healthy`).
 * **📈 Real-Time Operation Latencies**: Millisecond latency curves for encryption, decryption, key rotation, and $\mathcal{O}(1)$ crypto-shredding alongside clinical REST API request rates (`/api/patients`, `/api/erasure`, `/api/gp`, `/api/fhir`).
 * **🧠 JVM Heap & Memory Zeroization**: Clean, aggregated heap memory curves (`sum(jvm_memory_used_bytes)`) and clear average GC pause durations.
@@ -65,6 +65,7 @@ When Grafana boots up, a single, all-in-one **Unified Mission Control Dashboard*
 
 | Service | Port | Metric / UI Path | Default Credentials |
 | :--- | :--- | :--- | :--- |
+| **React Frontend UI** | `5173` | `http://localhost:5173` | *None* |
 | **Grafana** | `3000` | `http://localhost:3000` | `admin` / `admin` |
 | **Prometheus** | `9090` | `http://localhost:9090` | *None* |
 | **Spring Boot Actuator** | `8080` | `http://localhost:8080/actuator/prometheus` | *None (Public Actuator)* |
