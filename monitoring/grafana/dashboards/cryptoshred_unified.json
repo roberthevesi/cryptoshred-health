@@ -62,7 +62,7 @@
       "gridPos": { "h": 3, "w": 4, "x": 4, "y": 1 },
       "targets": [
         {
-          "expr": "up{job=\"spring-boot\"} or vector(0)",
+          "expr": "max(up{job=\"spring-boot\"}) or vector(0)",
           "refId": "A"
         }
       ],
@@ -600,7 +600,7 @@
       "gridPos": { "h": 7, "w": 8, "x": 16, "y": 12 },
       "targets": [
         {
-          "expr": "rate(cryptoshred_blind_index_lookups_total[1m]) or vector(0)",
+          "expr": "sum by (field) (rate(cryptoshred_blind_index_lookups_total[1m]))",
           "legendFormat": "{{field}}",
           "refId": "A"
         }
