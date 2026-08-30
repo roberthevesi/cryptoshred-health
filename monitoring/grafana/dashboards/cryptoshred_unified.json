@@ -22,7 +22,7 @@
       "gridPos": { "h": 3, "w": 4, "x": 0, "y": 1 },
       "targets": [
         {
-          "expr": "clamp_max(sum(up{job=\"frontend\"}) or vector(0), 1)",
+          "expr": "min(frontend_up) or clamp_max(sum(up{job=\"frontend\"}) or vector(0), 1)",
           "refId": "A"
         }
       ],
@@ -62,7 +62,7 @@
       "gridPos": { "h": 3, "w": 4, "x": 4, "y": 1 },
       "targets": [
         {
-          "expr": "up{job=\"spring-boot\"}",
+          "expr": "up{job=\"spring-boot\"} or vector(0)",
           "refId": "A"
         }
       ],
@@ -102,7 +102,7 @@
       "gridPos": { "h": 3, "w": 4, "x": 8, "y": 1 },
       "targets": [
         {
-          "expr": "clamp_max(sum(up{job=\"vault\"}), 1)",
+          "expr": "clamp_max(sum(vault_core_active) or sum(up{job=\"vault\"}) or vector(0), 1)",
           "refId": "A"
         }
       ],
@@ -142,7 +142,7 @@
       "gridPos": { "h": 3, "w": 4, "x": 12, "y": 1 },
       "targets": [
         {
-          "expr": "up{job=\"postgres\"}",
+          "expr": "min(pg_up) or vector(0)",
           "refId": "A"
         }
       ],
@@ -182,7 +182,7 @@
       "gridPos": { "h": 3, "w": 4, "x": 16, "y": 1 },
       "targets": [
         {
-          "expr": "up{job=\"redis\"}",
+          "expr": "min(redis_up) or vector(0)",
           "refId": "A"
         }
       ],
@@ -222,7 +222,7 @@
       "gridPos": { "h": 3, "w": 4, "x": 20, "y": 1 },
       "targets": [
         {
-          "expr": "up{job=\"kafka\"}",
+          "expr": "clamp_max(sum(kafka_brokers) or vector(0), 1)",
           "refId": "A"
         }
       ],
