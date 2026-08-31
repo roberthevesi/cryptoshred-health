@@ -161,13 +161,49 @@ class PatientDemographicEncryptionTest {
         when(patientRepository.findByPatientId(patientId)).thenReturn(Optional.of(patient));
         when(patientRepository.save(any(Patient.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        patientService.deactivate(patientId);
+        PatientResponse resp = patientService.deactivate(patientId);
 
+        assertNotNull(resp);
+        assertFalse(resp.isActive());
         assertFalse(patient.isActive());
         verify(eventLogPublisher, times(1)).publishEvent(argThat(event ->
                 "PATIENT_DEACTIVATED".equals(event.getEventType()) &&
                 patientId.equals(event.getPatientId())
         ));
+    }
+
+    @Test
+    void testPatientActivateEmitsPatientUpdatedEvent() {
+        String patientId = "PAT-54321";
+        Patient patient = new Patient();
+        patient.setPatientId(patientId);
+        patient.setActive(false);
+
+        when(patientRepository.findByPatientId(patientId)).thenReturn(Optional.of(patient));
+        when(patientRepository.save(any(Patient.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        PatientResponse resp = patientService.activate(patientId);
+
+        assertNotNull(resp);
+        assertTrue(resp.isActive());
+        assertTrue(patient.isActive());
+        verify(eventLogPublisher, times(1)).publishEvent(argThat(event ->
+                "PATIENT_ACTIVATED".equals(event.getEventType()) &&
+                patientId.equals(event.getPatientId())
+        ));
+    }
+
+    @Test
+    void testCannotActivateOrDeactivateShreddedPatient() {
+        String patientId = "PAT-SHREDDED";
+        Patient patient = new Patient();
+        patient.setPatientId(patientId);
+        patient.setShredded(true);
+
+        when(patientRepository.findByPatientId(patientId)).thenReturn(Optional.of(patient));
+
+        assertThrows(IllegalStateException.class, () -> patientService.deactivate(patientId));
+        assertThrows(IllegalStateException.class, () -> patientService.activate(patientId));
     }
 
     @Test

@@ -1,4 +1,4 @@
-import { AlertTriangle, User, Calendar, Droplets, Stethoscope, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, User, Calendar, Droplets, Stethoscope, ShieldCheck, ShieldAlert, Clock } from 'lucide-react';
 import type { PatientRecord } from '../types';
 
 interface Props {
@@ -11,18 +11,24 @@ export default function PatientBanner({ record, showVitalsSummary = true }: Prop
     if (!dobString) return null;
     try {
       const dob = new Date(dobString);
-      const diffMs = Date.now() - dob.getTime();
-      const ageDate = new Date(diffMs);
-      return Math.abs(ageDate.getUTCFullYear() - 1970);
+      const today = new Date();
+      let age = today.getFullYear() - dob.getFullYear();
+      const m = today.getMonth() - dob.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+        age--;
+      }
+      return age >= 0 ? age : null;
     } catch {
       return null;
     }
   };
 
+  const isShredded = !!record.shredded;
+  const isInactive = !isShredded && ((record as unknown as { isActive?: boolean; active?: boolean }).isActive === false || (record as unknown as { isActive?: boolean; active?: boolean }).active === false);
   const age = getAge(record.dateOfBirth);
   const hasSevereAllergy =
     record.allergies &&
-    !record.shredded &&
+    !isShredded &&
     (record.allergies.toLowerCase().includes('severe') ||
       record.allergies.toLowerCase().includes('anaphylaxis') ||
       record.allergies.toLowerCase().includes('penicillin'));
@@ -30,7 +36,7 @@ export default function PatientBanner({ record, showVitalsSummary = true }: Prop
   return (
     <div
       className={`rounded-2xl border p-4 sm:p-5 transition-all ${
-        record.shredded
+        isShredded
           ? 'bg-slate-50 border-slate-200'
           : 'bg-white border-slate-200 shadow-card'
       }`}
@@ -40,20 +46,20 @@ export default function PatientBanner({ record, showVitalsSummary = true }: Prop
         <div className="flex items-start sm:items-center gap-4">
           <div
             className={`relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border font-bold text-xl ${
-              record.shredded
+              isShredded
                 ? 'bg-slate-100 border-slate-200 text-slate-400'
                 : 'bg-blue-600 border-blue-500 text-white shadow-sm'
             }`}
           >
             {(() => {
-              if (record.shredded) return '✕';
+              if (isShredded) return '✕';
               const parts = (record.patientName || '').trim().split(/\s+/);
               if (parts.length >= 2) return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase();
               return (record.patientName || 'PT').slice(0, 2).toUpperCase();
             })()}
             <span
               className={`absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-white ${
-                record.shredded ? 'bg-slate-400' : 'bg-emerald-500'
+                isShredded ? 'bg-slate-400' : isInactive ? 'bg-amber-400' : 'bg-emerald-500'
               }`}
             />
           </div>
@@ -66,9 +72,13 @@ export default function PatientBanner({ record, showVitalsSummary = true }: Prop
                   {record.mrn}
                 </span>
               )}
-              {record.shredded ? (
-                <span className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md bg-red-50 border border-red-200 text-red-700">
-                  <ShieldAlert className="h-3 w-3 text-red-600" /> Crypto-Shredded
+              {isShredded ? (
+                <span className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-rose-700">
+                  <ShieldAlert className="h-3 w-3 text-rose-600" /> Crypto-Shredded
+                </span>
+              ) : isInactive ? (
+                <span className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-700">
+                  <Clock className="h-3 w-3 text-amber-600" /> Inactive Patient
                 </span>
               ) : (
                 <span className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700">

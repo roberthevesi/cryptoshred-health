@@ -427,4 +427,42 @@ public class SecurityRbacHttpIntegrationTest {
         mockMvc.perform(delete("/api/erasure/patients/PAT-001/forget"))
                 .andExpect(status().isOk());
     }
+
+    @Test
+    @WithMockUser(username = "doctor@hospital.org", roles = {"DOCTOR"})
+    @DisplayName("RBAC 200: DOCTOR can deactivate patient (PATCH /api/patients/{id}/deactivate)")
+    void testDoctorCanDeactivatePatient() throws Exception {
+        PatientResponse resp = PatientResponse.builder().patientId("PAT-001").isActive(false).build();
+        when(patientService.deactivate("PAT-001")).thenReturn(resp);
+
+        mockMvc.perform(patch("/api/patients/PAT-001/deactivate"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "admin@cryptoshred.health", roles = {"ADMIN"})
+    @DisplayName("RBAC 200: ADMIN can activate patient (PATCH /api/patients/{id}/activate)")
+    void testAdminCanActivatePatient() throws Exception {
+        PatientResponse resp = PatientResponse.builder().patientId("PAT-001").isActive(true).build();
+        when(patientService.activate("PAT-001")).thenReturn(resp);
+
+        mockMvc.perform(patch("/api/patients/PAT-001/activate"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "auditor@hospital.org", roles = {"AUDITOR"})
+    @DisplayName("RBAC 403: AUDITOR cannot deactivate patient (PATCH /api/patients/{id}/deactivate)")
+    void testAuditorCannotDeactivatePatient() throws Exception {
+        mockMvc.perform(patch("/api/patients/PAT-001/deactivate"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "patient@hospital.org", roles = {"PATIENT"})
+    @DisplayName("RBAC 403: PATIENT cannot activate patient (PATCH /api/patients/{id}/activate)")
+    void testPatientCannotActivatePatient() throws Exception {
+        mockMvc.perform(patch("/api/patients/PAT-001/activate"))
+                .andExpect(status().isForbidden());
+    }
 }

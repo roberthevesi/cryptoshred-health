@@ -20,7 +20,7 @@ public class PatientVisitEventDto {
     private UUID eventId;
     private UUID visitId;
     private String patientId; // Synthetic pseudonym identifier (e.g. PAT-12345)
-    private String eventType; // VISIT_CREATED, VISIT_UPDATED, VISIT_SHREDDED, PATIENT_CREATED, PATIENT_UPDATED, PATIENT_DEACTIVATED, PATIENT_SHREDDED, PATIENT_KEY_ROTATED, KEY_ROTATED
+    private String eventType; // VISIT_CREATED, VISIT_UPDATED, VISIT_SHREDDED, PATIENT_CREATED, PATIENT_UPDATED, PATIENT_DEACTIVATED, PATIENT_ACTIVATED, PATIENT_SHREDDED, PATIENT_KEY_ROTATED, KEY_ROTATED
     private String vaultKeyName;
     private String wrappedDek;
     private String iv;

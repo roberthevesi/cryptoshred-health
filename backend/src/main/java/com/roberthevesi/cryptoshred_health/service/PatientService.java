@@ -530,11 +530,16 @@ public class PatientService {
     }
 
     @Transactional
-    public void deactivate(String patientId) {
+    public PatientResponse deactivate(String patientId) {
         Patient patient = patientRepository.findByPatientId(patientId)
                 .orElseThrow(() -> new RuntimeException("Patient not found: " + patientId));
+
+        if (patient.isShredded()) {
+            throw new IllegalStateException("Cannot deactivate a crypto-shredded patient profile");
+        }
+
         patient.setActive(false);
-        patientRepository.save(patient);
+        Patient saved = patientRepository.save(patient);
         patientCacheService.evict(patientId);
 
         eventLogPublisher.publishEvent(PatientVisitEventDto.builder()
@@ -543,6 +548,47 @@ public class PatientService {
                 .eventType("PATIENT_DEACTIVATED")
                 .timestamp(LocalDateTime.now())
                 .build());
+
+        return toResponse(saved);
+    }
+
+    @Transactional
+    public PatientResponse activate(String patientId) {
+        Patient patient = patientRepository.findByPatientId(patientId)
+                .orElseThrow(() -> new RuntimeException("Patient not found: " + patientId));
+
+        if (patient.isShredded()) {
+            throw new IllegalStateException("Cannot activate a crypto-shredded patient profile");
+        }
+
+        patient.setActive(true);
+        Patient saved = patientRepository.save(patient);
+
+        if (saved.getEncryptionKey() != null) {
+            eventLogPublisher.publishEvent(PatientVisitEventDto.builder()
+                    .eventId(UUID.randomUUID())
+                    .patientId(saved.getPatientId())
+                    .eventType("PATIENT_ACTIVATED")
+                    .vaultKeyName(saved.getEncryptionKey().getVaultKeyName())
+                    .wrappedDek(saved.getEncryptionKey().getWrappedDek())
+                    .iv(saved.getEncryptionKey().getIv())
+                    .encryptedDataBlob(saved.getEncryptedDataBlob())
+                    .timestamp(LocalDateTime.now())
+                    .build());
+        } else {
+            eventLogPublisher.publishEvent(PatientVisitEventDto.builder()
+                    .eventId(UUID.randomUUID())
+                    .patientId(saved.getPatientId())
+                    .eventType("PATIENT_ACTIVATED")
+                    .timestamp(LocalDateTime.now())
+                    .build());
+        }
+
+        PatientResponse resp = toResponse(saved);
+        if (resp.isActive() && !resp.isShredded()) {
+            patientCacheService.put(resp.getPatientId(), resp);
+        }
+        return resp;
     }
 
     public PatientResponse toResponse(Patient patient) {
