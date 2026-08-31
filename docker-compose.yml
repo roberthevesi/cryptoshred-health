@@ -187,7 +187,7 @@ services:
         aliases:
           - vault-3
 
-  # ── Backend Application Container (Optional containerized profile) ───────
+  # ── Backend Application Container (Containerized Profile) ───────────────
   backend:
     build:
       context: ./backend
@@ -199,7 +199,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
-      SPRING_VAULT_HOST: vault-1
+      SPRING_VAULT_HOST: vault-lb
       SPRING_VAULT_PORT: 8200
       SPRING_VAULT_TOKEN: ${VAULT_DEV_ROOT_TOKEN}
       SPRING_VAULT_SCHEME: http
@@ -207,18 +207,45 @@ services:
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
       APP_JWT_SECRET: ${JWT_SECRET}
+      APP_CORS_ALLOWED_ORIGINS: "http://localhost:5173,http://localhost:80,http://127.0.0.1:5173,http://127.0.0.1:80,http://localhost:3000"
     cap_add:
       - IPC_LOCK
     depends_on:
-      - db
-      - vault-1
-      - kafka
-      - redis
+      db:
+        condition: service_started
+      vault-lb:
+        condition: service_started
+      kafka:
+        condition: service_started
+      redis:
+        condition: service_healthy
     networks:
-      - cryptoshred-net
+      cryptoshred-net:
+        aliases:
+          - backend
     profiles:
       - all
       - app
+
+  # ── React Frontend Application Container (Containerized Profile) ────────
+  frontend:
+    build:
+      context: ./frontend/cryptoshred-health
+    container_name: cryptoshred_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      cryptoshred-net:
+        aliases:
+          - frontend
+    profiles:
+      - all
+      - app
+
 
   kafka:
     image: apache/kafka:3.7.0

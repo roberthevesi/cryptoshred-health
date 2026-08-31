@@ -85,13 +85,32 @@ By leveraging **HashiCorp Vault 3-Node Raft Transit KMS envelope encryption**, *
 
 ## 🚀 Quick Start Guide
 
-### 1. Start Infrastructure & Observability Containers
+CryptoShred Health supports two execution modes via Docker Compose Profiles:
+
+### 🌟 Mode 1: One-Click Turnkey Demo (Full Docker Stack — Zero Host Prerequisites)
+Ideal for thesis evaluation, demonstrations, and examiners who do not have Java 21, Maven, or Node.js installed locally.
+
 ```bash
-# Start Core Datastores + 3-Node Vault Raft Cluster + Prometheus/Grafana Monitoring Stack
+# 1. Boot the entire distributed system (10+ containers) with a single command
+docker compose --profile all up -d --build
+```
+* **Clinical Dashboard (UI):** [http://localhost:5173](http://localhost:5173)
+* **Spring Boot Swagger API:** [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+* **Grafana Unified Mission Control:** [http://localhost:3000](http://localhost:3000) (`admin` / `admin`)
+* **Kafka UI:** [http://localhost:8085](http://localhost:8085)
+* **Vault KMS Proxy:** [http://localhost:8200/ui/vault/](http://localhost:8200/ui/vault/)
+
+---
+
+### 💻 Mode 2: Development & Benchmarking Mode (Infra in Docker, Apps on Host)
+Ideal for rapid development (Vite HMR, IDE step-debugging) and jitter-free **JMH microbenchmarking** on bare-metal JVM.
+
+#### Step 1: Start Infrastructure & Observability Containers
+```bash
 docker compose --profile monitoring up -d
 ```
 
-### 2. Configure Environment Variables
+#### Step 2: Configure Environment Variables
 Create `.env` in the repository root and `backend/.env`:
 ```env
 POSTGRES_DB=healthdb
@@ -107,22 +126,18 @@ REDIS_TTL_MS=900000
 CORS_ALLOWED_ORIGINS=http://localhost:5173
 ```
 
-### 3. Run Backend (Spring Boot 3.3.4)
+#### Step 3: Run Backend (Spring Boot 3.3.4)
 ```bash
 cd backend
 ./mvnw spring-boot:run
 ```
-* API Server: `http://localhost:8080`
-* Swagger UI Docs: `http://localhost:8080/swagger-ui.html`
-* Prometheus Actuator: `http://localhost:8080/actuator/prometheus`
 
-### 4. Run Frontend (React 19 + Vite)
+#### Step 4: Run Frontend (React 19 + Vite)
 ```bash
 cd frontend/cryptoshred-health
 npm install
 npm run dev
 ```
-* Clinical Dashboard: `http://localhost:5173`
 
 ---
 
