@@ -330,12 +330,27 @@ class PatientKafkaEventStreamingTest {
                 .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(null));
         ArgumentCaptor<String> deactivatePayloadCaptor = ArgumentCaptor.forClass(String.class);
 
-        patientService.deactivate(patientId);
+        PatientResponse deactivated = patientService.deactivate(patientId);
+        assertFalse(deactivated.isActive());
 
         verify(kafkaTemplate, times(1)).send(anyString(), eq(patientId), deactivatePayloadCaptor.capture());
         PatientVisitEventDto deactivateEvent = objectMapper.readValue(deactivatePayloadCaptor.getValue(), PatientVisitEventDto.class);
         assertEquals("PATIENT_DEACTIVATED", deactivateEvent.getEventType());
         assertEquals(patientId, deactivateEvent.getPatientId());
+
+        // 4. Reactivate patient
+        reset(kafkaTemplate);
+        when(kafkaTemplate.send(anyString(), any(), any()))
+                .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(null));
+        ArgumentCaptor<String> reactivatePayloadCaptor = ArgumentCaptor.forClass(String.class);
+
+        PatientResponse reactivated = patientService.activate(patientId);
+        assertTrue(reactivated.isActive());
+
+        verify(kafkaTemplate, times(1)).send(anyString(), eq(patientId), reactivatePayloadCaptor.capture());
+        PatientVisitEventDto reactivateEvent = objectMapper.readValue(reactivatePayloadCaptor.getValue(), PatientVisitEventDto.class);
+        assertEquals("PATIENT_ACTIVATED", reactivateEvent.getEventType());
+        assertEquals(patientId, reactivateEvent.getPatientId());
     }
 
     @Test

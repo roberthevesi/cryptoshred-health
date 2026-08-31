@@ -62,6 +62,18 @@ public class PatientController {
         return ResponseEntity.ok(patientService.update(patientId, request));
     }
 
+    @PatchMapping("/{patientId}/deactivate")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN')")
+    public ResponseEntity<PatientResponse> deactivate(@PathVariable String patientId) {
+        return ResponseEntity.ok(patientService.deactivate(patientId));
+    }
+
+    @PatchMapping("/{patientId}/activate")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN')")
+    public ResponseEntity<PatientResponse> activate(@PathVariable String patientId) {
+        return ResponseEntity.ok(patientService.activate(patientId));
+    }
+
     @DeleteMapping("/{patientId}")
     @PreAuthorize("hasAnyRole('DOCTOR', 'AUDITOR', 'ADMIN')")
     public ResponseEntity<com.roberthevesi.cryptoshred_health.dto.VerifiableDeletionProofDto> delete(

@@ -23,6 +23,8 @@ import {
   Building,
   ShieldOff,
   UserCog,
+  UserX,
+  UserCheck,
   FileCheck2,
   LogOut,
   Lock,
@@ -61,6 +63,8 @@ export default function PatientDetailPage() {
   const [selectedVisitForView, setSelectedVisitForView] = useState<string | null>(null);
   const [visitToShred, setVisitToShred] = useState<PatientVisit | null>(null);
   const [isFullPatientShredOpen, setIsFullPatientShredOpen] = useState(false);
+  const [isDeactivateModalOpen, setIsDeactivateModalOpen] = useState(false);
+  const [isActivateModalOpen, setIsActivateModalOpen] = useState(false);
   const [deletionProof, setDeletionProof] = useState<DeletionProof | null>(null);
   const [selectedProofForViewer, setSelectedProofForViewer] = useState<{
     proof?: DeletionProof | null;
@@ -87,7 +91,7 @@ export default function PatientDetailPage() {
   const { data: persistentProof } = useQuery<DeletionProof>({
     queryKey: ['deletionProof', patientId],
     queryFn: () => apiClient.get<DeletionProof>(`/erasure/patients/${patientId}/proof`).then((r) => r.data),
-    enabled: !!patientId && (!!patient?.shredded || patient?.isActive === false || patient?.active === false),
+    enabled: !!patientId && !!patient?.shredded,
   });
 
   // Complete Deletion Proof Bundle Query
@@ -104,6 +108,38 @@ export default function PatientDetailPage() {
     queryKey: ['visits', patientId],
     queryFn: () => apiClient.get<PatientVisit[]>(`/visits?patientId=${patientId}`).then((r) => r.data),
     enabled: !!patientId,
+  });
+
+  // Deactivate Patient Mutation (Doctor, Admin)
+  const deactivatePatientMutation = useMutation({
+    mutationFn: (pid: string) =>
+      apiClient.patch<Patient>(`/patients/${pid}/deactivate`).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['patient', patientId] });
+      queryClient.invalidateQueries({ queryKey: ['patients'] });
+    },
+    onError: (err: unknown) => {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        'Failed to deactivate patient.';
+      setErasureError(msg);
+    },
+  });
+
+  // Reactivate Patient Mutation (Doctor, Admin)
+  const activatePatientMutation = useMutation({
+    mutationFn: (pid: string) =>
+      apiClient.patch<Patient>(`/patients/${pid}/activate`).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['patient', patientId] });
+      queryClient.invalidateQueries({ queryKey: ['patients'] });
+    },
+    onError: (err: unknown) => {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        'Failed to reactivate patient.';
+      setErasureError(msg);
+    },
   });
 
   // Full Patient Crypto-Shred Mutation (Doctor, Auditor, Admin)
@@ -247,9 +283,13 @@ export default function PatientDetailPage() {
     if (!dobString) return null;
     try {
       const dob = new Date(dobString);
-      const diffMs = Date.now() - dob.getTime();
-      const ageDate = new Date(diffMs);
-      return Math.abs(ageDate.getUTCFullYear() - 1970);
+      const today = new Date();
+      let age = today.getFullYear() - dob.getFullYear();
+      const m = today.getMonth() - dob.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+        age--;
+      }
+      return age >= 0 ? age : null;
     } catch {
       return null;
     }
@@ -259,7 +299,9 @@ export default function PatientDetailPage() {
   const isDoctor = user?.role === 'DOCTOR';
   const isAuditor = user?.role === 'AUDITOR';
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'ROLE_ADMIN';
-  const isShredded = patient?.shredded || patient?.isActive === false || patient?.active === false;
+  const isShredded = !!patient?.shredded;
+  const isInactive = !isShredded && (patient?.isActive === false || patient?.active === false);
+  const isActive = !isShredded && !isInactive;
   const activeVisits = patientVisits.filter((v) => !v.shredded && !isShredded);
   const shreddedVisits = patientVisits.filter((v) => v.shredded || isShredded);
   const displayedVisits = visitsSubTab === 'active' ? activeVisits : shreddedVisits;
@@ -361,7 +403,7 @@ export default function PatientDetailPage() {
             <button
               onClick={handleExportFhir}
               disabled={isExportingFhir}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold transition shadow-sm"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold transition shadow-sm cursor-pointer disabled:opacity-50"
               title="Export complete HL7 FHIR R4 Collection Bundle"
             >
               {isExportingFhir ? (
@@ -371,6 +413,33 @@ export default function PatientDetailPage() {
               )}
               <span>Export FHIR R4</span>
             </button>
+
+            {/* Deactivate / Reactivate Patient Button (Doctor & Admin) */}
+            {(isDoctor || isAdmin) && !isShredded && (
+              isActive ? (
+                <button
+                  id="deactivate-patient-btn"
+                  onClick={() => setIsDeactivateModalOpen(true)}
+                  disabled={deactivatePatientMutation.isPending}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-medium transition shadow-sm cursor-pointer disabled:opacity-50"
+                  title="Deactivate Patient Profile"
+                >
+                  <UserX className="h-3.5 w-3.5 text-amber-600" />
+                  <span>Deactivate Patient</span>
+                </button>
+              ) : (
+                <button
+                  id="reactivate-patient-btn"
+                  onClick={() => setIsActivateModalOpen(true)}
+                  disabled={activatePatientMutation.isPending}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-medium transition shadow-sm cursor-pointer disabled:opacity-50"
+                  title="Reactivate Patient Profile"
+                >
+                  <UserCheck className="h-3.5 w-3.5 text-emerald-600" />
+                  <span>Reactivate Patient</span>
+                </button>
+              )
+            )}
 
             {isDoctor && !isShredded && (
               <button
@@ -391,7 +460,11 @@ export default function PatientDetailPage() {
             {/* Left: Avatar & Identity */}
             <div className="flex items-start gap-4">
               <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl text-white font-bold text-xl shadow-sm border ${
-                isShredded ? 'bg-red-600 border-red-500' : 'bg-blue-600 border-blue-500'
+                isShredded
+                  ? 'bg-rose-600 border-rose-500'
+                  : isInactive
+                  ? 'bg-amber-500 border-amber-400'
+                  : 'bg-blue-600 border-blue-500'
               }`}>
                 {isShredded ? '✕' : `${patient.firstName?.charAt(0) || ''}${patient.lastName?.charAt(0) || ''}`.toUpperCase() || 'PT'}
               </div>
@@ -406,13 +479,9 @@ export default function PatientDetailPage() {
                       NHS: {patient.nhsNumber}
                     </span>
                   )}
-                  {!isShredded ? (
-                    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700">
-                      <ShieldCheck className="h-3.5 w-3.5" /> Active Protected Patient
-                    </span>
-                  ) : (
+                  {isShredded ? (
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-md bg-red-50 border border-red-200 text-red-700">
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-rose-700">
                         <ShieldOff className="h-3.5 w-3.5" /> Crypto-Shredded (GDPR Art. 17)
                       </span>
                       <button
@@ -424,6 +493,14 @@ export default function PatientDetailPage() {
                         <span>View Erasure Details</span>
                       </button>
                     </div>
+                  ) : isInactive ? (
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-700">
+                      <UserX className="h-3.5 w-3.5" /> Inactive Patient Profile
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700">
+                      <ShieldCheck className="h-3.5 w-3.5" /> Active Protected Patient
+                    </span>
                   )}
                 </div>
 
@@ -1324,6 +1401,66 @@ export default function PatientDetailPage() {
         cancelLabel="Cancel"
         variant="shred"
         isLoading={patientErasureMutation.isPending}
+      />
+
+      {/* Deactivate Patient Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isDeactivateModalOpen}
+        onClose={() => setIsDeactivateModalOpen(false)}
+        onConfirm={() => {
+          if (patient) {
+            deactivatePatientMutation.mutate(patient.patientId);
+          }
+        }}
+        title="Deactivate Patient Profile"
+        message={
+          <p>
+            Are you sure you want to deactivate patient{' '}
+            <strong className="text-slate-900">
+              {patient.firstName} {patient.lastName} ({patient.patientId})
+            </strong>
+            ? Deactivating will hide the patient from active primary care rosters while preserving their medical records and encryption keys.
+          </p>
+        }
+        detail={
+          <span>
+            Patient ID: {patient.patientId} | NHS: {patient.nhsNumber || 'N/A'} | Total Linked Visits: {patientVisits.length}
+          </span>
+        }
+        confirmLabel="Deactivate Patient"
+        cancelLabel="Cancel"
+        variant="warning"
+        isLoading={deactivatePatientMutation.isPending}
+      />
+
+      {/* Reactivate Patient Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isActivateModalOpen}
+        onClose={() => setIsActivateModalOpen(false)}
+        onConfirm={() => {
+          if (patient) {
+            activatePatientMutation.mutate(patient.patientId);
+          }
+        }}
+        title="Reactivate Patient Profile"
+        message={
+          <p>
+            Are you sure you want to reactivate patient{' '}
+            <strong className="text-slate-900">
+              {patient.firstName} {patient.lastName} ({patient.patientId})
+            </strong>
+            ? Reactivating will restore their active status in the primary care census.
+          </p>
+        }
+        detail={
+          <span>
+            Patient ID: {patient.patientId} | NHS: {patient.nhsNumber || 'N/A'} | Total Linked Visits: {patientVisits.length}
+          </span>
+        }
+        confirmLabel="Reactivate Patient"
+        cancelLabel="Cancel"
+        variant="info"
+        isLoading={activatePatientMutation.isPending}
       />
     </div>
   );
