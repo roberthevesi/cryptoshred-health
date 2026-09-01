@@ -284,7 +284,7 @@ export default function PatientCensusTable() {
                 <tr>
                   <th className="py-3.5 pl-4 pr-2 whitespace-nowrap min-w-[210px]">Patient Name &amp; ID</th>
                   <th className="py-3.5 px-3 whitespace-nowrap min-w-[130px]">Demographics</th>
-                  <th className="py-3.5 px-3 whitespace-nowrap min-w-[180px]">Assigned GP Surgery</th>
+                  <th className="py-3.5 px-3 whitespace-nowrap min-w-[180px]">Assigned GP</th>
                   <th className="py-3.5 px-3 whitespace-nowrap min-w-[180px]">Contact</th>
                   <th className="py-3.5 px-3 whitespace-nowrap min-w-[110px]">Status</th>
                   <th className="py-3.5 pl-3 pr-4 text-right whitespace-nowrap min-w-[130px]">Patient File</th>
