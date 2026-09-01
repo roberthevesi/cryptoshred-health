@@ -41,6 +41,13 @@ public class PatientResponse {
 
     private String temporaryPassword;
 
+    // ── Retention Horizon & Legal Erasure Metadata ────────────────────────────
+    private LocalDateTime latestActivityDate;
+    private int retentionPeriodYears;
+    private LocalDateTime legalErasureEligibleDate;
+    private String retentionStatus; // "ELIGIBLE", "PROTECTED", "SHREDDED"
+    private long retentionDaysRemaining;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

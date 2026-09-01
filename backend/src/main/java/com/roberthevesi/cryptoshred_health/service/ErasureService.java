@@ -21,6 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -36,7 +37,6 @@ import java.util.UUID;
  * and Merkle tree inclusion proof suitable for GDPR Article 17 compliance verification.
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class ErasureService {
 
@@ -51,9 +51,55 @@ public class ErasureService {
     private final MerkleTreeService merkleTreeService;
     private final ObjectMapper objectMapper;
     private final WormBackupExporterService wormBackupExporterService;
+    private final RetentionPolicyService retentionPolicyService;
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private CryptoMetricsService cryptoMetricsService;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public ErasureService(
+            PatientVisitRepository patientVisitRepository,
+            PatientRepository patientRepository,
+            EncryptionKeyRepository encryptionKeyRepository,
+            VaultKmsService vaultKmsService,
+            EventLogPublisher eventLogPublisher,
+            PatientVisitCacheService patientVisitCacheService,
+            PatientCacheService patientCacheService,
+            ProofSigningService proofSigningService,
+            MerkleTreeService merkleTreeService,
+            ObjectMapper objectMapper,
+            WormBackupExporterService wormBackupExporterService,
+            RetentionPolicyService retentionPolicyService) {
+        this.patientVisitRepository = patientVisitRepository;
+        this.patientRepository = patientRepository;
+        this.encryptionKeyRepository = encryptionKeyRepository;
+        this.vaultKmsService = vaultKmsService;
+        this.eventLogPublisher = eventLogPublisher;
+        this.patientVisitCacheService = patientVisitCacheService;
+        this.patientCacheService = patientCacheService;
+        this.proofSigningService = proofSigningService;
+        this.merkleTreeService = merkleTreeService;
+        this.objectMapper = objectMapper;
+        this.wormBackupExporterService = wormBackupExporterService;
+        this.retentionPolicyService = retentionPolicyService;
+    }
+
+    public ErasureService(
+            PatientVisitRepository patientVisitRepository,
+            PatientRepository patientRepository,
+            EncryptionKeyRepository encryptionKeyRepository,
+            VaultKmsService vaultKmsService,
+            EventLogPublisher eventLogPublisher,
+            PatientVisitCacheService patientVisitCacheService,
+            PatientCacheService patientCacheService,
+            ProofSigningService proofSigningService,
+            MerkleTreeService merkleTreeService,
+            ObjectMapper objectMapper,
+            WormBackupExporterService wormBackupExporterService) {
+        this(patientVisitRepository, patientRepository, encryptionKeyRepository, vaultKmsService,
+                eventLogPublisher, patientVisitCacheService, patientCacheService, proofSigningService,
+                merkleTreeService, objectMapper, wormBackupExporterService, new RetentionPolicyService(8));
+    }
 
     /**
      * Complete Patient Right-to-be-Forgotten:
@@ -62,12 +108,39 @@ public class ErasureService {
      */
     @Transactional
     public VerifiableDeletionProofDto forgetPatient(String patientId, String requestedBy) {
+        return forgetPatient(patientId, requestedBy, null);
+    }
+
+    @Transactional
+    public VerifiableDeletionProofDto forgetPatient(String patientId, String requestedBy, String overrideReason) {
         long totalStartTime = System.nanoTime();
         Patient patient = patientRepository.findByPatientId(patientId)
                 .orElseThrow(() -> new IllegalArgumentException("Patient not found: " + patientId));
 
         if (patient.isShredded()) {
             throw new IllegalStateException("Patient " + patientId + " has already been crypto-shredded");
+        }
+
+        // Determine rolling retention status prior to key destruction
+        List<PatientVisit> visits = patientVisitRepository != null
+                ? patientVisitRepository.findByPatientIdentifier(patientId)
+                : Collections.emptyList();
+        LocalDateTime latestActivityDate = patient.getCreatedAt() != null ? patient.getCreatedAt() : LocalDateTime.now();
+        for (PatientVisit v : visits) {
+            if (v.getCreatedAt() != null && v.getCreatedAt().isAfter(latestActivityDate)) {
+                latestActivityDate = v.getCreatedAt();
+            }
+        }
+        int retentionYears = retentionPolicyService != null ? retentionPolicyService.getRetentionPeriodYears() : 8;
+        LocalDateTime legalErasureEligibleDate = latestActivityDate.plusYears(retentionYears);
+        LocalDateTime now = LocalDateTime.now();
+        String retentionStatus = (now.isAfter(legalErasureEligibleDate) || now.isEqual(legalErasureEligibleDate))
+                ? "ELIGIBLE"
+                : "PROTECTED";
+
+        String effectiveOverrideReason = overrideReason;
+        if (effectiveOverrideReason == null || effectiveOverrideReason.isBlank()) {
+            effectiveOverrideReason = "ELIGIBLE".equals(retentionStatus) ? "STATUTORY_EXPIRED" : "STANDARD_REQUEST";
         }
 
         LocalDateTime timestamp = LocalDateTime.now();
@@ -106,7 +179,6 @@ public class ErasureService {
         patientCacheService.evict(patientId);
 
         // 4. Shred all associated clinical visits & attachments and generate individual proofs
-        List<PatientVisit> visits = patientVisitRepository.findByPatientIdentifier(patientId);
         for (PatientVisit visit : visits) {
             if (!visit.isShredded()) {
                 String visitDiagnosis = (visit.getDiagnosis() != null && !"[SHREDDED]".equals(visit.getDiagnosis())) ? visit.getDiagnosis() : "General Consultation";
@@ -126,7 +198,7 @@ public class ErasureService {
 
                 // Build audit trail, Merkle proof, RSA signature for this visit
                 long visitProofStartTime = System.nanoTime();
-                String visitAuditTrail = buildVisitAuditTrail(visit.getId(), requestedBy, timestamp);
+                String visitAuditTrail = buildVisitAuditTrail(visit.getId(), requestedBy, effectiveOverrideReason, retentionStatus, timestamp);
                 String visitSha256 = sha256Hex(visitAuditTrail);
 
                 merkleTreeService.addLeaf(visitSha256);
@@ -150,6 +222,8 @@ public class ErasureService {
                         .patientId(patientId)
                         .vaultKeyName(visitVaultKeyName)
                         .requestedBy(requestedBy)
+                        .overrideReason(effectiveOverrideReason)
+                        .retentionStatus(retentionStatus)
                         .timestamp(timestamp)
                         .status("VISIT_DELETED")
                         .coveredStorageLayers(List.of("POSTGRES_DB", "KAFKA_EVENT_LOG", "REDIS_CACHE", "WORM_BACKUP"))
@@ -192,7 +266,7 @@ public class ErasureService {
 
         // 5. Build immutable audit trail, Merkle proof, and RSA digital signature
         long patientProofStartTime = System.nanoTime();
-        String auditTrail = buildPatientAuditTrail(patientId, visits.size(), requestedBy, timestamp);
+        String auditTrail = buildPatientAuditTrail(patientId, visits.size(), requestedBy, effectiveOverrideReason, retentionStatus, timestamp);
         String sha256Hash = sha256Hex(auditTrail);
 
         merkleTreeService.addLeaf(sha256Hash);
@@ -216,6 +290,8 @@ public class ErasureService {
                 .patientId(patientId)
                 .vaultKeyName(vaultKeyName)
                 .requestedBy(requestedBy)
+                .overrideReason(effectiveOverrideReason)
+                .retentionStatus(retentionStatus)
                 .timestamp(timestamp)
                 .status("PATIENT_DELETED")
                 .coveredStorageLayers(List.of("POSTGRES_DB", "KAFKA_EVENT_LOG", "REDIS_CACHE", "WORM_BACKUP"))
@@ -260,12 +336,30 @@ public class ErasureService {
      */
     @Transactional
     public VerifiableDeletionProofDto forgetVisit(UUID visitId, String requestedBy) {
+        return forgetVisit(visitId, requestedBy, null);
+    }
+
+    @Transactional
+    public VerifiableDeletionProofDto forgetVisit(UUID visitId, String requestedBy, String overrideReason) {
         long totalStartTime = System.nanoTime();
         PatientVisit visit = patientVisitRepository.findById(visitId)
                 .orElseThrow(() -> new IllegalArgumentException("Patient visit not found: " + visitId));
 
         if (visit.isShredded()) {
             throw new IllegalStateException("Visit " + visitId + " has already been shredded");
+        }
+
+        int retentionYears = retentionPolicyService != null ? retentionPolicyService.getRetentionPeriodYears() : 8;
+        LocalDateTime visitTime = visit.getCreatedAt() != null ? visit.getCreatedAt() : LocalDateTime.now();
+        LocalDateTime eligibleDate = visitTime.plusYears(retentionYears);
+        LocalDateTime now = LocalDateTime.now();
+        String retentionStatus = (now.isAfter(eligibleDate) || now.isEqual(eligibleDate))
+                ? "ELIGIBLE"
+                : "PROTECTED";
+
+        String effectiveOverrideReason = overrideReason;
+        if (effectiveOverrideReason == null || effectiveOverrideReason.isBlank()) {
+            effectiveOverrideReason = "ELIGIBLE".equals(retentionStatus) ? "STATUTORY_EXPIRED" : "STANDARD_REQUEST";
         }
 
         LocalDateTime timestamp = LocalDateTime.now();
@@ -286,7 +380,7 @@ public class ErasureService {
 
         // Build audit trail, Merkle tree leaf, and RSA signature
         long proofStartTime = System.nanoTime();
-        String auditTrail = buildVisitAuditTrail(visitId, requestedBy, timestamp);
+        String auditTrail = buildVisitAuditTrail(visitId, requestedBy, effectiveOverrideReason, retentionStatus, timestamp);
         String sha256Hash = sha256Hex(auditTrail);
 
         merkleTreeService.addLeaf(sha256Hash);
@@ -312,6 +406,8 @@ public class ErasureService {
                 .patientId(visit.getPatient() != null ? visit.getPatient().getPatientId() : visit.getMrn())
                 .vaultKeyName(vaultKeyName)
                 .requestedBy(requestedBy)
+                .overrideReason(effectiveOverrideReason)
+                .retentionStatus(retentionStatus)
                 .timestamp(timestamp)
                 .status("VISIT_DELETED")
                 .coveredStorageLayers(List.of("POSTGRES_DB", "KAFKA_EVENT_LOG", "REDIS_CACHE", "WORM_BACKUP"))
@@ -455,6 +551,11 @@ public class ErasureService {
 
         // Step 3: Evict from Redis cache
         patientVisitCacheService.evict(visit.getId());
+        if (visit.getPatient() != null && visit.getPatient().getPatientId() != null) {
+            patientCacheService.evict(visit.getPatient().getPatientId());
+        } else if (visit.getMrn() != null) {
+            patientCacheService.evict(visit.getMrn());
+        }
     }
 
     private void destroyKeyInVault(EncryptionKey key, LocalDateTime timestamp) {
@@ -552,14 +653,22 @@ public class ErasureService {
                 identifier, timestamp, sha256Hash, merkleRoot);
     }
 
+    private String buildPatientAuditTrail(String patientId, int visitsShredded, String requestedBy, String overrideReason, String retentionStatus, LocalDateTime timestamp) {
+        return String.format("ACTION=CRYPTO_SHRED_PATIENT|PATIENT_ID=%s|VISITS_COUNT=%d|REQUESTED_BY=%s|RETENTION_STATUS=%s|OVERRIDE_REASON=%s|STORAGE_LAYERS=POSTGRES_DB,KAFKA_EVENT_LOG,REDIS_CACHE,WORM_BACKUP|TIMESTAMP=%s",
+                patientId, visitsShredded, requestedBy, retentionStatus != null ? retentionStatus : "ELIGIBLE", overrideReason != null ? overrideReason : "STATUTORY_EXPIRED", timestamp);
+    }
+
     private String buildPatientAuditTrail(String patientId, int visitsShredded, String requestedBy, LocalDateTime timestamp) {
-        return String.format("ACTION=CRYPTO_SHRED_PATIENT|PATIENT_ID=%s|VISITS_COUNT=%d|REQUESTED_BY=%s|STORAGE_LAYERS=POSTGRES_DB,KAFKA_EVENT_LOG,REDIS_CACHE,WORM_BACKUP|TIMESTAMP=%s",
-                patientId, visitsShredded, requestedBy, timestamp);
+        return buildPatientAuditTrail(patientId, visitsShredded, requestedBy, "STATUTORY_EXPIRED", "ELIGIBLE", timestamp);
+    }
+
+    private String buildVisitAuditTrail(UUID visitId, String requestedBy, String overrideReason, String retentionStatus, LocalDateTime timestamp) {
+        return String.format("ACTION=CRYPTO_SHRED_VISIT|VISIT_ID=%s|REQUESTED_BY=%s|RETENTION_STATUS=%s|OVERRIDE_REASON=%s|STORAGE_LAYERS=POSTGRES_DB,KAFKA_EVENT_LOG,REDIS_CACHE,WORM_BACKUP|TIMESTAMP=%s",
+                visitId, requestedBy, retentionStatus != null ? retentionStatus : "ELIGIBLE", overrideReason != null ? overrideReason : "STATUTORY_EXPIRED", timestamp);
     }
 
     private String buildVisitAuditTrail(UUID visitId, String requestedBy, LocalDateTime timestamp) {
-        return String.format("ACTION=CRYPTO_SHRED_VISIT|VISIT_ID=%s|REQUESTED_BY=%s|STORAGE_LAYERS=POSTGRES_DB,KAFKA_EVENT_LOG,REDIS_CACHE,WORM_BACKUP|TIMESTAMP=%s",
-                visitId, requestedBy, timestamp);
+        return buildVisitAuditTrail(visitId, requestedBy, "STATUTORY_EXPIRED", "ELIGIBLE", timestamp);
     }
 
     private String sha256Hex(String input) {

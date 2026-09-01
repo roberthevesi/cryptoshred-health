@@ -263,6 +263,10 @@ public class SyntheticMedicalDataGenerator {
     }
 
     public PatientRequest toPatientRequest(PatientTemplate t, List<GpResponse> seededGps) {
+        return toPatientRequest(t, -1, seededGps);
+    }
+
+    public PatientRequest toPatientRequest(PatientTemplate t, int patientIndex, List<GpResponse> seededGps) {
         PatientRequest req = new PatientRequest();
         req.setPatientId(t.patientId());
         req.setFirstName(t.firstName());
@@ -288,6 +292,19 @@ public class SyntheticMedicalDataGenerator {
             int idx = t.primaryGpIndex() % seededGps.size();
             req.setGpId(seededGps.get(idx).getId());
         }
+
+        // Cohort A (first 50 patients) registered between 2012 and 2013; Cohort B registered between 2022 and 2023
+        boolean isCohortA = patientIndex >= 0
+                ? patientIndex < 50
+                : ("PAT-49201".equals(t.patientId()) || (t.patientId().startsWith("PAT-100") && t.patientId().length() == 9 && Integer.parseInt(t.patientId().substring(4)) <= 10050));
+
+        int dayOffset = Math.abs(pHash) % 25;
+        if (isCohortA) {
+            req.setCreatedAt(java.time.LocalDateTime.of(2012, 1, 10, 9, 30).plusDays(dayOffset));
+        } else {
+            req.setCreatedAt(java.time.LocalDateTime.of(2022, 5, 15, 9, 30).plusDays(dayOffset));
+        }
+
         return req;
     }
 
@@ -295,21 +312,36 @@ public class SyntheticMedicalDataGenerator {
     public List<PatientVisitRequest> generateVisitsForPatient(PatientTemplate pt, int patientIndex, List<GpResponse> seededGps) {
         List<PatientVisitRequest> visits = new ArrayList<>(10);
 
-        // Calculate chronological dates spanning 12-24 months in the past
-        // Patient index offset ensures slight realistic spread across the calendar
         int dayOffset = patientIndex % 10;
-        LocalDate[] visitDates = new LocalDate[]{
-                LocalDate.of(2024, 9, 2).plusDays(dayOffset),
-                LocalDate.of(2024, 11, 14).plusDays(dayOffset),
-                LocalDate.of(2025, 1, 20).plusDays(dayOffset),
-                LocalDate.of(2025, 3, 25).plusDays(dayOffset),
-                LocalDate.of(2025, 6, 5).plusDays(dayOffset),
-                LocalDate.of(2025, 8, 18).plusDays(dayOffset),
-                LocalDate.of(2025, 10, 28).plusDays(dayOffset),
-                LocalDate.of(2026, 1, 15).plusDays(dayOffset),
-                LocalDate.of(2026, 4, 10).plusDays(dayOffset),
-                LocalDate.of(2026, 7, 8).plusDays(dayOffset)
-        };
+        boolean isHistoricalCohort = patientIndex < 50;
+
+        // Cohort A (0-49): historical encounters between 2013 and 2017 (last visit > 8 years ago -> ELIGIBLE)
+        // Cohort B (50-99): active encounters between 2023 and 2026 (last visit 0-4 years ago -> PROTECTED)
+        LocalDate[] visitDates = isHistoricalCohort
+                ? new LocalDate[]{
+                    LocalDate.of(2013, 2, 10).plusDays(dayOffset),
+                    LocalDate.of(2013, 7, 15).plusDays(dayOffset),
+                    LocalDate.of(2014, 1, 20).plusDays(dayOffset),
+                    LocalDate.of(2014, 6, 12).plusDays(dayOffset),
+                    LocalDate.of(2014, 11, 5).plusDays(dayOffset),
+                    LocalDate.of(2015, 4, 18).plusDays(dayOffset),
+                    LocalDate.of(2015, 9, 22).plusDays(dayOffset),
+                    LocalDate.of(2016, 3, 14).plusDays(dayOffset),
+                    LocalDate.of(2016, 8, 29).plusDays(dayOffset),
+                    LocalDate.of(2017, 1, 16).plusDays(dayOffset)
+                }
+                : new LocalDate[]{
+                    LocalDate.of(2023, 9, 2).plusDays(dayOffset),
+                    LocalDate.of(2023, 11, 14).plusDays(dayOffset),
+                    LocalDate.of(2024, 1, 20).plusDays(dayOffset),
+                    LocalDate.of(2024, 3, 25).plusDays(dayOffset),
+                    LocalDate.of(2024, 6, 5).plusDays(dayOffset),
+                    LocalDate.of(2024, 8, 18).plusDays(dayOffset),
+                    LocalDate.of(2025, 2, 28).plusDays(dayOffset),
+                    LocalDate.of(2025, 6, 15).plusDays(dayOffset),
+                    LocalDate.of(2025, 11, 10).plusDays(dayOffset),
+                    LocalDate.of(2026, 5, 8).plusDays(dayOffset)
+                };
 
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 

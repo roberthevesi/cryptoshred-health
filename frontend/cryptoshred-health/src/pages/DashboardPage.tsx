@@ -8,6 +8,7 @@ import {
   Stethoscope,
   Users,
   ShieldAlert,
+  CalendarClock,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -16,6 +17,7 @@ import VerifyProofModal from '../components/VerifyProofModal';
 import GpManagementPanel from '../components/GpManagementPanel';
 import StaffManagementPanel from '../components/StaffManagementPanel';
 import PatientPortalView from '../components/PatientPortalView';
+import RetentionSettingsModal from '../components/RetentionSettingsModal';
 import apiClient from '../lib/axios';
 import type { Patient } from '../types';
 
@@ -38,9 +40,10 @@ export default function DashboardPage() {
 
   const [activeTab, setActiveTab] = useState<Tab>(isAdmin ? 'staff-management' : 'patients');
   const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
+  const [isRetentionModalOpen, setIsRetentionModalOpen] = useState(false);
 
   // Fetch Patients (Only for Clinicians / Auditors - Admins are excluded from viewing PHI)
-  const { data: patients = [] } = useQuery<Patient[]>({
+  const { data: patients = [], refetch: refetchPatients } = useQuery<Patient[]>({
     queryKey: ['patients'],
     queryFn: () => apiClient.get<Patient[]>('/patients?includeDeleted=true').then((r) => r.data),
     enabled: isClinicalStaff,
@@ -75,6 +78,15 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            {isAdmin && (
+              <button
+                onClick={() => setIsRetentionModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 border border-teal-200 text-teal-700 text-xs font-medium transition shadow-2xs"
+              >
+                <CalendarClock className="h-3.5 w-3.5 text-teal-600" />
+                Retention Policy
+              </button>
+            )}
             <button
               onClick={() => setIsVerifyModalOpen(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 text-xs font-medium transition"
@@ -214,6 +226,15 @@ export default function DashboardPage() {
         isOpen={isVerifyModalOpen}
         onClose={() => setIsVerifyModalOpen(false)}
         token={user?.token || ''}
+      />
+
+      <RetentionSettingsModal
+        isOpen={isRetentionModalOpen}
+        onClose={() => setIsRetentionModalOpen(false)}
+        token={user?.token || ''}
+        onPolicyUpdated={() => {
+          refetchPatients();
+        }}
       />
     </div>
   );

@@ -29,4 +29,5 @@ public class PatientRequest {
     private String insurancePolicyNumber;
     private String insuranceGroupNumber;
     private UUID gpId;
+    private java.time.LocalDateTime createdAt;
 }

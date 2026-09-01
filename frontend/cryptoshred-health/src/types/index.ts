@@ -115,6 +115,8 @@ export interface DeletionProof {
   merklePath?: string[];
   signatureAlgorithm?: string;
   digitalSignature?: string;
+  overrideReason?: string;
+  retentionStatus?: string;
   // Dual Hybrid Cryptography Fields
   classicalSignatureAlgorithm?: string;
   classicalDigitalSignature?: string;
@@ -194,8 +196,22 @@ export interface Patient {
   active?: boolean;
   shredded?: boolean;
   temporaryPassword?: string;
+  // Retention Horizon & Legal Erasure
+  latestActivityDate?: string;
+  retentionPeriodYears?: number;
+  legalErasureEligibleDate?: string;
+  retentionStatus?: 'ELIGIBLE' | 'PROTECTED' | 'SHREDDED';
+  retentionDaysRemaining?: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface RetentionPolicy {
+  retentionPeriodYears: number;
+  regulatoryStandard: string;
+  description: string;
+  lastUpdated: string;
+  updatedBy: string;
 }
 
 export interface PatientRequest {

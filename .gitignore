@@ -83,3 +83,6 @@ backend/benchmark-results/*.png
 # ── Gemini / Agent Metadata ────────────────────────────────────────────────
 .gemini/
 .knowledge/
+
+# ── Written Academic Thesis ────────────────────────────────────────────────
+thesis/

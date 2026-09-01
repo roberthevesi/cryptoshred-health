@@ -32,9 +32,10 @@ public class ErasureController {
     @PreAuthorize("hasAnyRole('DOCTOR', 'AUDITOR', 'ADMIN')")
     public ResponseEntity<VerifiableDeletionProofDto> forgetPatient(
             @PathVariable String patientId,
+            @RequestParam(value = "overrideReason", required = false) String overrideReason,
             @AuthenticationPrincipal UserDetails currentUser) {
         VerifiableDeletionProofDto proof =
-                erasureService.forgetPatient(patientId, currentUser.getUsername());
+                erasureService.forgetPatient(patientId, currentUser.getUsername(), overrideReason);
         return ResponseEntity.ok(proof);
     }
 
@@ -47,9 +48,10 @@ public class ErasureController {
     @PreAuthorize("hasAnyRole('DOCTOR', 'AUDITOR', 'ADMIN')")
     public ResponseEntity<VerifiableDeletionProofDto> forgetVisit(
             @PathVariable UUID visitId,
+            @RequestParam(value = "overrideReason", required = false) String overrideReason,
             @AuthenticationPrincipal UserDetails currentUser) {
         VerifiableDeletionProofDto proof =
-                erasureService.forgetVisit(visitId, currentUser.getUsername());
+                erasureService.forgetVisit(visitId, currentUser.getUsername(), overrideReason);
         return ResponseEntity.ok(proof);
     }
 

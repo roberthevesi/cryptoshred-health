@@ -119,7 +119,7 @@ public class DataPopulationService {
             }
 
             try {
-                PatientRequest pReq = dataGenerator.toPatientRequest(pt, seededGps);
+                PatientRequest pReq = dataGenerator.toPatientRequest(pt, i, seededGps);
                 PatientResponse savedPatient = patientService.create(pReq);
                 totalPatientsSeeded++;
 

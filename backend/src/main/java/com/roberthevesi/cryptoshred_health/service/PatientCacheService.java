@@ -59,4 +59,16 @@ public class PatientCacheService {
             log.warn("Failed to evict patient {} from Redis: {}", patientId, e.getMessage());
         }
     }
+
+    public void evictAll() {
+        try {
+            var keys = redisTemplate.keys(CACHE_PREFIX + "*");
+            if (keys != null && !keys.isEmpty()) {
+                redisTemplate.delete(keys);
+                log.info("🗑️ [REDIS EVICT ALL] Flushed all {} cached patient profiles", keys.size());
+            }
+        } catch (Exception e) {
+            log.warn("Failed to evict all patient caches from Redis: {}", e.getMessage());
+        }
+    }
 }

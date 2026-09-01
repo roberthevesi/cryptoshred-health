@@ -36,6 +36,8 @@ public class VerifiableDeletionProofDto {
 
     private String auditTrail;
     private String auditTrailHash;
+    private String overrideReason;
+    private String retentionStatus;
 
     private String merkleRoot;
     private List<String> merklePath;

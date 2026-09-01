@@ -18,11 +18,20 @@ import {
   Phone,
   Mail,
   Users,
+  CalendarClock,
+  Clock,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import apiClient from '../lib/axios';
 import { useAuth } from '../contexts/AuthContext';
 import PatientFormModal from './PatientFormModal';
 import type { Patient } from '../types';
+
+type CensusTab = 'active' | 'inactive' | 'shredded' | 'all';
+type SortField = 'name' | 'retention' | 'status';
+type SortDirection = 'asc' | 'desc';
 
 export default function PatientCensusTable() {
   const { user } = useAuth();
@@ -30,11 +39,13 @@ export default function PatientCensusTable() {
   const queryClient = useQueryClient();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeCensusTab, setActiveCensusTab] = useState<'active' | 'inactive' | 'shredded' | 'all'>('active');
+  const [activeCensusTab, setActiveCensusTab] = useState<CensusTab>('active');
   const [selectedPatientForEdit, setSelectedPatientForEdit] = useState<Patient | null>(null);
   const [showPatientModal, setShowPatientModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   // 1. Fetch Patients from /api/patients (includes shredded records)
   const {
@@ -53,6 +64,20 @@ export default function PatientCensusTable() {
   const inactiveCount = patients.filter((p) => !p.shredded && (p.isActive === false || p.active === false)).length;
   const shreddedCount = patients.filter((p) => !!p.shredded).length;
   const totalCount = patients.length;
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      if (sortDirection === 'asc') {
+        setSortDirection('desc');
+      } else {
+        setSortField(null);
+        setSortDirection('asc');
+      }
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
 
   const getAge = (dobString?: string) => {
     if (!dobString) return null;
@@ -97,12 +122,50 @@ export default function PatientCensusTable() {
     );
   });
 
+  // Sort patients
+  const sortedPatients = [...filteredPatients].sort((a, b) => {
+    if (!sortField) return 0;
+
+    if (sortField === 'name') {
+      const nameA = a.shredded ? '[SHREDDED]' : `${a.firstName || ''} ${a.lastName || ''}`.trim().toLowerCase();
+      const nameB = b.shredded ? '[SHREDDED]' : `${b.firstName || ''} ${b.lastName || ''}`.trim().toLowerCase();
+      const cmp = nameA.localeCompare(nameB);
+      return sortDirection === 'asc' ? cmp : -cmp;
+    }
+
+    if (sortField === 'retention') {
+      // Put shredded patients at the end
+      if (a.shredded && !b.shredded) return 1;
+      if (!a.shredded && b.shredded) return -1;
+      if (a.shredded && b.shredded) return 0;
+
+      const timeA = a.legalErasureEligibleDate ? new Date(a.legalErasureEligibleDate).getTime() : 0;
+      const timeB = b.legalErasureEligibleDate ? new Date(b.legalErasureEligibleDate).getTime() : 0;
+      const cmp = timeA - timeB;
+      return sortDirection === 'asc' ? cmp : -cmp;
+    }
+
+    if (sortField === 'status') {
+      const getStatusRank = (p: Patient) => {
+        if (p.shredded) return '5_SHREDDED';
+        if (p.isActive === false || p.active === false) return '4_INACTIVE';
+        if (p.retentionStatus === 'PROTECTED') return '2_PROTECTED';
+        if (p.retentionStatus === 'ELIGIBLE') return '1_ELIGIBLE';
+        return '3_ACTIVE';
+      };
+      const cmp = getStatusRank(a).localeCompare(getStatusRank(b));
+      return sortDirection === 'asc' ? cmp : -cmp;
+    }
+
+    return 0;
+  });
+
   // Pagination calculation
-  const totalPages = Math.max(1, Math.ceil(filteredPatients.length / pageSize));
+  const totalPages = Math.max(1, Math.ceil(sortedPatients.length / pageSize));
   const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
   const startIndex = (validCurrentPage - 1) * pageSize;
-  const endIndex = Math.min(startIndex + pageSize, filteredPatients.length);
-  const paginatedPatients = filteredPatients.slice(startIndex, endIndex);
+  const endIndex = Math.min(startIndex + pageSize, sortedPatients.length);
+  const paginatedPatients = sortedPatients.slice(startIndex, endIndex);
 
   const getPageNumbers = (current: number, total: number): (number | string)[] => {
     if (total <= 7) {
@@ -151,7 +214,7 @@ export default function PatientCensusTable() {
               </span>
             </h2>
             <p className="text-xs text-slate-500">
-              Click any patient to open their comprehensive clinical chart file and manage their medical visits.
+              Click any patient to open their clinical file, or sort by Name, Retention Horizon, or Status.
             </p>
           </div>
 
@@ -187,7 +250,7 @@ export default function PatientCensusTable() {
           </div>
         </div>
 
-        {/* Census Tab Navigation */}
+        {/* Census Tab Navigation & Sort Indicators */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
           <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200 text-xs font-medium">
             {/* 1. Active Patients */}
@@ -224,7 +287,7 @@ export default function PatientCensusTable() {
               }`}
             >
               <UserX className={`h-3.5 w-3.5 ${activeCensusTab === 'inactive' ? 'text-amber-600' : 'text-slate-400'}`} />
-              <span>Inactive Patients</span>
+              <span>Inactive</span>
               <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
                 activeCensusTab === 'inactive' ? 'bg-amber-100 text-amber-800 font-bold' : 'bg-slate-200 text-slate-600'
               }`}>
@@ -245,7 +308,7 @@ export default function PatientCensusTable() {
               }`}
             >
               <ShieldOff className={`h-3.5 w-3.5 ${activeCensusTab === 'shredded' ? 'text-rose-600' : 'text-slate-400'}`} />
-              <span>Crypto-Shredded Patients</span>
+              <span>Crypto-Shredded</span>
               <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
                 activeCensusTab === 'shredded' ? 'bg-rose-100 text-rose-800 font-bold' : 'bg-slate-200 text-slate-600'
               }`}>
@@ -266,14 +329,26 @@ export default function PatientCensusTable() {
               }`}
             >
               <Users className={`h-3.5 w-3.5 ${activeCensusTab === 'all' ? 'text-slate-700' : 'text-slate-400'}`} />
-              <span>All Patients</span>
-              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-                activeCensusTab === 'all' ? 'bg-slate-200 text-slate-900 font-bold' : 'bg-slate-200 text-slate-600'
-              }`}>
-                {totalCount}
-              </span>
+              <span>All ({totalCount})</span>
             </button>
           </div>
+
+          {/* Quick Sort Info / Badge */}
+          {sortField && (
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <span>Sorted by:</span>
+              <span className="font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                {sortField === 'name' ? 'Name' : sortField === 'retention' ? 'Retention Horizon' : 'Status'}
+                {sortDirection === 'asc' ? ' (A→Z / Earliest)' : ' (Z→A / Latest)'}
+              </span>
+              <button
+                onClick={() => setSortField(null)}
+                className="text-slate-400 hover:text-slate-600 underline text-[11px]"
+              >
+                Reset
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Patients Table */}
@@ -282,18 +357,58 @@ export default function PatientCensusTable() {
             <table className="w-full text-left text-xs">
               <thead className="border-b border-slate-200 bg-slate-50 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
                 <tr>
-                  <th className="py-3.5 pl-4 pr-2 whitespace-nowrap min-w-[210px]">Patient Name &amp; ID</th>
+                  <th
+                    onClick={() => handleSort('name')}
+                    className="py-3.5 pl-4 pr-2 whitespace-nowrap min-w-[210px] cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                    title="Click to sort by Name (ASC / DESC)"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Patient Name &amp; ID</span>
+                      {sortField === 'name' ? (
+                        sortDirection === 'asc' ? <ArrowUp className="h-3.5 w-3.5 text-blue-600" /> : <ArrowDown className="h-3.5 w-3.5 text-blue-600" />
+                      ) : (
+                        <ArrowUpDown className="h-3.5 w-3.5 text-slate-400 opacity-60 hover:opacity-100" />
+                      )}
+                    </div>
+                  </th>
                   <th className="py-3.5 px-3 whitespace-nowrap min-w-[130px]">Demographics</th>
                   <th className="py-3.5 px-3 whitespace-nowrap min-w-[180px]">Assigned GP</th>
                   <th className="py-3.5 px-3 whitespace-nowrap min-w-[180px]">Contact</th>
-                  <th className="py-3.5 px-3 whitespace-nowrap min-w-[110px]">Status</th>
+                  <th
+                    onClick={() => handleSort('retention')}
+                    className="py-3.5 px-3 whitespace-nowrap min-w-[170px] cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                    title="Click to sort by Retention Horizon (Earliest / Latest)"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Retention Horizon</span>
+                      {sortField === 'retention' ? (
+                        sortDirection === 'asc' ? <ArrowUp className="h-3.5 w-3.5 text-blue-600" /> : <ArrowDown className="h-3.5 w-3.5 text-blue-600" />
+                      ) : (
+                        <ArrowUpDown className="h-3.5 w-3.5 text-slate-400 opacity-60 hover:opacity-100" />
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleSort('status')}
+                    className="py-3.5 px-3 whitespace-nowrap min-w-[110px] cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                    title="Click to sort by Status"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Status</span>
+                      {sortField === 'status' ? (
+                        sortDirection === 'asc' ? <ArrowUp className="h-3.5 w-3.5 text-blue-600" /> : <ArrowDown className="h-3.5 w-3.5 text-blue-600" />
+                      ) : (
+                        <ArrowUpDown className="h-3.5 w-3.5 text-slate-400 opacity-60 hover:opacity-100" />
+                      )}
+                    </div>
+                  </th>
                   <th className="py-3.5 pl-3 pr-4 text-right whitespace-nowrap min-w-[130px]">Patient File</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredPatients.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-12 text-center text-slate-500">
+                    <td colSpan={7} className="py-12 text-center text-slate-500">
                       {patients.length === 0
                         ? 'No patients registered in the database yet. Click "Register Patient" above to add the first patient.'
                         : 'No matching patients found in registry.'}
@@ -424,7 +539,37 @@ export default function PatientCensusTable() {
                           )}
                         </td>
 
-                        {/* 5. Status */}
+                        {/* 5. Retention Horizon */}
+                        <td className="py-3.5 px-3 whitespace-nowrap">
+                          {isShredded ? (
+                            <div className="space-y-0.5">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-500 text-[10px] font-mono font-bold">
+                                ⚪ Shredded
+                              </span>
+                              <span className="text-[10px] text-slate-400 block font-mono">Zero-purge unreadable</span>
+                            </div>
+                          ) : patient.retentionStatus === 'ELIGIBLE' ? (
+                            <div className="space-y-0.5">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold">
+                                🟢 Erasure Eligible
+                              </span>
+                              <span className="text-[10px] text-slate-500 block font-mono" title={patient.legalErasureEligibleDate ? `Retention expired on ${new Date(patient.legalErasureEligibleDate).toLocaleDateString()}` : undefined}>
+                                {patient.legalErasureEligibleDate ? `Expired ${new Date(patient.legalErasureEligibleDate).toLocaleDateString()}` : 'Statutory expired'}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="space-y-0.5">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold">
+                                🟡 Protected
+                              </span>
+                              <span className="text-[10px] text-slate-500 block font-mono" title={patient.legalErasureEligibleDate ? `Protected until ${new Date(patient.legalErasureEligibleDate).toLocaleDateString()}` : undefined}>
+                                {patient.retentionDaysRemaining != null ? `${Math.ceil(patient.retentionDaysRemaining / 365)}y (${patient.retentionDaysRemaining}d left)` : 'Active retention'}
+                              </span>
+                            </div>
+                          )}
+                        </td>
+
+                        {/* 6. Status */}
                         <td className="py-3.5 px-3 whitespace-nowrap">
                           {isShredded ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-100 border border-rose-300 text-rose-800 text-[10px] font-bold">

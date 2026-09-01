@@ -179,7 +179,13 @@ class SyntheticMedicalDataGeneratorTest {
                 // Timestamps & Visit Dates
                 assertNotNull(visit.getCreatedAt(), "Visit createdAt timestamp must not be null");
                 assertNotNull(visit.getVisitDate(), "Visit date must not be null");
-                assertTrue(visit.getCreatedAt().getYear() >= 2024, "Visit must be recent (2024-2026)");
+                if (i < 50) {
+                    assertTrue(visit.getCreatedAt().getYear() >= 2013 && visit.getCreatedAt().getYear() <= 2017,
+                            "Cohort A (0-49) visit must be historical (2013-2017) for retention eligibility");
+                } else {
+                    assertTrue(visit.getCreatedAt().getYear() >= 2023 && visit.getCreatedAt().getYear() <= 2026,
+                            "Cohort B (50-99) visit must be recent (2023-2026) for active retention protection");
+                }
 
                 // Verify Chronological ordering of Follow-up dates
                 assertNotNull(visit.getFollowUpDate());
