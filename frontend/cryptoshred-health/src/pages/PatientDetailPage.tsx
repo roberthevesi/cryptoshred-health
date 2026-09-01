@@ -537,7 +537,7 @@ export default function PatientDetailPage() {
               </div>
             </div>
 
-            {/* Right: Assigned GP Surgery Card */}
+            {/* Right: Assigned GP Card */}
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 min-w-[260px]">
               <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block mb-1">
                 Assigned Primary Care GP
