@@ -23,6 +23,7 @@ interface ConfirmationModalProps {
   cancelLabel?: string;
   variant?: ConfirmationVariant;
   isLoading?: boolean;
+  children?: React.ReactNode;
 }
 
 export default function ConfirmationModal({
@@ -36,6 +37,7 @@ export default function ConfirmationModal({
   cancelLabel = 'Cancel',
   variant = 'danger',
   isLoading = false,
+  children,
 }: ConfirmationModalProps) {
   // Close on Escape key
   useEffect(() => {
@@ -123,6 +125,8 @@ export default function ConfirmationModal({
               </span>
             </div>
           )}
+
+          {children}
         </div>
 
         {/* Footer */}

@@ -12,9 +12,9 @@ import com.roberthevesi.cryptoshred_health.model.Role;
 import com.roberthevesi.cryptoshred_health.model.User;
 import com.roberthevesi.cryptoshred_health.repository.GpRepository;
 import com.roberthevesi.cryptoshred_health.repository.PatientRepository;
+import com.roberthevesi.cryptoshred_health.repository.PatientVisitRepository;
 import com.roberthevesi.cryptoshred_health.repository.UserRepository;
 import com.roberthevesi.cryptoshred_health.util.TemporaryPasswordGenerator;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +41,8 @@ public class PatientService {
     private final ObjectMapper objectMapper;
     private final PatientCacheService patientCacheService;
     private final EventLogPublisher eventLogPublisher;
+    private final PatientVisitRepository patientVisitRepository;
+    private final RetentionPolicyService retentionPolicyService;
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private CryptoMetricsService cryptoMetricsService;
@@ -56,7 +58,9 @@ public class PatientService {
             CryptoService cryptoService,
             ObjectMapper objectMapper,
             PatientCacheService patientCacheService,
-            EventLogPublisher eventLogPublisher) {
+            EventLogPublisher eventLogPublisher,
+            PatientVisitRepository patientVisitRepository,
+            RetentionPolicyService retentionPolicyService) {
         this.patientRepository = patientRepository;
         this.gpRepository = gpRepository;
         this.userRepository = userRepository;
@@ -67,6 +71,23 @@ public class PatientService {
         this.objectMapper = objectMapper;
         this.patientCacheService = patientCacheService;
         this.eventLogPublisher = eventLogPublisher;
+        this.patientVisitRepository = patientVisitRepository;
+        this.retentionPolicyService = retentionPolicyService;
+    }
+
+    public PatientService(
+            PatientRepository patientRepository,
+            GpRepository gpRepository,
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            VaultKmsService vaultKmsService,
+            EnvelopeEncryptionService envelopeEncryptionService,
+            CryptoService cryptoService,
+            ObjectMapper objectMapper,
+            PatientCacheService patientCacheService,
+            EventLogPublisher eventLogPublisher) {
+        this(patientRepository, gpRepository, userRepository, passwordEncoder, vaultKmsService,
+                envelopeEncryptionService, cryptoService, objectMapper, patientCacheService, eventLogPublisher, null, new RetentionPolicyService(8));
     }
 
     public PatientService(
@@ -82,7 +103,7 @@ public class PatientService {
             EventLogPublisher eventLogPublisher,
             CryptoMetricsService cryptoMetricsService) {
         this(patientRepository, gpRepository, userRepository, passwordEncoder, vaultKmsService,
-                envelopeEncryptionService, cryptoService, objectMapper, patientCacheService, eventLogPublisher);
+                envelopeEncryptionService, cryptoService, objectMapper, patientCacheService, eventLogPublisher, null, new RetentionPolicyService(8));
         this.cryptoMetricsService = cryptoMetricsService;
     }
 
@@ -97,7 +118,7 @@ public class PatientService {
             PatientCacheService patientCacheService,
             EventLogPublisher eventLogPublisher) {
         this(patientRepository, gpRepository, userRepository, passwordEncoder, vaultKmsService,
-                envelopeEncryptionService, new CryptoService(), objectMapper, patientCacheService, eventLogPublisher);
+                envelopeEncryptionService, new CryptoService(), objectMapper, patientCacheService, eventLogPublisher, null, new RetentionPolicyService(8));
     }
 
     @Transactional(readOnly = true)
@@ -390,6 +411,11 @@ public class PatientService {
             }
         }
 
+        if (request.getCreatedAt() != null) {
+            patient.setCreatedAt(request.getCreatedAt());
+            patient.setUpdatedAt(request.getCreatedAt());
+        }
+
         Patient saved = patientRepository.save(patient);
 
         eventLogPublisher.publishEvent(PatientVisitEventDto.builder()
@@ -676,6 +702,47 @@ public class PatientService {
             insuranceGroupNumber = null;
         }
 
+        // ── Calculate Rolling Retention Horizon ─────────────────────────────
+        int retentionYears = retentionPolicyService != null
+                ? retentionPolicyService.getRetentionPeriodYears()
+                : 8;
+
+        LocalDateTime latestActivityDate = patient.getCreatedAt() != null ? patient.getCreatedAt() : LocalDateTime.now();
+
+        if (patientVisitRepository != null && (patient.getId() != null || patient.getPatientId() != null)) {
+            try {
+                LocalDateTime maxVisitCreatedAt = patientVisitRepository.findMaxActiveCreatedAtByPatient(patient.getId(), patient.getPatientId());
+                if (maxVisitCreatedAt != null && maxVisitCreatedAt.isAfter(latestActivityDate)) {
+                    latestActivityDate = maxVisitCreatedAt;
+                }
+            } catch (Exception ex) {
+                log.warn("Failed to query max active visit createdAt for patient {}: {}", patient.getPatientId(), ex.getMessage());
+            }
+        } else if (patient.getVisits() != null && !patient.getVisits().isEmpty()) {
+            for (com.roberthevesi.cryptoshred_health.model.PatientVisit v : patient.getVisits()) {
+                if (!v.isShredded() && v.getCreatedAt() != null && v.getCreatedAt().isAfter(latestActivityDate)) {
+                    latestActivityDate = v.getCreatedAt();
+                }
+            }
+        }
+
+        LocalDateTime legalErasureEligibleDate = latestActivityDate.plusYears(retentionYears);
+        LocalDateTime now = LocalDateTime.now();
+
+        String retentionStatus;
+        long retentionDaysRemaining;
+
+        if (isShredded) {
+            retentionStatus = "SHREDDED";
+            retentionDaysRemaining = 0L;
+        } else if (now.isAfter(legalErasureEligibleDate) || now.isEqual(legalErasureEligibleDate)) {
+            retentionStatus = "ELIGIBLE";
+            retentionDaysRemaining = 0L;
+        } else {
+            retentionStatus = "PROTECTED";
+            retentionDaysRemaining = Math.max(0L, java.time.temporal.ChronoUnit.DAYS.between(now, legalErasureEligibleDate));
+        }
+
         return PatientResponse.builder()
                 .id(patient.getId())
                 .patientId(patient.getPatientId())
@@ -697,6 +764,11 @@ public class PatientService {
                 .gp(patient.getGp() != null ? toGpResponse(patient.getGp()) : null)
                 .isActive(patient.isActive() && !isShredded)
                 .shredded(isShredded)
+                .latestActivityDate(latestActivityDate)
+                .retentionPeriodYears(retentionYears)
+                .legalErasureEligibleDate(legalErasureEligibleDate)
+                .retentionStatus(retentionStatus)
+                .retentionDaysRemaining(retentionDaysRemaining)
                 .createdAt(patient.getCreatedAt())
                 .updatedAt(patient.getUpdatedAt())
                 .build();

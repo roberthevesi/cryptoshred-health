@@ -6,9 +6,14 @@ import com.roberthevesi.cryptoshred_health.model.Role;
 import com.roberthevesi.cryptoshred_health.model.User;
 import com.roberthevesi.cryptoshred_health.repository.UserRepository;
 import com.roberthevesi.cryptoshred_health.service.DataPopulationService;
+import com.roberthevesi.cryptoshred_health.service.PatientCacheService;
 import com.roberthevesi.cryptoshred_health.util.TemporaryPasswordGenerator;
+import com.roberthevesi.cryptoshred_health.dto.RetentionPolicyDto;
+import com.roberthevesi.cryptoshred_health.service.RetentionPolicyService;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -21,19 +26,73 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * Admin-only endpoint for provisioning staff accounts (DOCTOR, AUDITOR, ADMIN)
- * and triggering on-demand synthetic clinical data population.
+ * Admin-only endpoint for provisioning staff accounts (DOCTOR, AUDITOR, ADMIN),
+ * managing statutory data retention policies, and triggering on-demand synthetic clinical data population.
  * Public self-registration is disabled; patient accounts are provisioned via clinical registration.
  */
 @RestController
 @RequestMapping("/api/admin")
-@RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminController {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final DataPopulationService dataPopulationService;
+    private final RetentionPolicyService retentionPolicyService;
+    private final PatientCacheService patientCacheService;
+
+    @Autowired
+    public AdminController(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            DataPopulationService dataPopulationService,
+            RetentionPolicyService retentionPolicyService,
+            @Autowired(required = false) PatientCacheService patientCacheService) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.dataPopulationService = dataPopulationService;
+        this.retentionPolicyService = retentionPolicyService;
+        this.patientCacheService = patientCacheService;
+    }
+
+    public AdminController(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            DataPopulationService dataPopulationService) {
+        this(userRepository, passwordEncoder, dataPopulationService, new RetentionPolicyService(8), null);
+    }
+
+    /**
+     * Get system-wide statutory retention policy configuration.
+     */
+    @GetMapping("/retention-policy")
+    public ResponseEntity<RetentionPolicyDto> getRetentionPolicy() {
+        return ResponseEntity.ok(retentionPolicyService.getRetentionPolicy());
+    }
+
+    /**
+     * Update statutory retention policy period in years.
+     */
+    @PutMapping("/retention-policy")
+    public ResponseEntity<RetentionPolicyDto> updateRetentionPolicy(
+            @RequestBody Map<String, Object> body,
+            @AuthenticationPrincipal UserDetails currentUser) {
+        if (body == null || !body.containsKey("retentionPeriodYears")) {
+            throw new IllegalArgumentException("Field 'retentionPeriodYears' is required.");
+        }
+        int years;
+        try {
+            years = Integer.parseInt(body.get("retentionPeriodYears").toString());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid retentionPeriodYears value: " + body.get("retentionPeriodYears"));
+        }
+        String adminUser = currentUser != null ? currentUser.getUsername() : "ADMIN";
+        RetentionPolicyDto updated = retentionPolicyService.updateRetentionPolicy(years, adminUser);
+        if (patientCacheService != null) {
+            patientCacheService.evictAll();
+        }
+        return ResponseEntity.ok(updated);
+    }
 
     /**
      * Trigger on-demand pre-population of synthetic clinical data (100 patients, 1,000 visits, attachments, 25 shredded records).

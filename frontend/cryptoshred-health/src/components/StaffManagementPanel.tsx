@@ -12,12 +12,17 @@ import {
   Calendar,
   CheckCircle2,
   Pencil,
+  Sparkles,
+  CalendarClock,
+  RefreshCw,
+  Check,
 } from 'lucide-react';
 import apiClient from '../lib/axios';
 import { useAuth } from '../contexts/AuthContext';
 import StaffProvisionModal from './StaffProvisionModal';
 import StaffEditModal from './StaffEditModal';
 import ConfirmationModal from './ConfirmationModal';
+import RetentionSettingsModal from './RetentionSettingsModal';
 import type { AdminUser, Role } from '../types';
 
 export default function StaffManagementPanel() {
@@ -27,9 +32,11 @@ export default function StaffManagementPanel() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<'ALL' | Role>('ALL');
   const [isProvisionModalOpen, setIsProvisionModalOpen] = useState(false);
+  const [isRetentionModalOpen, setIsRetentionModalOpen] = useState(false);
   const [editingStaffUser, setEditingStaffUser] = useState<AdminUser | null>(null);
   const [deletingStaffUser, setDeletingStaffUser] = useState<AdminUser | null>(null);
   const [error, setError] = useState('');
+  const [seedSuccessMsg, setSeedSuccessMsg] = useState('');
 
   const { data: staffList = [], isLoading } = useQuery<AdminUser[]>({
     queryKey: ['admin-users'],
@@ -51,6 +58,26 @@ export default function StaffManagementPanel() {
     },
   });
 
+  const seedMutation = useMutation({
+    mutationFn: () => apiClient.post('/admin/seed-data'),
+    onSuccess: () => {
+      setError('');
+      setSeedSuccessMsg(
+        'Successfully populated 100 synthetic clinical records (50 eligible / 50 under retention), 1,000 visits, attachments, and 25 Merkle DAG proofs.'
+      );
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      queryClient.invalidateQueries({ queryKey: ['patients'] });
+      queryClient.invalidateQueries({ queryKey: ['gps'] });
+      setTimeout(() => setSeedSuccessMsg(''), 8000);
+    },
+    onError: (err: unknown) => {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        'Failed to seed synthetic medical data.';
+      setError(msg);
+    },
+  });
+
   const filteredStaff = staffList.filter((u) => {
     const matchesSearch =
       u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -68,29 +95,75 @@ export default function StaffManagementPanel() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Top Banner & Action */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Top Banner & Actions */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-bold text-slate-900">Hospital Staff &amp; Access Directory</h2>
+            <h2 className="text-lg font-bold text-slate-900">Hospital Staff &amp; System Administration</h2>
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
               {staffList.length} Active Staff
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Provision and manage clinician (Doctor / GP) and compliance auditor access credentials.
+            Provision clinician &amp; auditor credentials, configure statutory retention policies, and seed synthetic medical datasets.
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setIsProvisionModalOpen(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-semibold shadow-sm transition"
-        >
-          <UserPlus className="h-4 w-4" />
-          Provision Staff Account
-        </button>
+        {/* Admin Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* 1. Seed Synthetic Data Button */}
+          <button
+            type="button"
+            id="admin-seed-data-btn"
+            onClick={() => seedMutation.mutate()}
+            disabled={seedMutation.isPending}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 text-xs font-semibold shadow-xs transition disabled:opacity-50"
+            title="Generate 100 synthetic patients (50 eligible / 50 under retention), 1,000 visits, attachments, and 25 Merkle DAG proofs"
+          >
+            {seedMutation.isPending ? (
+              <>
+                <RefreshCw className="h-4 w-4 animate-spin text-indigo-600" />
+                <span>Seeding Database...</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4 text-indigo-600" />
+                <span>Seed Synthetic Medical Data</span>
+              </>
+            )}
+          </button>
+
+          {/* 2. Retention Policy Button */}
+          <button
+            type="button"
+            id="admin-retention-settings-btn"
+            onClick={() => setIsRetentionModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-teal-50 hover:bg-teal-100 border border-teal-200 text-teal-700 text-xs font-semibold shadow-xs transition"
+            title="Configure statutory retention horizon (e.g. 8 years NHS standard, 6 years HIPAA, 25 years Pediatric)"
+          >
+            <CalendarClock className="h-4 w-4 text-teal-600" />
+            <span>Retention Policy Settings</span>
+          </button>
+
+          {/* 3. Provision Staff Account Button */}
+          <button
+            type="button"
+            id="admin-provision-staff-btn"
+            onClick={() => setIsProvisionModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-semibold shadow-sm transition"
+          >
+            <UserPlus className="h-4 w-4" />
+            <span>Provision Staff Account</span>
+          </button>
+        </div>
       </div>
+
+      {seedSuccessMsg && (
+        <div className="flex items-center gap-2.5 rounded-xl bg-emerald-50 border border-emerald-200 p-3.5 text-xs text-emerald-800 animate-fade-in shadow-xs">
+          <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+          <span className="font-medium">{seedSuccessMsg}</span>
+        </div>
+      )}
 
       {error && (
         <div className="flex items-center gap-3 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700">
@@ -359,6 +432,17 @@ export default function StaffManagementPanel() {
         variant={isDeletingSelf ? 'warning' : 'danger'}
         isLoading={deleteMutation.isPending}
       />
+
+      {/* Statutory Retention Settings Modal */}
+      <RetentionSettingsModal
+        isOpen={isRetentionModalOpen}
+        onClose={() => setIsRetentionModalOpen(false)}
+        token={currentUser?.token || ''}
+        onPolicyUpdated={() => {
+          queryClient.invalidateQueries({ queryKey: ['patients'] });
+        }}
+      />
     </div>
   );
 }
+

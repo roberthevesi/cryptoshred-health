@@ -31,4 +31,7 @@ public interface PatientVisitRepository extends JpaRepository<PatientVisit, UUID
 
     @Query("SELECT v FROM PatientVisit v LEFT JOIN FETCH v.patient p LEFT JOIN FETCH v.encryptionKey k WHERE (p.id = :patientId OR p.patientId = :patientBusinessId) ORDER BY v.createdAt ASC")
     List<PatientVisit> findAllByPatientComprehensive(@Param("patientId") UUID patientId, @Param("patientBusinessId") String patientBusinessId);
+
+    @Query("SELECT MAX(v.createdAt) FROM PatientVisit v WHERE (v.patient.id = :patientId OR v.patient.patientId = :patientBusinessId) AND v.shredded = false")
+    java.time.LocalDateTime findMaxActiveCreatedAtByPatient(@Param("patientId") UUID patientId, @Param("patientBusinessId") String patientBusinessId);
 }

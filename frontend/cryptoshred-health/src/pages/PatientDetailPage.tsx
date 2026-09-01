@@ -30,6 +30,7 @@ import {
   Lock,
   Download,
   Layers,
+  CalendarClock,
 } from 'lucide-react';
 import apiClient from '../lib/axios';
 import { useAuth } from '../contexts/AuthContext';
@@ -75,6 +76,8 @@ export default function PatientDetailPage() {
   const [erasureError, setErasureError] = useState('');
   const [isExportingFhir, setIsExportingFhir] = useState(false);
   const [visitsSubTab, setVisitsSubTab] = useState<'active' | 'shredded'>('active');
+  const [patientOverrideReason, setPatientOverrideReason] = useState<string>('CONSENT_WITHDRAWN');
+  const [visitOverrideReason, setVisitOverrideReason] = useState<string>('CONSENT_WITHDRAWN');
 
   // 1. Fetch Patient Master Profile
   const {
@@ -144,8 +147,12 @@ export default function PatientDetailPage() {
 
   // Full Patient Crypto-Shred Mutation (Doctor, Auditor, Admin)
   const patientErasureMutation = useMutation({
-    mutationFn: (pid: string) =>
-      apiClient.delete<DeletionProof>(`/erasure/patients/${pid}/forget`).then((r) => r.data),
+    mutationFn: ({ pid, overrideReason }: { pid: string; overrideReason?: string }) => {
+      const url = overrideReason
+        ? `/erasure/patients/${pid}/forget?overrideReason=${encodeURIComponent(overrideReason)}`
+        : `/erasure/patients/${pid}/forget`;
+      return apiClient.delete<DeletionProof>(url).then((r) => r.data);
+    },
     onSuccess: (proof) => {
       setDeletionProof(proof);
       setErasureError('');
@@ -166,8 +173,12 @@ export default function PatientDetailPage() {
 
   // Single Visit Crypto-shred mutation (Doctor, Auditor, Admin)
   const visitErasureMutation = useMutation({
-    mutationFn: (visitId: string) =>
-      apiClient.delete<DeletionProof>(`/erasure/visits/${visitId}/forget`).then((r) => r.data),
+    mutationFn: ({ visitId, overrideReason }: { visitId: string; overrideReason?: string }) => {
+      const url = overrideReason
+        ? `/erasure/visits/${visitId}/forget?overrideReason=${encodeURIComponent(overrideReason)}`
+        : `/erasure/visits/${visitId}/forget`;
+      return apiClient.delete<DeletionProof>(url).then((r) => r.data);
+    },
     onSuccess: (proof) => {
       setDeletionProof(proof);
       setErasureError('');
@@ -575,6 +586,53 @@ export default function PatientDetailPage() {
               )}
             </div>
           </div>
+
+          {/* Retention Horizon Status Banner */}
+          {!isShredded && (
+            <div className={`mt-5 rounded-xl border p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+              patient.retentionStatus === 'ELIGIBLE'
+                ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
+                : 'bg-amber-50/70 border-amber-200 text-amber-950'
+            }`}>
+              <div className="flex items-start gap-3.5">
+                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border mt-0.5 shadow-2xs ${
+                  patient.retentionStatus === 'ELIGIBLE'
+                    ? 'bg-emerald-100 border-emerald-300 text-emerald-700'
+                    : 'bg-amber-100 border-amber-300 text-amber-700'
+                }`}>
+                  <CalendarClock className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-bold uppercase tracking-wider">
+                      {patient.retentionStatus === 'ELIGIBLE' ? '🟢 Statutory Retention Expired' : '🟡 Active Retention Protection'}
+                    </span>
+                    <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-700 font-semibold shadow-2xs">
+                      Policy Horizon: {patient.retentionPeriodYears || 8} Years
+                    </span>
+                  </div>
+                  <p className="text-xs mt-1 text-slate-600 leading-relaxed">
+                    {patient.retentionStatus === 'ELIGIBLE' ? (
+                      <span>
+                        Statutory retention horizon has elapsed. This health profile is fully eligible for routine Right-to-be-Forgotten crypto-shredding (GDPR Art. 17).
+                      </span>
+                    ) : (
+                      <span>
+                        Protected under NHS / HIPAA clinical data retention rules. Earliest statutory erasure eligibility date:{' '}
+                        <strong>{patient.legalErasureEligibleDate ? new Date(patient.legalErasureEligibleDate).toLocaleDateString() : 'N/A'}</strong>
+                        {patient.retentionDaysRemaining != null && ` (${patient.retentionDaysRemaining} days remaining)`}.
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-left sm:text-right shrink-0 text-xs font-mono text-slate-500 bg-white/60 sm:bg-transparent p-2 sm:p-0 rounded-lg border sm:border-0 border-slate-200">
+                <span className="block text-[10px] uppercase font-bold text-slate-400">Rolling Latest Activity</span>
+                <span className="font-semibold text-slate-700">{patient.latestActivityDate ? new Date(patient.latestActivityDate).toLocaleDateString() : 'N/A'}</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Tab Navigation */}
@@ -1342,7 +1400,10 @@ export default function PatientDetailPage() {
         onClose={() => setVisitToShred(null)}
         onConfirm={() => {
           if (visitToShred) {
-            visitErasureMutation.mutate(visitToShred.id);
+            visitErasureMutation.mutate({
+              visitId: visitToShred.id,
+              overrideReason: visitOverrideReason,
+            });
           }
         }}
         title="Crypto-Shred Clinical Visit"
@@ -1371,7 +1432,29 @@ export default function PatientDetailPage() {
         cancelLabel="Cancel"
         variant="shred"
         isLoading={visitErasureMutation.isPending}
-      />
+      >
+        {patient && patient.retentionStatus === 'PROTECTED' && (
+          <div className="mt-3 space-y-2 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs">
+            <div className="flex items-center gap-2 font-bold text-amber-900">
+              <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+              <span>Statutory Retention Active — Legal Justification</span>
+            </div>
+            <p className="text-amber-800 leading-normal">
+              This visit is linked to a patient under active retention protection. Select statutory ground for cryptographic deletion:
+            </p>
+            <select
+              value={visitOverrideReason}
+              onChange={(e) => setVisitOverrideReason(e.target.value)}
+              className="w-full mt-1 p-2 bg-white border border-amber-300 rounded-lg text-xs font-medium text-slate-800 focus:ring-2 focus:ring-amber-500 focus:outline-none"
+            >
+              <option value="CONSENT_WITHDRAWN">Consent Withdrawn by Data Subject (GDPR Art. 17(1)(b))</option>
+              <option value="UNLAWFUL_PROCESSING">Unlawful Data Processing Rectification (GDPR Art. 17(1)(d))</option>
+              <option value="COURT_ORDER">Court Order / Legal Obligation Compliance (GDPR Art. 17(1)(e))</option>
+              <option value="STATUTORY_EXPIRED">Statutory Retention Horizon Expired</option>
+            </select>
+          </div>
+        )}
+      </ConfirmationModal>
 
       {/* 3. Full Patient Profile Crypto-Shredding Confirmation Modal (Auditor) */}
       <ConfirmationModal
@@ -1379,7 +1462,10 @@ export default function PatientDetailPage() {
         onClose={() => setIsFullPatientShredOpen(false)}
         onConfirm={() => {
           if (patient) {
-            patientErasureMutation.mutate(patient.patientId);
+            patientErasureMutation.mutate({
+              pid: patient.patientId,
+              overrideReason: patientOverrideReason,
+            });
           }
         }}
         title="GDPR Article 17 — Full Patient Cryptographic Erasure"
@@ -1401,7 +1487,31 @@ export default function PatientDetailPage() {
         cancelLabel="Cancel"
         variant="shred"
         isLoading={patientErasureMutation.isPending}
-      />
+      >
+        {patient && patient.retentionStatus === 'PROTECTED' && (
+          <div className="mt-3 space-y-2 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs">
+            <div className="flex items-center gap-2 font-bold text-amber-900">
+              <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+              <span>Statutory Retention Active — Legal Justification Required</span>
+            </div>
+            <p className="text-amber-800 leading-normal">
+              This patient is under active regulatory retention until{' '}
+              <strong>{patient.legalErasureEligibleDate ? new Date(patient.legalErasureEligibleDate).toLocaleDateString() : 'N/A'}</strong>.
+              Erasure requires binding an authorized statutory legal ground into the signed proof artifact:
+            </p>
+            <select
+              value={patientOverrideReason}
+              onChange={(e) => setPatientOverrideReason(e.target.value)}
+              className="w-full mt-1 p-2 bg-white border border-amber-300 rounded-lg text-xs font-medium text-slate-800 focus:ring-2 focus:ring-amber-500 focus:outline-none"
+            >
+              <option value="CONSENT_WITHDRAWN">Consent Withdrawn by Data Subject (GDPR Art. 17(1)(b))</option>
+              <option value="UNLAWFUL_PROCESSING">Unlawful Data Processing Rectification (GDPR Art. 17(1)(d))</option>
+              <option value="COURT_ORDER">Court Order / Legal Obligation Compliance (GDPR Art. 17(1)(e))</option>
+              <option value="STATUTORY_EXPIRED">Statutory Retention Horizon Expired</option>
+            </select>
+          </div>
+        )}
+      </ConfirmationModal>
 
       {/* Deactivate Patient Confirmation Modal */}
       <ConfirmationModal
