@@ -85,9 +85,6 @@ export default function ViewVisitModal({ visitId, onClose }: Props) {
                 <span className="text-xs font-mono font-semibold uppercase tracking-wider text-slate-600">
                   Clinical Visit Chart
                 </span>
-                <span className="text-xs font-mono px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700">
-                  {visit.mrn || visit.id.slice(0, 8)}
-                </span>
               </div>
               <button onClick={onClose} id="modal-close" className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition">
                 <X className="h-5 w-5" />

@@ -46,8 +46,8 @@ export default function ProofVerificationModal({
   const [result, setResult] = useState<ProofVerificationResponse | null>(null);
   const [parsedProofData, setParsedProofData] = useState<DeletionProof | null>(null);
 
-  // Accordion toggle state
-  const [isAccordionOpen, setIsAccordionOpen] = useState(true);
+  // Accordion toggle state (collapsed by default for screenshot compactness)
+  const [isAccordionOpen, setIsAccordionOpen] = useState(false);
   const [copiedSnippetKey, setCopiedSnippetKey] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -498,6 +498,17 @@ export default function ProofVerificationModal({
                 <p className="text-[11px] text-slate-600 leading-relaxed">
                   Asymmetric SHA256withRSA signature generated and validated via HashiCorp Vault Transit KMS engine.
                 </p>
+                <div className="relative rounded-lg bg-slate-50 border border-slate-200 p-2 font-mono text-[10px] text-slate-800 break-all select-all shadow-2xs leading-relaxed max-h-12 overflow-hidden">
+                  {classicalSnippet}
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard(classicalSnippet, 'classical-top')}
+                    className="absolute right-1 top-1 p-1 rounded bg-white hover:bg-slate-200 text-slate-600 cursor-pointer shadow-2xs"
+                    title="Copy signature"
+                  >
+                    {copiedSnippetKey === 'classical-top' ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
+                  </button>
+                </div>
               </div>
 
               {/* 🛡️ Post-Quantum Signature Card */}
@@ -535,6 +546,17 @@ export default function ProofVerificationModal({
                 <p className="text-[11px] text-emerald-900 leading-relaxed">
                   Module-Lattice-Based Digital Signature Algorithm (CRYSTALS-Dilithium) with quantum Shor-attack immunity.
                 </p>
+                <div className="relative rounded-lg bg-white border border-emerald-200 p-2 font-mono text-[10px] text-emerald-950 break-all select-all shadow-2xs leading-relaxed max-h-12 overflow-hidden">
+                  {pqcSnippet}
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard(pqcSnippet, 'pqc-top')}
+                    className="absolute right-1 top-1 p-1 rounded bg-emerald-100 hover:bg-emerald-200 text-emerald-800 cursor-pointer shadow-2xs"
+                    title="Copy signature"
+                  >
+                    {copiedSnippetKey === 'pqc-top' ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
+                  </button>
+                </div>
               </div>
             </div>
 

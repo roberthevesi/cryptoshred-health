@@ -92,32 +92,14 @@ export default function ProofViewerModal({
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] !m-0 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-fade-in overflow-y-auto">
-      <div className="relative w-full max-w-4xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-5 my-8 max-h-[90vh] overflow-y-auto">
-        {/* Modal Top Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 border border-emerald-200 text-emerald-700 shadow-2xs">
-              <ShieldCheck className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">Cryptographic Deletion Proof Inspector</h2>
-              <p className="text-xs text-slate-500">
-                Audited proof artifact with live RSA signature verification &amp; Merkle inclusion validation
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
+    <div
+      className="fixed inset-0 z-[100] !m-0 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-fade-in overflow-y-auto"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="relative w-full max-w-4xl rounded-2xl bg-white shadow-2xl my-auto max-h-[96vh] overflow-y-auto">
         {/* Loading State */}
         {isLoading && (
-          <div className="py-16 text-center space-y-3">
+          <div className="py-16 text-center space-y-3 p-6">
             <div className="mx-auto h-8 w-8 animate-spin rounded-full border-3 border-emerald-600 border-t-transparent" />
             <p className="text-xs font-medium text-slate-600">Retrieving signed deletion proof artifact...</p>
           </div>
@@ -125,143 +107,39 @@ export default function ProofViewerModal({
 
         {/* Error State */}
         {fetchError && !isLoading && (
-          <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 shrink-0" />
-            <span>{fetchError}</span>
-          </div>
-        )}
-
-        {/* Active Proof Card & Live Verification */}
-        {activeProof && !isLoading && (
-          <div className="space-y-5">
-            {/* Live Verification Status Bar */}
-            <div className="rounded-xl border p-4 bg-slate-50/80 border-slate-200 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <FileCheck2 className="h-4 w-4 text-emerald-600" />
-                  <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                    Live System Authority Cryptographic Verification
-                  </span>
-                </div>
-                <button
-                  onClick={() => runVerification(activeProof)}
-                  disabled={isVerifying}
-                  className="inline-flex items-center gap-1 text-xs text-emerald-700 hover:text-emerald-800 font-semibold cursor-pointer"
-                >
-                  <RefreshCw className={`h-3.5 w-3.5 ${isVerifying ? 'animate-spin' : ''}`} />
-                  Re-verify Signature
-                </button>
+          <div className="p-6">
+            <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span>{fetchError}</span>
               </div>
-
-              {isVerifying && (
-                <div className="flex items-center gap-2 text-xs text-slate-500 py-1">
-                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
-                  <span>Validating RSA-2048 signature against system public key...</span>
-                </div>
-              )}
-
-              {verificationError && (
-                <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700 flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 shrink-0" />
-                  <span>{verificationError}</span>
-                </div>
-              )}
-
-              {verificationResult && !isVerifying && (
-                <div className={`p-4 rounded-xl border text-xs space-y-3 ${
-                  verificationResult.valid
-                    ? 'bg-emerald-50/80 border-emerald-300 text-emerald-950 shadow-xs'
-                    : 'bg-red-50 border-red-200 text-red-900 shadow-xs'
-                }`}>
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-sm flex items-center gap-2">
-                      {verificationResult.valid ? (
-                        <>
-                          <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                          Dual Cryptographic Signatures Valid &amp; Authentic
-                        </>
-                      ) : (
-                        <>
-                          <XCircle className="h-5 w-5 text-red-600" />
-                          Cryptographic Verification Failed
-                        </>
-                      )}
-                    </span>
-                    <span className="font-mono text-[11px] text-slate-500">
-                      Verified at {new Date(verificationResult.verifiedAt).toLocaleTimeString()}
-                    </span>
-                  </div>
-
-                  <p className="text-xs leading-relaxed text-slate-700">
-                    {verificationResult.verificationMessage}
-                  </p>
-
-                  {/* Dual Signature Badges */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 border-t border-emerald-200/70">
-                    <div className="flex items-center justify-between p-2.5 rounded-lg bg-white border border-slate-200">
-                      <div className="flex items-center gap-2">
-                        <ShieldCheck className="h-4 w-4 text-blue-600" />
-                        <div>
-                          <span className="font-bold text-slate-900 block text-[11px]">🔒 Classical Signature</span>
-                          <span className="text-[10px] text-slate-500 font-mono">RSA-2048 (HashiCorp Vault Transit KMS)</span>
-                        </div>
-                      </div>
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                        <CheckCircle2 className="h-3 w-3 text-emerald-600" /> Verified
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between p-2.5 rounded-lg bg-emerald-50/90 border border-emerald-200">
-                      <div className="flex items-center gap-2">
-                        <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                        <div>
-                          <span className="font-bold text-emerald-950 block text-[11px]">🛡️ Post-Quantum Signature</span>
-                          <span className="text-[10px] text-emerald-800 font-mono">ML-DSA-65 (NIST FIPS 204 Lattice Cryptography)</span>
-                        </div>
-                      </div>
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-200/80 text-emerald-900 border border-emerald-300">
-                        <CheckCircle2 className="h-3 w-3 text-emerald-700" /> Verified
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 font-medium text-[11px]">
-                    <div className="flex items-center gap-1.5 text-slate-700">
-                      {verificationResult.payloadIntegrityValid ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                      ) : (
-                        <XCircle className="h-3.5 w-3.5 text-red-600" />
-                      )}
-                      <span>SHA-256 Canonical Audit Trail Integrity OK</span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 text-slate-700">
-                      {verificationResult.merkleInclusionValid ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                      ) : (
-                        <XCircle className="h-3.5 w-3.5 text-red-600" />
-                      )}
-                      <span>Merkle Tree Inclusion Path Validated</span>
-                    </div>
-                  </div>
-                </div>
-              )}
+              <button onClick={onClose} className="p-1 rounded text-red-500 hover:text-red-700 cursor-pointer">
+                <X className="h-4 w-4" />
+              </button>
             </div>
-
-            {/* Proof Card Render */}
-            <DeletionProofCard proof={activeProof} />
           </div>
         )}
 
-        {/* Modal Footer */}
-        <div className="flex justify-end pt-2 border-t border-slate-100">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition"
-          >
-            Close Inspector
-          </button>
-        </div>
+        {/* Verification Error Alert */}
+        {verificationError && !isLoading && (
+          <div className="px-5 pt-3">
+            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700 flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>{verificationError}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Unified Proof Card Render */}
+        {activeProof && !isLoading && (
+          <DeletionProofCard
+            proof={activeProof}
+            onVerify={() => runVerification(activeProof)}
+            isVerifying={isVerifying}
+            verificationResult={verificationResult}
+            onClose={onClose}
+          />
+        )}
       </div>
     </div>,
     document.body
