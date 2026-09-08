@@ -287,7 +287,7 @@ class FhirExportIntegrationTest {
     }
 
     @Test
-    @DisplayName("Should export crypto-shredded FHIR R4 Bundle with zero PII leaks and CRYPTO_SHREDDED tags")
+    @DisplayName("Should export crypto-shredded FHIR R4 Bundle with zero PII leaks and REDACTED tags")
     @SuppressWarnings("unchecked")
     void testExportCryptoShreddedPatientFhirBundle() {
         // Given: A shredded patient profile
@@ -342,12 +342,12 @@ class FhirExportIntegrationTest {
         // When: Generating FHIR R4 export
         Map<String, Object> bundle = fhirExportService.exportPatientFhirR4(patientId);
 
-        // Then: Bundle and Patient resources must carry CRYPTO_SHREDDED tags and sanitized values
+        // Then: Bundle and Patient resources must carry REDACTED tags and sanitized values
         assertNotNull(bundle);
         Map<String, Object> bundleMeta = (Map<String, Object>) bundle.get("meta");
         assertNotNull(bundleMeta.get("tag"));
         List<Map<String, Object>> bundleTags = (List<Map<String, Object>>) bundleMeta.get("tag");
-        assertEquals("CRYPTO_SHREDDED", bundleTags.get(0).get("code"));
+        assertEquals("REDACTED", bundleTags.get(0).get("code"));
 
         List<Map<String, Object>> entries = (List<Map<String, Object>>) bundle.get("entry");
         assertFalse(entries.isEmpty());

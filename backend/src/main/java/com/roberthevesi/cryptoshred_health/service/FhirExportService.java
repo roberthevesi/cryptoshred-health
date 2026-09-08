@@ -37,7 +37,7 @@ public class FhirExportService {
 
     private static final Map<String, Object> CRYPTO_SHREDDED_TAG = Map.of(
             "system", "http://terminology.hl7.org/CodeSystem/v3-ObservationValue",
-            "code", "CRYPTO_SHREDDED",
+            "code", "REDACTED",
             "display", "Crypto-Shredded under GDPR Art. 17"
     );
 

@@ -9,7 +9,10 @@ import com.roberthevesi.cryptoshred_health.repository.PatientVisitRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
 
@@ -92,5 +95,25 @@ class MerkleTombstoneReconciliationTest {
 
         assertEquals(0, purged, "Should purge 0 keys when all keys are already destroyed");
         verify(vaultTransitService, never()).destroyKey(anyString());
+    }
+
+    @Test
+    @DisplayName("Purges resurrected Vault key discovered exclusively from WORM deletion receipt when DB has 0 shredded records")
+    void testReconcileTombstonesFromWormReceiptWhenDbHasNoShreddedRecords(@TempDir Path tempDir) throws Exception {
+        when(patientRepository.findByShreddedTrue()).thenReturn(List.of());
+        when(patientVisitRepository.findByShreddedTrue()).thenReturn(List.of());
+
+        String resurrectedKeyName = "patient_worm_resurrected_key_123";
+        String receiptJson = "{\"vaultKeyNameDestroyed\":\"" + resurrectedKeyName + "\",\"patientId\":\"PAT-WORM-1\"}";
+        Files.writeString(tempDir.resolve("deletion-receipt_PAT-WORM-1.json"), receiptJson);
+
+        reconciliationService.setBackupDirectory(tempDir.toString());
+
+        when(vaultTransitService.keyExists(resurrectedKeyName)).thenReturn(true);
+
+        int purgedCount = reconciliationService.reconcileTombstones();
+
+        assertEquals(1, purgedCount, "Should purge resurrected key discovered from WORM deletion receipt");
+        verify(vaultTransitService, times(1)).destroyKey(resurrectedKeyName);
     }
 }

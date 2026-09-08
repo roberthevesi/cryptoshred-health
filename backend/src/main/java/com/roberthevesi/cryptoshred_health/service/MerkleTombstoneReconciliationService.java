@@ -1,27 +1,33 @@
 package com.roberthevesi.cryptoshred_health.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.roberthevesi.cryptoshred_health.model.Patient;
 import com.roberthevesi.cryptoshred_health.model.PatientVisit;
 import com.roberthevesi.cryptoshred_health.repository.MerkleNodeRepository;
 import com.roberthevesi.cryptoshred_health.repository.PatientRepository;
 import com.roberthevesi.cryptoshred_health.repository.PatientVisitRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 /**
  * MerkleTombstoneReconciliationService — Audits all cryptographic deletion tombstones recorded in the
- * Merkle tree and JPA repositories against Vault Transit KMS to identify and purge any resurrected KEKs
+ * Merkle tree, JPA repositories, and WORM backup receipts against Vault Transit KMS to identify and purge any resurrected KEKs
  * (e.g. following legacy KMS backup snapshots or catastrophic database rollbacks).
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class MerkleTombstoneReconciliationService {
 
@@ -30,8 +36,76 @@ public class MerkleTombstoneReconciliationService {
     private final MerkleNodeRepository merkleNodeRepository;
     private final VaultTransitService vaultTransitService;
 
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    @Autowired(required = false)
     private CryptoMetricsService cryptoMetricsService;
+
+    @Value("${backup.worm.directory:backups}")
+    private String backupDirectory = "backups";
+
+    private final ObjectMapper objectMapper;
+
+    public MerkleTombstoneReconciliationService(
+            PatientRepository patientRepository,
+            PatientVisitRepository patientVisitRepository,
+            MerkleNodeRepository merkleNodeRepository,
+            VaultTransitService vaultTransitService
+    ) {
+        this(patientRepository, patientVisitRepository, merkleNodeRepository, vaultTransitService, null, "backups", new ObjectMapper());
+    }
+
+    public MerkleTombstoneReconciliationService(
+            PatientRepository patientRepository,
+            PatientVisitRepository patientVisitRepository,
+            MerkleNodeRepository merkleNodeRepository,
+            VaultTransitService vaultTransitService,
+            String backupDirectory
+    ) {
+        this(patientRepository, patientVisitRepository, merkleNodeRepository, vaultTransitService, null, backupDirectory, new ObjectMapper());
+    }
+
+    public MerkleTombstoneReconciliationService(
+            PatientRepository patientRepository,
+            PatientVisitRepository patientVisitRepository,
+            MerkleNodeRepository merkleNodeRepository,
+            VaultTransitService vaultTransitService,
+            CryptoMetricsService cryptoMetricsService
+    ) {
+        this(patientRepository, patientVisitRepository, merkleNodeRepository, vaultTransitService, cryptoMetricsService, "backups", new ObjectMapper());
+    }
+
+    public MerkleTombstoneReconciliationService(
+            PatientRepository patientRepository,
+            PatientVisitRepository patientVisitRepository,
+            MerkleNodeRepository merkleNodeRepository,
+            VaultTransitService vaultTransitService,
+            CryptoMetricsService cryptoMetricsService,
+            String backupDirectory
+    ) {
+        this(patientRepository, patientVisitRepository, merkleNodeRepository, vaultTransitService, cryptoMetricsService, backupDirectory, new ObjectMapper());
+    }
+
+    @Autowired
+    public MerkleTombstoneReconciliationService(
+            PatientRepository patientRepository,
+            PatientVisitRepository patientVisitRepository,
+            MerkleNodeRepository merkleNodeRepository,
+            VaultTransitService vaultTransitService,
+            @Autowired(required = false) CryptoMetricsService cryptoMetricsService,
+            @Value("${backup.worm.directory:backups}") String backupDirectory,
+            @Autowired(required = false) ObjectMapper objectMapper
+    ) {
+        this.patientRepository = patientRepository;
+        this.patientVisitRepository = patientVisitRepository;
+        this.merkleNodeRepository = merkleNodeRepository;
+        this.vaultTransitService = vaultTransitService;
+        this.cryptoMetricsService = cryptoMetricsService;
+        this.backupDirectory = (backupDirectory != null && !backupDirectory.isBlank()) ? backupDirectory : "backups";
+        this.objectMapper = objectMapper != null ? objectMapper : new ObjectMapper();
+    }
+
+    public void setBackupDirectory(String backupDirectory) {
+        this.backupDirectory = backupDirectory;
+    }
 
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReady() {
@@ -69,6 +143,31 @@ public class MerkleTombstoneReconciliationService {
                 tombstoneKeyNames.add(visit.getEncryptionKey().getVaultKeyName());
             }
         }
+
+        // 3. Scan WORM deletion receipts directory
+        int initialTombstones = tombstoneKeyNames.size();
+        Path backupDirPath = Paths.get(backupDirectory != null ? backupDirectory : "backups");
+        if (Files.exists(backupDirPath) && Files.isDirectory(backupDirPath)) {
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(backupDirPath, "deletion-receipt_*.json")) {
+                for (Path receiptPath : stream) {
+                    try {
+                        JsonNode node = objectMapper.readTree(receiptPath.toFile());
+                        if (node.hasNonNull("vaultKeyNameDestroyed")) {
+                            String keyName = node.get("vaultKeyNameDestroyed").asText();
+                            if (!keyName.isBlank()) {
+                                tombstoneKeyNames.add(keyName);
+                            }
+                        }
+                    } catch (Exception e) {
+                        log.warn("Failed to parse WORM deletion receipt {}: {}", receiptPath.getFileName(), e.getMessage());
+                    }
+                }
+            } catch (Exception e) {
+                log.error("Failed to scan WORM deletion receipts directory {}: {}", backupDirPath, e.getMessage());
+            }
+        }
+        int wormTombstonesCount = tombstoneKeyNames.size() - initialTombstones;
+        log.info("Discovered {} tombstone keys from WORM deletion receipts in directory: {}", wormTombstonesCount, backupDirPath);
 
         log.info("Auditing {} tombstone KEK references against Vault Transit...", tombstoneKeyNames.size());
 
