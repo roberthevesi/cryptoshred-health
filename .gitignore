@@ -40,6 +40,12 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# ── Python & Script Artifacts ──────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+utils/before_after_comparison.html
+
 # ── Environment & Secrets ──────────────────────────────────────────────────
 *.env
 *.env.*
