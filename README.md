@@ -1,19 +1,19 @@
-# 🏥 CryptoShred Health — Zero-Knowledge Healthcare EHR & Cryptographic Deletion Architecture
+# 🏥 CryptoShred Health — Zero-Knowledge Healthcare EHR & Cryptographic Erasure Architecture
 
 [![Java 21](https://img.shields.io/badge/Java-21-orange.svg)](https://openjdk.org/projects/jdk/21/)
 [![Spring Boot 3.3.4](https://img.shields.io/badge/Spring%20Boot-3.3.4-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![HashiCorp Vault 1.13](https://img.shields.io/badge/Vault%20Raft%20KMS-1.13-blue.svg)](https://www.vaultproject.io/)
 [![React 19](https://img.shields.io/badge/React-19-61dafb.svg)](https://react.dev/)
 [![Prometheus & Grafana](https://img.shields.io/badge/Observability-Prometheus%20%7C%20Grafana-F46800.svg)](https://grafana.com/)
-[![Tests](https://img.shields.io/badge/Tests-128%2F128%20Passing-success.svg)](https://github.com/)
+[![Tests](https://img.shields.io/badge/Tests-144%2F144%20Passing-success.svg)](https://github.com/)
 
-**CryptoShred Health** is an enterprise-grade, zero-knowledge Electronic Health Record (EHR) platform engineered to resolve the legal paradox between **GDPR Article 17 (Right to be Forgotten)** and **NHS / HIPAA 8-Year Immutable Record Retention Laws**.
+**CryptoShred Health** is an enterprise-grade, zero-knowledge Electronic Health Record (EHR) platform engineered to resolve the fundamental conflict between **GDPR Article 17 (Right to be Forgotten)** and **statutory medical retention laws** (such as UK NHS 8-year and HIPAA compliance rules).
 
-By leveraging **HashiCorp Vault 3-Node Raft Transit KMS envelope encryption**, **Post-Quantum Hybrid Signatures (NIST FIPS 204 ML-DSA-65)**, **Binary Merkle DAG audit ledgers**, **HMAC-SHA256 Blind Indexing**, and **Atomic Coordinated Disaster Recovery**, CryptoShred Health guarantees immediate $\mathcal{O}(1)$ cryptographic irrecoverability ($2^{-256}$ bound) without physically destroying append-only WORM compliance archives.
+By combining **envelope encryption under HashiCorp Vault 3-Node Raft KMS**, **Post-Quantum Hybrid Signatures (NIST FIPS 204 ML-DSA-65)**, **Binary Merkle DAG audit ledgers**, **HMAC-SHA256 Blind Indexing**, and **out-of-band WORM Disaster Recovery**, the platform guarantees immediate $\mathcal{O}(1)$ cryptographic irrecoverability ($2^{-256}$ bound) without destroying physical append-only compliance archives.
 
 ---
 
-## 🌟 Key Architecture & Capabilities
+## 🧭 System Architecture
 
 ```
                                   ┌──────────────────────────┐
@@ -32,7 +32,6 @@ By leveraging **HashiCorp Vault 3-Node Raft Transit KMS envelope encryption**, *
 │  Micrometer     │ │  /v1/sys/metrics│ │  (Port 9187)   │ │  (Port 9121)   │ │  (Port 9308)   │
 │  (Port 8080)    │ └────────┬────────┘ └───────┬────────┘ └───────┬────────┘ └───────┬────────┘
 └────────┬────────┘          │                  │                  │                  │
-         │                   │                  │                  │                  │
          │                   ▼                  │                  │                  │
          │         ┌───────────────────┐        │                  │                  │
          │         │ HAProxy Vault LB  │        │                  │                  │
@@ -46,72 +45,64 @@ By leveraging **HashiCorp Vault 3-Node Raft Transit KMS envelope encryption**, *
 └─────────────────┘ └────────────────┘ └────────────────┘ └────────────────┘ └────────────────┘
 ```
 
-### 1. 🔒 Zero-Plaintext Database Storage & Blind Indexing
-* **100% Zero Plaintext**: All Protected Health Information (PHI), demographic PII, clinical encounter notes, and medical records are stored strictly inside AES-256-GCM ciphertext blobs (`encrypted_data_blob`) with **AAD Context Binding** (`patientId` / `visitId`).
-* **HMAC-SHA256 Blind Indexing**: Deterministic salted hashes enable fast $\mathcal{O}(1)$ B-tree database searchability across `NHS Number`, `MRN`, and `Last Name` without exposing plaintext PII to database administrators.
-
-### 2. ⚡ 3-Node HashiCorp Vault Raft HA Cluster & Auto-Failover
-* **Raft Consensus Replication**: High Availability KMS cluster across 3 nodes (`vault-1`, `vault-2`, `vault-3`) replicating Transit Key Encryption Keys (KEKs) via Raft consensus logs in real time.
-* **HAProxy Auto-Failover Router (`vault-lb :8200`)**: Performs active `/v1/sys/health` probes every 500ms, routing 100% of traffic directly to whichever node is the elected active leader with sub-second failover.
-
-### 3. 🌲 Binary Merkle DAG & Directional Deletion Proofs
-* Persistent binary Merkle tree in PostgreSQL (`merkle_nodes`) mints tamper-evident inclusion and deletion proofs.
-* Self-describing directional proof paths (`"L:"` / `"R:"`) allow independent verification of data state.
-
-### 4. 🔮 Post-Quantum Cryptographic Proof Signing (NIST FIPS 204)
-* Dual hybrid asymmetric proof signing combining **Vault RSA-2048** (`SHA256withRSA`) + **ML-DSA-65 (CRYSTALS-Dilithium3)** via BouncyCastle PQC for post-quantum security.
-
-### 5. 🛡️ Atomic Coordinated Disaster Recovery & Tombstone Reconciler
-* Coupled DB + Vault + WORM atomic bundles (`bundle_YYYY-MM-DD/`) with `bundle_manifest.json` and dual digital signatures.
-* **Merkle Tombstone Reconciler**: High-performance $O(1)$ startup and post-restore reconciler that checks Vault KMS and purges resurrected keys for previously shredded patients.
-
-### 6. 📊 Distributed Observability Stack
-* **Unified Mission Control Dashboard** in Grafana (`:3000`) with live 5-service health banner, 3-node dynamic leader indicators, crypto latency curves (AES-GCM, Merkle minting, key rotation), and JVM memory zeroization tracking.
-* Complete Prometheus TSDB metrics exported across Spring Boot Actuator, Vault KMS, PostgreSQL, Redis, and Kafka.
-
 ---
 
-## 🏗️ Technology Stack
+## 🌟 Core Technical Highlights
 
-| Layer | Technologies |
-| :--- | :--- |
-| **Backend Core** | Java 21, Spring Boot 3.3.4, Spring Security 6 (Stateless JWT), Spring Data JPA, Spring Vault, Spring Kafka, Spring Data Redis, Micrometer, BouncyCastle PQC (ML-DSA-65) |
-| **Frontend UI** | React 19, TypeScript, Vite, Tailwind CSS, TanStack Query v5, Lucide Icons, Axios |
-| **Key Management (KMS)** | 3-Node HashiCorp Vault 1.13 (Raft Storage), HAProxy 2.8 Load Balancer |
-| **Datastores & Streaming** | PostgreSQL 15, Redis 7 (L2 Cache), Apache Kafka 3.7 (KRaft mode) |
-| **Observability & Metrics** | Prometheus v2.51, Grafana 10.4, Postgres Exporter, Redis Exporter, Kafka Exporter |
+### 1. 🔒 Zero-Plaintext Database & HMAC Blind Indexing
+* **Strict Ciphertext Storage**: All Protected Health Information (PHI), demographic PII, clinical notes, and biometrics are stored as AES-256-GCM ciphertext blobs (`encrypted_data_blob`) with **AAD Context Binding** (`patientId` / `visitId`).
+* **Blind Index Search**: Deterministic salted HMAC-SHA256 hashes enable fast $\mathcal{O}(1)$ B-tree queries over `NHS Number`, `MRN`, and `Surname` without decrypting the database or exposing plaintext to administrators.
+
+### 2. ⚡ High-Availability KMS (3-Node Vault Raft Cluster)
+* **Consensus Replication**: Integrated 3-node HashiCorp Vault cluster (`vault-1`, `vault-2`, `vault-3`) replicating Key Encryption Keys (KEKs) via Raft consensus logs.
+* **HAProxy Auto-Failover Router (`:8200`)**: Actively polls nodes every 500ms via `/v1/sys/health` and automatically re-routes traffic to the elected active leader ($T_{\text{failover}} < 2.5\text{ s}$ with 0% dropped requests).
+
+### 3. 🌲 Directional Binary Merkle DAG & Proofs
+* Persistent binary Merkle tree in PostgreSQL (`merkle_nodes`) records all deletion proofs.
+* Self-describing directional proof paths (`"L:"` / `"R:"`) enable independent third-party verification against the canonical Merkle root.
+
+### 4. 🔮 Post-Quantum Hybrid Digital Signatures (NIST FIPS 204)
+* Dual hybrid asymmetric proof signing combining **Vault RSA-2048** (`SHA256withRSA`) + **ML-DSA-65 (CRYSTALS-Dilithium3)** via BouncyCastle PQC, ensuring forward secrecy against future quantum adversaries.
+
+### 5. 🛡️ Disaster Recovery & Snapshot Restoration Reconciliation
+* **Atomic Bundles**: Coupled DB dump + Vault Raft snapshot + WORM encounters (`bundle_YYYY-MM-DD/`) cryptographically sealed with `bundle_manifest.json`.
+* **Solving the Snapshot Restoration Paradox**: Out-of-band WORM harvesting protocol (`backups/deletion-receipt_*.json`) detects resurrected Vault KEKs on restore or cold boot, immediately destroying them to preserve cryptographic erasure guarantees.
+
+### 6. 📜 Policy-Driven Retention Governance & HL7 FHIR R4
+* Dynamic rolling retention horizon: $\max(\text{patient.createdAt}, \max_{v}(\text{visit.createdAt})) + \Delta_{\text{retention}}$.
+* Admin settings support UK NHS (8-year), HIPAA (6-year), and Pediatric (25-year) statutory horizons.
+* Full **HL7 FHIR R4 Collection Bundle** export (`/api/patients/{id}/fhir`) for clinical interoperability.
 
 ---
 
 ## 🚀 Quick Start Guide
 
-CryptoShred Health supports two execution modes via Docker Compose Profiles:
+CryptoShred Health supports two execution modes via Docker Compose:
 
-### 🌟 Mode 1: One-Click Turnkey Demo (Full Docker Stack — Zero Host Prerequisites)
-Ideal for thesis evaluation, demonstrations, and examiners who do not have Java 21, Maven, or Node.js installed locally.
+### 🌟 Mode 1: One-Click Turnkey Demo (Full Docker Stack)
+Ideal for evaluations, examiner testing, and demos with zero local development prerequisites:
 
 ```bash
-# 1. Boot the entire distributed system (10+ containers) with a single command
 docker compose --profile all up -d --build
 ```
-* **Clinical Dashboard (UI):** [http://localhost:5173](http://localhost:5173)
-* **Spring Boot Swagger API:** [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
-* **Grafana Unified Mission Control:** [http://localhost:3000](http://localhost:3000) (`admin` / `admin`)
+* **Clinical Web UI:** [http://localhost:5173](http://localhost:5173)
+* **Spring Boot API Swagger:** [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+* **Grafana Mission Control:** [http://localhost:3000](http://localhost:3000) (`admin` / `admin`)
 * **Kafka UI:** [http://localhost:8085](http://localhost:8085)
-* **Vault KMS Proxy:** [http://localhost:8200/ui/vault/](http://localhost:8200/ui/vault/)
+* **Vault Primary UI:** [http://localhost:8200/ui/vault/](http://localhost:8200/ui/vault/)
 
 ---
 
-### 💻 Mode 2: Development & Benchmarking Mode (Infra in Docker, Apps on Host)
-Ideal for rapid development (Vite HMR, IDE step-debugging) and jitter-free **JMH microbenchmarking** on bare-metal JVM.
+### 💻 Mode 2: Development & Benchmarking Mode
+Ideal for rapid local development (Vite HMR, backend debugging) and bare-metal **JMH microbenchmarking**:
 
-#### Step 1: Start Infrastructure & Observability Containers
+#### Step 1: Start Infrastructure & Monitoring
 ```bash
 docker compose --profile monitoring up -d
 ```
 
 #### Step 2: Configure Environment Variables
-Create `.env` in the repository root and `backend/.env`:
+Verify `.env` in repository root and `backend/.env`:
 ```env
 POSTGRES_DB=healthdb
 POSTGRES_USER=root
@@ -126,7 +117,7 @@ REDIS_TTL_MS=900000
 CORS_ALLOWED_ORIGINS=http://localhost:5173
 ```
 
-#### Step 3: Run Backend (Spring Boot 3.3.4)
+#### Step 3: Run Backend (Java 21 / Spring Boot 3.3.4)
 ```bash
 cd backend
 ./mvnw spring-boot:run
@@ -141,6 +132,23 @@ npm run dev
 
 ---
 
+## 🛑 Safe Container Lifecycle (Preserving Data & Keys)
+
+> [!WARNING]
+> **Never run `docker compose down -v`**. The `-v` flag permanently deletes Docker named volumes (`pgdata`, `vaultdata-*`), destroying database records and Vault master keys.
+
+* **Stop all infrastructure & monitoring safely**:
+  ```bash
+  docker stop $(docker ps --format '{{.Names}}' | grep -vE 'backend|frontend')
+  ```
+* **Start back up without losing data**:
+  ```bash
+  docker start $(docker ps -a --format '{{.Names}}' | grep -vE 'backend|frontend')
+  ```
+  *(or `docker compose --profile monitoring up -d`)*
+
+---
+
 ## 🌐 Network & Port Reference
 
 | Service | Port | Endpoint / URL | Default Credentials |
@@ -151,69 +159,84 @@ npm run dev
 | **Prometheus TSDB** | `9090` | [http://localhost:9090/targets](http://localhost:9090/targets) | Public |
 | **Vault HA Proxy** | `8200` | [http://localhost:8200/ui/vault/](http://localhost:8200/ui/vault/) | Token: `root` |
 | **HAProxy Live Stats** | `8209` | [http://localhost:8209/stats](http://localhost:8209/stats) | Public |
-| **Vault Node 1 (Direct)** | `8201` | [http://localhost:8201/ui/](http://localhost:8201/ui/) | Token: `root` |
-| **Vault Node 2 (Direct)** | `8202` | [http://localhost:8202/ui/](http://localhost:8202/ui/) | Token: `root` |
-| **Vault Node 3 (Direct)** | `8203` | [http://localhost:8203/ui/](http://localhost:8203/ui/) | Token: `root` |
+| **Vault Direct Nodes** | `8201`–`8203` | [http://localhost:8201/ui/](http://localhost:8201/ui/) | Token: `root` |
 | **PostgreSQL 15** | `5433` | `localhost:5433/healthdb` | `root` / `toor` |
-| **Redis 7** | `6379` | `localhost:6379` | None |
+| **Redis 7 (L2 Cache)** | `6379` | `localhost:6379` | None |
 | **Kafka KRaft Broker**| `9092` | `localhost:9092` | None |
-| **Kafka UI** | `8085` | [http://localhost:8085](http://localhost:8085) | Public |
+| **Kafka Web UI** | `8085` | [http://localhost:8085](http://localhost:8085) | Public |
+| **Redis Insight UI** | `5540` | [http://localhost:5540](http://localhost:5540) | Public |
 
 ---
 
-## 👥 Default Demo Accounts (Role-Based Access Control)
+## 👥 Default Demo Accounts (RBAC)
 
-| Role | Email | Password | Allowed Capabilities |
+| Role | Email | Password | Allowed Scope |
 | :--- | :--- | :--- | :--- |
-| **ADMIN** | `admin@cryptoshred.health` | `Password123!` | Staff management, synthetic data seeder, KMS key rotation (`/api/keys`), DR backup capture & restore |
-| **DOCTOR** | `doctor@hospital.com` | `Password123!` | Patient intake, clinical encounters, SOAP notes, PDF attachments, GDPR crypto-shredding |
+| **ADMIN** | `admin@cryptoshred.health` | `Password123!` | Staff provisioning, synthetic data seeding (`/api/admin/seed-data`), KMS key rotation (`/api/keys/rotate`), DR backup & restore |
+| **DOCTOR** | `doctor@hospital.com` | `Password123!` | Patient intake, clinical SOAP encounters, PDF attachments, GDPR Art. 17 crypto-shredding |
 | **AUDITOR** | `auditor@health.gov` | `Password123!` | View anonymized records, verify Merkle DAG deletion proofs, audit WORM receipts |
 
-> *Note: Individual Patient portal accounts are provisioned dynamically when patients are registered.*
-
 ---
 
-## 🛠️ Disaster Recovery CLI Tools
+## 🛡️ Disaster Recovery REST Commands
 
-The project includes standalone operator scripts in [`scripts/`](file:///Users/roberthevesi/Coding/cryptoshred-health/cryptoshred-health/scripts/):
+To capture and restore disaster recovery bundles:
 
 ```bash
-# 1. Capture atomic DB + Vault + WORM backup bundle with dual digital signatures
-./scripts/backup-bundle.sh
+# 1. Login as Admin
+ADMIN_TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@cryptoshred.health","password":"Password123!"}' \
+  | grep -o '"token":"[^"]*' | cut -d'"' -f4)
 
-# 2. Verify bundle SHA-256 integrity and RSA/PQC signatures
-./scripts/verify-bundle.sh --bundle backups/bundles/bundle_2026-08-29_...
+# 2. Capture Atomic Bundle (PostgreSQL + Vault + WORM)
+curl -s -X POST http://localhost:8080/api/admin/backups/bundle \
+  -H "Authorization: Bearer $ADMIN_TOKEN" | jq .
 
-# 3. Restore bundle and trigger automatic Merkle Tombstone Reconciliation
-./scripts/restore-bundle.sh --bundle bundle_2026-08-29_... --force
-
-# 4. Unseal all 3 Vault cluster nodes
-./scripts/unseal-vault.sh
+# 3. Restore Bundle (Automatically reconciles Merkle tombstones & purges resurrected KEKs)
+curl -s -X POST http://localhost:8080/api/admin/backups/bundles/<BUNDLE_ID>/restore \
+  -H "Authorization: Bearer $ADMIN_TOKEN" | jq .
 ```
 
 ---
 
-## 🧪 Verification & Test Suite
+## 🧪 Automated Verification Suite
 
 ```bash
-# Run full JUnit 5 backend test suite (128/128 tests passing)
+# Backend test suite (144/144 tests passing)
 cd backend
 ./mvnw test
 
-# Run frontend TypeScript typecheck and production build
+# Frontend production typecheck & build
 cd frontend/cryptoshred-health
 npm run build
 
-# Run JMH Algorithmic Microbenchmarks (Tier 1)
-./benchmarks/micro-jmh/run-benchmarks.sh
+# Publication Figure Generator (renders vector PDFs to thesis/figures/)
+python3 utils/generate_figures.py --all
 
-# Run Multi-User Macro Load Tests (Tier 2)
-./benchmarks/macro-system/run-load-tests.sh
+# Visual Dissertation Comparison Visualizer
+python3 utils/build_comparison_app.py
 ```
 
 ---
 
-## 📄 License & Attribution
+## 📂 Repository Structure
 
-Developed by **Robert Hevesi** as part of the Master's Dissertation:  
-*“Cryptographic Right-to-be-Forgotten in Healthcare Systems: Resolving the Conflict between GDPR and Immutable Medical Retention Laws”*.
+```text
+cryptoshred-health/
+├── backend/            # Spring Boot 3.3.4 (Java 21, Vault KMS, Kafka, Redis, JPA)
+├── frontend/           # React 19 + Vite + Tailwind CSS SPA
+├── monitoring/         # Prometheus scrape targets & Grafana pre-provisioned dashboards
+├── thesis/             # LaTeX Dissertation sources, chapters, and publication vector figures
+├── utils/              # Publication figure generator & visual comparison application
+├── scripts/            # Operator DR shell scripts (backup, restore, unseal)
+└── docker-compose.yml  # Multi-profile distributed orchestration
+```
+
+---
+
+## 📄 License & Academic Attribution
+
+Developed by **Robert Hevesi** as part of the Master's Dissertation in Cybersecurity:  
+*“Cryptographic Right-to-be-Forgotten in Healthcare Systems: Resolving the Conflict between GDPR and Immutable Medical Retention Laws”*  
+Universitatea Politehnica din Timișoara — Faculty of Automatics and Computers.
