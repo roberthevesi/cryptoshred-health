@@ -1,4 +1,5 @@
-# 🏥 CryptoShred Health — Zero-Knowledge Healthcare EHR & Cryptographic Erasure Architecture
+# 🏥 Beyond Physical Deletion: Enforcing Verifiable Cryptographic Erasure Across Distributed Storage Layers in Zero-Plaintext Electronic Health Record Architectures
+### *(CryptoShred Health)*
 
 [![Java 21](https://img.shields.io/badge/Java-21-orange.svg)](https://openjdk.org/projects/jdk/21/)
 [![Spring Boot 3.3.4](https://img.shields.io/badge/Spring%20Boot-3.3.4-brightgreen.svg)](https://spring.io/projects/spring-boot)
@@ -238,5 +239,5 @@ cryptoshred-health/
 ## 📄 License & Academic Attribution
 
 Developed by **Robert Hevesi** as part of the Master's Dissertation in Cybersecurity:  
-*“Cryptographic Right-to-be-Forgotten in Healthcare Systems: Resolving the Conflict between GDPR and Immutable Medical Retention Laws”*  
+*“Beyond Physical Deletion: Enforcing Verifiable Cryptographic Erasure Across Distributed Storage Layers in Zero-Plaintext Electronic Health Record Architectures”*  
 Universitatea Politehnica din Timișoara — Faculty of Automatics and Computers.
