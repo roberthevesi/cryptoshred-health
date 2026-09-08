@@ -1,0 +1,100 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                            CHAPTER 1: INTRODUCTION                           %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{Introduction}\label{section:introduction}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                     SECTION 1.1: CONTEXT & MOTIVATION                        %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Context and Motivation}\label{section:context}
+
+Modern Electronic Health Record (EHR) platforms no longer operate out of a single on-premises database. Real-time clinical workflows distribute sensitive patient data across multi-tier application architectures: relational database clusters, event streaming brokers, distributed caches, and cloud archival stores. When these workloads scale across cloud environments, security misconfigurations and infrastructure breaches expose clinical histories, diagnostic notes, and patient identifiers at an alarming scale.
+
+This distributed architecture can turn into a sharp legal conflict. On one side, data privacy legislation, most visibly Article~17 of the General Data Protection Regulation (GDPR) and the UK Data Protection Act 2018, guarantees individuals an enforceable right to erasure~\cite{gdpr2016, dpa2018}. On the other side, healthcare archival mandates penalize premature record destruction: the UK NHS Records Management Code of Practice mandates preserving clinical files for 8 to 25~years~\cite{nhs_records_2021}, HIPAA requires a six-year audit trail~\cite{hipaa2003}, and Romanian Law No.~95/2006 imposes multi-decade preservation for core medical charts.
+
+During active clinical care, GDPR Article~17(3)(b)--(c) resolves this tension by exempting healthcare providers from deletion duties. However, this legal shield is temporary. Once mandatory retention periods expire, or when a patient revokes consent for secondary clinical research, data controllers face a strict legal obligation to purge all personal data tied to the individual.
+
+At this point, software engineering collides with storage physics: true physical deletion in distributed systems is practically impossible. Enterprise healthcare systems replicate data across PostgreSQL tables, append-only Write-Ahead Logs (WAL), distributed Apache Kafka commit logs, Redis caches, and immutable Write-Once-Read-Many (WORM) backup archives. Issuing a standard SQL \texttt{DELETE} statement merely updates a row pointer or sets a tombstone in the active database. The underlying plaintext remains intact inside uncompacted Kafka topic segments, database commit journals, and read-only backup snapshots that cannot be modified without destroying archive integrity.
+
+Cryptographic erasure (\textit{crypto-shredding}) solves this deadlock by decoupling data storage from decryption capability. Instead of attempting to locate and overwrite every byte on disk, the system encrypts clinical records using envelope encryption: individual records are encrypted with ephemeral Data Encryption Keys (DEKs), which are in turn protected by dedicated per-patient Key Encryption Keys (KEKs) managed inside HashiCorp Vault. When an erasure mandate arrives, Vault zeroes and destroys the patient's KEK. Deprived of the 256-bit key material, all residual AES-256-GCM ciphertexts across relational tables, message brokers, and cold backups instantly collapse into random noise in $\mathcal{O}(1)$ time, fulfilling GDPR Article~17 without modifying immutable physical storage.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%            SECTION 1.2: STATE OF THE ART & CURRENT LIMITATIONS               %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{State of the Art and Current Limitations}\label{section:state-of-the-art}
+
+Most hospital databases rely on Transparent Data Encryption (TDE) in systems like PostgreSQL or Oracle. TDE encrypts the entire storage drive using a single system-wide master key. While this protects against someone physically pulling a hard drive from a server rack, it does nothing to protect or isolate individual records once the database is running.
+
+TDE provides zero memory or query isolation at runtime. Any compromised database connection, authenticated database administrator (DBA), or SQL injection vulnerability extracts records in raw plaintext. Because TDE encrypts the entire database under a single key, the storage engine cannot destroy one patient's key without wiping out all other records alongside it.
+
+Attempting physical deletion via relational SQL operations induces linear execution overhead $\mathcal{O}(N)$, scaling directly with the number of past visits $N$. Purging a long-term patient with $N = 10{,}000$ records forces PostgreSQL to lock dozens of related tables to resolve foreign-key cascades. This stalls active hospital writes while still leaving cold backup archives completely untouched.
+
+Current key management designs suffer from five practical flaws in production:
+\begin{enumerate}
+    \item \textbf{Hardcoded and Exposed Keys:} Hardcoding static keys in configuration files or generating them directly inside application memory leaves raw key material vulnerable to memory dumps and process inspection.
+    \item \textbf{The Backup Restoration Trap:} Restoring an older KMS snapshot or database backup reloads destroyed keys back into memory. This silently resurrects shredded patient data and violates GDPR compliance without triggering alerts.
+    \item \textbf{Keys Lingering in JVM Memory:} In managed runtimes like Java, standard byte arrays holding sensitive keys remain in heap memory until collected, risking exposure if the operating system pages idle memory to swap space.
+    \item \textbf{Quantum Obsolescence:} Classical RSA and ECDSA signatures will break once quantum computers scale up~\cite{nist_fips_204}. Because healthcare records must remain verifiable for decades, deletion proofs created today require post-quantum signatures to resist retroactive forgery.
+    \item \textbf{Unusable Encrypted Lookups:} Encrypting every database column breaks standard B-Tree indexes. Without a dedicated indexing strategy, looking up a single patient forces the backend to pull and decrypt entire tables into memory.
+\end{enumerate}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%        SECTION 1.3: RESEARCH QUESTIONS AND SCIENTIFIC HYPOTHESES             %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Research Questions and Scientific Hypotheses}\label{section:research-questions}
+
+To resolve these distributed storage and cryptographic bottlenecks, this dissertation establishes four core Research Questions ($RQ_1$--$RQ_4$) and four empirically testable hypotheses ($H_1$--$H_4$):
+
+\begin{itemize}
+    \item \textbf{$RQ_1$ (Algorithmic Scalability \& Constant-Time Erasure):} 
+    \textit{Can destroying a key in an isolated KMS enforce permanent deletion in constant time ($\mathcal{O}(1)$), avoiding the slow linear scaling ($\mathcal{O}(N)$) and table locks caused by relational database cascades?}
+    \begin{itemize}
+        \item \textbf{Hypothesis $H_1$:} Deleting a 256-bit key inside a dedicated KMS executes with sub-$10\text{~ms}$ latency ($5.6\text{--}7.6\text{~ms}$ end-to-end) regardless of past visit volume $N$, achieving a $4\text{--}5\times$ latency speedup over relational foreign-key cascade deletions ($25\text{--}39\text{~ms}$) once $N \ge 10{,}000$ while maintaining strict $\mathcal{O}(1)$ time invariance.
+    \end{itemize}
+
+    \item \textbf{$RQ_2$ (Verifiability \& Post-Quantum Auditability):} 
+    \textit{How can a distributed healthcare platform produce compact, tamper-proof deletion receipts that auditors can verify in logarithmic time ($\mathcal{O}(\log N)$) and that resist quantum attacks, without ever exposing plaintext clinical history?}
+    \begin{itemize}
+        \item \textbf{Hypothesis $H_2$:} Combining NIST FIPS 204 ML-DSA-65 post-quantum signatures with a binary Merkle tree allows independent auditors to verify deletion proofs in under $5\text{~ms}$ across registries with $100{,}000$ records, without needing direct database access.
+    \end{itemize}
+
+    \item \textbf{$RQ_3$ (Disaster Recovery \& Key Resurrection Elimination):} 
+    \textit{How can an encrypted storage platform prevent restored backup snapshots from accidentally bringing deleted encryption keys back to life?}
+    \begin{itemize}
+        \item \textbf{Hypothesis $H_3$:} An automated Merkle tombstone reconciler auditing restored KMS keys against immutable ledgers achieves deterministic linear scaling ($\mathcal{O}(k)$) with sub-$5\text{~ms}$ per-key execution latency ($<50\text{~ms}$ for typical operational cohorts $k \le 30$), purging $100\%$ of resurrected keys before the backend begins accepting live hospital traffic.
+    \end{itemize}
+
+    \item \textbf{$RQ_4$ (Clinical Concurrency \& Zero-Leakage Verification):} 
+    \textit{What performance overhead do AES-256-GCM encryption, Linux \texttt{mlock()} memory pinning, and HMAC-SHA256 blind indexing introduce during live clinical traffic, and does the system guarantee zero data leaks once a key is destroyed?}
+    \begin{itemize}
+        \item \textbf{Hypothesis $H_4$:} Backing the architecture with a Redis L2 cache that automatically evicts shredded records allows the platform to sustain over $50{,}000\text{~req/s}$ on encrypted reads, while maintaining zero plaintext leaks across concurrent queries targeting shredded entities.
+    \end{itemize}
+\end{itemize}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%     SECTION 1.4: OBJECTIVES OF THE DISSERTATION & KEY CONTRIBUTIONS          %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Objectives of the Dissertation and Key Contributions}\label{section:objectives}
+
+This dissertation designs, implements, and evaluates a zero-plaintext EHR platform that delivers constant-time $\mathcal{O}(1)$ crypto-shredding across distributed datastores, generates quantum-resistant deletion certificates, dynamically resolves statutory retention conflicts, and sustains enterprise transaction throughput.
+
+This work delivers six primary engineering contributions:
+\begin{enumerate}
+    \item \textbf{Two-Tier Envelope Encryption with Context Binding:} We implement a Vault Transit key hierarchy isolating patient demographic keys ($\text{KEK}_{\text{patient}}$) from encounter keys ($\text{KEK}_{\text{visit}}$). Ephemeral AES-256-GCM Data Encryption Keys bind to entity UUIDs via Authenticated Associated Data (AAD), cryptographically preventing ciphertext splicing across patient charts.
+
+    \item \textbf{Dynamic Rolling Retention Engine:} We implement a legitimate policy engine that balances GDPR Article~17 deletion requests against medical retention laws (including the NHS Code of Practice and HIPAA laws). The engine tracks active clinical encounters in real time, automatically recalculating deletion eligibility whenever a visit is shredded and recording the legal rationale directly inside the cryptographic deletion receipt.
+
+    \item \textbf{Post-Quantum Hybrid Signatures and Binary Merkle Tree Auditing:} We construct a tamper-proof erasure verification pipeline. Every shredding event receives dual digital signatures: classical Vault RSA-2048 and ML-DSA-65~\cite{nist_fips_204}. Deletion receipts form leaves in an append-only binary Merkle tree, allowing external auditors to verify inclusion proofs in $\mathcal{O}(\log N)$ time without accessing backend databases.
+
+    \item \textbf{Zero-Plaintext Persistence with HMAC-SHA256 Blind Indexing:} We construct a PostgreSQL storage tier where PII and clinical notes persist exclusively as Base64 ciphertexts. To enable fast lookups without decrypting table rows, the system indexes deterministic HMAC-SHA256 digests of NHS Numbers, Medical Record Numbers, and surnames, providing $\mathcal{O}(1)$ search latency.
+
+    \item \textbf{Automated Disaster Recovery and Merkle Tombstone Reconciler:} We eliminate the KMS Snapshot Restoration Paradox by developing an append-only tombstone reconciler. When restoring older KMS or database snapshots, the reconciler checks active key rings against external signed WORM tombstone receipts, purging cohorts of resurrected keys in sub-$5\text{~ms}$ per key ($<50\text{~ms}$ for typical cohorts $k \le 30$) before network ports open.
+
+    \item \textbf{Empirical Benchmarking and High-Concurrency Evaluation:} Using JMH and distributed k6 load generators, we demonstrate that crypto-shredding completes in invariant constant time ($T_{\text{shred}} = 5.6\text{--}7.6\text{~ms}$) compared to $25.1\text{--}39.1\text{~ms}$ for relational SQL cascades ($4\text{--}5\times$ speedup). Under a 500-user load test, the architecture sustains $96{,}820.5\text{~requests per second}$ on cached reads with $0.000\%$ plaintext leakage across 2.38~million read operations targeting shredded records.
+\end{enumerate}

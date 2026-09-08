@@ -90,7 +90,20 @@ backend/benchmark-results/*.png
 .gemini/
 .knowledge/
 .agents/
+coordinator_feedback_action_plan*
 
-# ── Written Academic Thesis ────────────────────────────────────────────────
-thesis/
-*.pdf
+# ── Written Academic Thesis & LaTeX Build Artifacts ────────────────────────
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.lot
+*.out
+*.run.xml
+*.synctex.gz
+*.toc
+/main.pdf
+thesis/main.pdf

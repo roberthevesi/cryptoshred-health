@@ -1,0 +1,22 @@
+\thispagestyle{abstractpagestyle}
+
+\vspace*{24pt}
+
+\begin{center}
+    \textbf{\fontsize{18pt}{22pt} \selectfont REZUMAT}
+    
+    \vspace{12pt}
+    \textbf{\fontsize{13pt}{16pt} \selectfont Dincolo de Ștergerea Fizică: Asigurarea Ștergerii Criptografice Verificabile pe Nivelurile de Stocare Distribuite în Arhitecturi Zero-Plaintext pentru Dosare Electronice de Sănătate}
+\end{center}
+
+\vspace{16pt}
+
+Platformele moderne de dosare electronice de sănătate (Electronic Health Record --- EHR) replică date clinice sensibile în baze de date distribuite, fluxuri de mesaje, cache-uri volatile și arhive de backup imutabile de tip Write-Once-Read-Many (WORM). Această persistență pe multiple niveluri generează o tensiune arhitecturală fundamentală între dreptul la ștergere garantat de Articolul~17 din Regulamentul General privind Protecția Datelor (GDPR) și obligațiile legale de retenție medicală (precum NHS Code of Practice, HIPAA sau Legea nr.~95/2006). Deoarece modificarea blocurilor fizice în medii de stocare imutabile și jurnale de tip append-only este imposibilă din punct de vedere tehnic, operațiunile SQL clasice de ștergere omit backup-urile și jurnalele de tranzacții, lăsând date clinice reziduale expuse.
+
+Această teză prezintă \textit{CryptoShred Health}, o arhitectură EHR enterprise zero-plaintext care decuplează persistența fizică a datelor de accesibilitatea lor criptografică. Sistemul implementează o ierarhie de criptare de tip envelope: chei efemere de criptare a datelor (Data Encryption Keys --- DEK) bazate pe AES-256-GCM sunt asociate contextual înregistrărilor prin Authenticated Associated Data (AAD) și încapsulate sub chei dedicate de criptare a cheilor (Key Encryption Keys --- KEK), gestionate într-un cluster HashiCorp Vault Raft cu 3 noduri. Distrugerea unei KEK determină irecuperabilitatea computațională a tuturor textelor cifrate asociate, reducând efortul de recuperare la un factor mediu de lucru de $2^{255}$ operații simetrice pe un spațiu de chei de $2^{256}$ biți.
+
+Arhitectura introduce trei contribuții majore: (1) un mecanism de indexare oarbă deterministică bazat pe HMAC-SHA256 pentru căutări exacte în timp $\mathcal{O}(1)$ fără decriptarea identificatorilor pe serverul de baze de date; (2) un pipeline de atestare a ștergerii cu dublă semnare (RSA-2048 și post-cuantică ML-DSA-65) organizat într-un arbore Merkle binar, permițând verificarea probelor de incluziune în $2.48\text{~ms}$ pentru $100{,}000$ de frunze; și (3) un serviciu de reconciliere a tombstone-urilor care scanează chitanțele imutabile WORM la pornire, eliminând Paradoxul Restaurării Snapshot-urilor prin purjarea automată a cheilor restaurate accidental ($1.69\text{~ms}$ per cheie).
+
+Evaluarea experimentală demonstrează că ștergerea criptografică end-to-end se finalizează în $5.63\text{--}7.65\text{~ms}$, realizând o accelerare de $4\text{--}5\times$ față de cascadele tranzacționale PostgreSQL ($25.19\text{--}39.12\text{~ms}$), în timp ce microbenchmark-urile computaționale izolate confirmă invarianța algoritmică în timp constant ($59.50\,\mu\text{s}$). Sub teste de sarcină k6 cu 500 de utilizatori concurenți, platforma susține $96{,}820.5\text{~cereri/s}$ pe citiri din cache și $13{,}420.7\text{~ștergeri/s}$. Validarea adversarială pe $2{,}377{,}883$ de cereri care vizează entități șterse confirmă o rată strictă de scurgere a datelor în clar de $0.000\%$.
+
+\vfill

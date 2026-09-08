@@ -1,0 +1,196 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%        CHAPTER 2: THEORETICAL FOUNDATIONS & REQUIREMENTS ANALYSIS            %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{Theoretical Foundations and Requirements Analysis}\label{section:foundations}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%             SECTION 2.1: CRYPTOGRAPHIC & SECURITY FOUNDATIONS                %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Cryptographic and Security Foundations}\label{section:crypto-foundations}
+
+CryptoShred Health enforces zero-plaintext storage by layering five cryptographic mechanisms: AES-256-GCM envelope encryption with contextual AAD binding, hybrid post-quantum digital signatures, binary Merkle audit trees, POSIX memory locking, and HMAC-SHA256 blind indexing.
+
+\subsection{Symmetric Envelope Encryption and Context Binding}
+
+Directly encrypting high-throughput database payloads with asymmetric algorithms exhausts CPU cycles and introduces severe message size inflation. To maintain wire-speed read and write throughput, the platform implements symmetric envelope encryption~\cite{boneh_shoup_2020}, segregating key lifecycles into a two-tier hierarchy:
+\begin{enumerate}
+    \item \textbf{Data Encryption Key (DEK):} An ephemeral 256-bit AES symmetric key generated in application memory to encrypt a single clinical payload.
+    \item \textbf{Key Encryption Key (KEK):} A persistent 256-bit master key residing exclusively inside the HashiCorp Vault Transit engine. Vault wraps the ephemeral DEK via authenticated key wrapping before ciphertext persistence.
+\end{enumerate}
+
+The storage engine encrypts all patient attributes using AES-256 in Galois/Counter Mode (AES-256-GCM)~\cite{nist_fips_197, dworkin_gcm_2007}. AES-GCM operates as an Authenticated Encryption with Associated Data (AEAD) cipher. It encrypts the clinical payload into ciphertext $C$ while simultaneously computing a 128-bit authentication tag $T$ to guarantee data integrity and authenticity:
+\begin{equation}
+    (C, T) = \text{AES-GCM-Encrypt}(K_{\text{DEK}}, IV, P, \text{AAD})
+    \label{eq:aes-gcm-formal}
+\end{equation}
+In Equation~\ref{eq:aes-gcm-formal}:
+\begin{itemize}
+    \item $C$ is the resulting encrypted ciphertext stored in PostgreSQL.
+    \item $T$ is the 128-bit authentication tag---a cryptographic checksum that proves the ciphertext has not been altered or moved.
+    \item $K_{\text{DEK}}$ is the ephemeral 256-bit symmetric Data Encryption Key generated for this specific record.
+    \item $IV$ is a unique 96-bit initialization vector generated securely for each write operation.
+    \item $P$ is the raw clinical plaintext (such as medical history or diagnostic notes).
+    \item $\text{AAD}$ is the Authenticated Associated Data, which binds unencrypted metadata (such as the patient or visit UUID) directly to the cryptographic proof.
+\end{itemize}
+
+A key architectural advantage of this design is that each $K_{\text{DEK}}$ is strictly single-use: generated for an individual clinical record, used once to encrypt the payload, wrapped under the corresponding KEK, and immediately zeroized in heap memory. In standard AES-GCM deployments, reusing an Initialization Vector under the same key completely compromises authenticity and enables polynomial-time key recovery; NIST SP~800-38D also restricts the invocation count under a single key to $2^{32}$ encryption operations~\cite{dworkin_gcm_2007}. Provisioning a fresh 256-bit $K_{\text{DEK}}$ per record eliminates IV collision risks across clinical records and renders the $2^{32}$ message invocation ceiling irrelevant by construction.
+Binding the patient or visit UUID inside $\text{AAD}$ prevents ciphertext splicing attacks. If an attacker copies an encrypted diagnosis from Patient~$A$'s row into Patient~$B$'s chart, the decryption process recalculates tag $T$ using Patient~$B$'s identifier. Because the UUIDs do not match, tag verification fails immediately, and the backend throws an \texttt{AEADBadTagException} before any corrupted data can be read into memory.
+
+\subsection{Classical versus Post-Quantum Digital Signatures}
+
+When destroying a Key Encryption Key, the system must issue an immutable, cryptographically verifiable deletion certificate for compliance auditors. Standard enterprise systems generate certificates using classic RSA-2048 algorithms.
+
+Standard digital signatures like RSA rely on mathematical problems that classical computers cannot easily solve: factoring large integers and calculating discrete logarithms. However, quantum computers running Shor's algorithm will solve these problems in polynomial time $\mathcal{O}((\log N)^3)$~\cite{nist_fips_204}. Because healthcare regulations require patient records to remain auditable for years, deletion receipts signed using classical algorithms today risk retroactive forgery long before their legal retention period ends.
+
+To prevent future quantum attacks against audit archives, \textit{CryptoShred Health} implements a hybrid digital signature scheme. The platform signs every deletion certificate twice: first using classical Vault RSA-2048, and second using the post-quantum standard, ML-DSA-65~\cite{nist_fips_204}. ML-DSA-65 bases its security on the hardness of lattice problems, which resist both classical and quantum solvers. This dual-signature model ensures immediate compatibility with existing enterprise Public Key Infrastructure (PKI) systems while guaranteeing that deletion proofs remain tamper-evident against quantum computers for decades to come.
+
+\subsection{Authenticated Data Structures: Binary Merkle Trees}
+
+To establish the historical existence of a deletion event without exposing database tables or full audit trails, the platform structures deletion receipts into an append-only binary Merkle tree~\cite{merkle1989}. Every leaf node stores the SHA-256 hash of a signed deletion certificate. The leaf hash provides a deterministic integrity digest of the canonical deletion payload, while the dual digital signatures ($\sigma_{\text{RSA}}$ and $\sigma_{\text{ML-DSA-65}}$) enforce source authenticity and non-repudiation. Internal parent nodes in \texttt{MerkleTreeService} combine children using lexicographical sorted-pair hashing:
+\begin{equation}
+    H_{\text{parent}} = \text{SHA-256}(\min(H_{\text{left}}, H_{\text{right}}) \parallel \max(H_{\text{left}}, H_{\text{right}}))
+    \label{eq:merkle-parent-node}
+\end{equation}
+The Merkle root hash $H_{\text{root}}$ at the top of the tree provides a 256-bit cryptographic commitment across all prior deletion events.
+
+Verifying a specific deletion receipt requires only the target certificate leaf hash and an authenticated audit path consisting of sibling hashes up to the tree root. Sibling hashes are combined at each step using sorted-pair evaluation:
+\begin{equation}
+    H_{i+1} = \text{SHA-256}(\min(H_i, S_i) \parallel \max(H_i, S_i))
+    \label{eq:merkle-directional-calc}
+\end{equation}
+Equation~\ref{eq:merkle-directional-calc} guarantees that verification scales with tree height in $\mathcal{O}(\log N)$ time, where $N$ represents total logged deletions. While audit paths carry positional prefixes (``\texttt{L:}'' and ``\texttt{R:}'') for logging clarity, sorted-pair concatenation eliminates tree traversal ambiguity. An external compliance auditor verifies an inclusion proof across $100{,}000$ recorded certificates by evaluating exactly $\lceil \log_2(100{,}000) \rceil = 17$ SHA-256 hash iterations. The raw CPU computation executes in under $0.85\text{~\textmu s}$ on preloaded in-memory buffers; in contrast, when verifying proofs over persistent storage, database index retrieval and object deserialization bring end-to-end audit latency to $2.478\text{~ms}$ (as measured in Chapter~\ref{section:evaluation}, Table~5.3).
+
+\subsection{Searchable Encryption via Deterministic HMAC Blind Indexing}
+
+Storing clinical records as raw AES-256-GCM ciphertexts disables standard B-Tree database indexing. Because AES-GCM uses a unique 96-bit initialization vector for every write, identical plaintext strings produce entirely different ciphertexts, preventing SQL \texttt{WHERE} clauses from matching records without decrypting every row into memory.
+
+To restore indexing throughput without exposing plaintext values to PostgreSQL, the platform computes deterministic blind indexes using HMAC-SHA256~\cite{krawczyk_hmac_1997}. The blind index maps searchable identifiers (such as NHS Numbers or Medical Record Numbers) to fixed 256-bit cryptographic tokens:
+\begin{equation}
+    \text{BlindIndex}(v) = \text{HMAC-SHA256}(K_{\text{salt}}, \text{Normalize}(v))
+    \label{eq:blind-index-theory}
+\end{equation}
+In Equation~\ref{eq:blind-index-theory}, the normalization function is defined as $\text{Normalize}(v) = v.\text{trim}().\text{toLowerCase}()$, stripping leading and trailing whitespace and converting the string to lowercase. The 256-bit secret key $K_{\text{salt}}$ resides inside HashiCorp Vault and is never revealed to the database process.
+
+Because HMAC-SHA256 is deterministic under fixed key $K_{\text{salt}}$, querying an NHS Number always yields an identical 64-character hexadecimal digest. PostgreSQL indexes these column values using standard B-Trees, executing point lookups in $\mathcal{O}(1)$ time ($< 1.2\text{~ms}$). Database administrators with full disk access observe only pseudorandom hashes, eliminating identifier inference without incurring full-table decryption overhead.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%         SECTION 2.2: REGULATORY & HEALTHCARE STANDARDS HARMONIZATION         %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Regulatory and Healthcare Standards Harmonization}\label{section:regulatory-standards}
+
+Deploying cryptographic erasure in clinical production requires reconciling European data protection statutes with medical retention mandates and HL7 FHIR interoperability standards.
+
+\subsection{GDPR Article 17 and Irreversible Anonymization Criteria}
+
+Under GDPR Article~17, data subjects possess the right to obtain erasure of personal data without undue delay~\cite{gdpr2016}. On append-only backups and distributed write-ahead logs where physical bit overwriting is impossible, data controllers must satisfy the anonymization thresholds set by the European Data Protection Board (EDPB)~\cite{edpb2014}. 
+
+When Vault permanently purges a 256-bit Key Encryption Key, recovering the corresponding AES-256-GCM ciphertexts requires an exhaustive search across the symmetric keyspace $|\mathcal{K}| = 2^{256}$. The probability of successfully identifying the key on a single random guess is:
+\begin{equation}
+    \mathcal{P}(\text{Success}_{\text{single}}) = \frac{1}{2^{256}} = 2^{-256}
+    \label{eq:brute-force-bound}
+\end{equation}
+Under an exhaustive brute-force attack, the expected computational work factor to recover the destroyed key requires:
+\begin{equation}
+    W_{\text{expected}} = \frac{2^{256} + 1}{2} \approx 2^{255} \text{ AES operations}
+    \label{eq:work-factor-bound}
+\end{equation}
+Evaluating $2^{255} \approx 5.79 \times 10^{76}$ AES operations exceeds the physical and thermodynamic limits of any real-world computational architecture. Even if an adversary commandeered all global computing infrastructure evaluating billions of candidate keys per second, the probability of recovering a destroyed KEK remains vanishingly negligible across cosmological timescales.
+
+Once the key is destroyed, the remaining ciphertexts left across PostgreSQL disks, Kafka event streams, and WORM backups become indistinguishable from random noise under the pseudorandom permutation assumption. An attacker with full access to raw storage cannot isolate an individual patient, link related visits together, or deduce health conditions from ciphertext patterns~\cite{garfinkel2007}. Eliminating all three vectors satisfies the Article 29 Data Protection Working Party Opinion 05/2014 criteria for effective anonymization~\cite{edpb2014}, fulfilling GDPR Article~17 without modifying immutable physical storage blocks.
+
+\subsection{Statutory Retention Windows and Erasure Scoping}
+
+Healthcare regulations require hospitals to preserve medical records for years. For example, the UK NHS Records Management Code of Practice 2021 mandates keeping adult clinical files for 8~years after discharge, children's charts until their 25th birthday, and maternity records for 25~years~\cite{nhs_records_2021}.
+
+Under GDPR Article~17(3)(b) and 17(3)(c), hospitals are legally required to deny a patient's deletion request while these mandatory retention clocks remain active. \textit{CryptoShred Health} balances this legal conflict through three practical modes:
+\begin{itemize}
+    \item \textbf{Aging Encounters Past Retention:} Once a specific hospital visit passes its legal retention cutoff (such as 8~years post-discharge), the system destroys that visit's key ($\text{KEK}_{\text{visit}}$). This erases the expired encounter while keeping the rest of the patient's active medical history intact.
+    \item \textbf{Opting Out of Medical Research:} If a patient withdraws consent for secondary clinical research, the system immediately destroys the keys for those specific encounters, rendering them unreadable to analytics pipelines without disrupting primary medical care.
+    \item \textbf{Permanent Audit Trails:} Destroying the encryption keys makes the sensitive medical notes impossible to read, but leaves non-identifying metadata, timestamps, and Merkle proofs intact so hospital compliance officers can legally prove that the deletion occurred.
+\end{itemize}
+
+\subsection{HL7 FHIR R4 Interoperability and Redaction Standards}
+
+Modern hospitals exchange clinical data using the Fast Healthcare Interoperability Resources (HL7 FHIR Release~4) standard~\cite{hl7_fhir_r4}. To integrate smoothly with existing hospital software, \textit{CryptoShred Health} maps its internal data models directly to UK Core FHIR profiles:
+\begin{itemize}
+    \item \texttt{UKCore-Patient}: Stores demographic details and verified NHS Numbers.
+    \item \texttt{UKCore-Encounter}: Records admission dates, hospital wards, and discharge summaries.
+    \item \texttt{UKCore-Observation}: Tracks vital signs and lab results mapped to standard medical codes.
+\end{itemize}
+
+When exporting data for patients whose keys have been shredded, the platform still produces valid FHIR JSON bundles, but replaces the unreadable clinical fields with a standardized \texttt{REDACTED} extension tag under the HL7 \texttt{v3-ObservationValue} code system. This ensures that downstream integration pipelines and research platforms can continue parsing the data without crashing on missing fields or exposing erased medical records.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                 SECTION 2.3: REQUIREMENTS SPECIFICATION                      %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Requirements Specification}\label{section:requirements-specification}
+
+System requirements are formally categorized into Functional (FR), Non-Functional (NFR), and Security (SR) requirements to guide development and automated validation.
+
+\subsection{Functional Requirements}
+
+The platform implements eight core functional capabilities:
+\begin{itemize}
+    \item \textbf{FR1 (Zero-Plaintext Ingestion):} Encrypt all demographic PII and clinical notes using AES-256-GCM before writing to PostgreSQL or Kafka.
+    \item \textbf{FR2 (Granular Visit Isolation):} Encrypt clinical encounters and diagnostic attachments under independent, per-visit encryption keys.
+    \item \textbf{FR3 (Dual-Level Crypto-Shredding):} Support both full-patient erasure ($\text{KEK}_{\text{patient}}$) and selective encounter erasure ($\text{KEK}_{\text{visit}}$) via single KMS API calls.
+    \item \textbf{FR4 (Verifiable Deletion Certificates):} Generate deletion receipts signed with classical RSA-2048 and post-quantum ML-DSA-65 keys and anchored in an append-only binary Merkle tree.
+    \item \textbf{FR5 (FHIR R4 Export):} Export clinical datasets as compliant HL7 FHIR R4 JSON bundles with standardized \texttt{REDACTED} tags.
+    \item \textbf{FR6 (Role-Based Access Control):} Enforce granular Spring Security RBAC isolating Administrators, Clinicians, Auditors, and Patients.
+    \item \textbf{FR7 (Zero-Plaintext Key Rotation):} Re-encrypt Data Encryption Keys under rotated KMS master keys without decrypting ciphertexts into application memory.
+    \item \textbf{FR8 (Atomic Backup Bundles):} Package PostgreSQL database dumps, Vault Raft snapshots, and Kafka event logs into synchronized, signed disaster recovery archives.
+\end{itemize}
+
+\subsection{Non-Functional Requirements}
+
+The architecture enforces five quantitative performance and reliability bounds:
+\begin{itemize}
+    \item \textbf{NFR1 (Shredding Latency):} Key destruction in HashiCorp Vault and database flag updates shall execute in constant time below $10\text{~ms}$ ($T_{\text{shred}} < 10\text{~ms}$).
+    \item \textbf{NFR2 (KMS Failover and Zero-Loss Recovery):} The Vault Raft cluster and ingress proxy shall detect leader failure, elect a standby follower, and restore cryptographic routing within $2.5\text{~s}$ ($T_{\text{failover}} < 2.5\text{~s}$), maintaining zero dropped clinical transactions.
+    \item \textbf{NFR3 (Zero Plaintext Leakage):} All read operations targeting shredded records shall return $100.000\%$ redacted payloads with zero plaintext leakage across continuous load testing.
+    \item \textbf{NFR4 (Read Concurrency):} The platform shall sustain over $50{,}000\text{~req/s}$ on cached clinical lookups under multi-user concurrency.
+    \item \textbf{NFR5 (System Availability):} The microservice cluster and key storage engines shall maintain $99.99\%$ service availability.
+\end{itemize}
+
+\subsection{Security and System Requirements}
+
+The platform enforces four hardware and runtime isolation controls:
+\begin{itemize}
+    \item \textbf{SR1 (Zero Plaintext Persistence in Permanent Storage):} No unencrypted healthcare fields shall persist inside relational database tables, transaction write-ahead logs, or cold backup snapshots. Decrypted clinical records reside strictly within volatile RAM inside the Trusted Computing Base (TCB), where Redis operates as a transient L2 cache (15-minute TTL, disk persistence disabled) with proactive eviction upon cryptographic shredding.
+    \item \textbf{SR2 (JVM Memory Zeroization):} Raw Data Encryption Key byte buffers in Java memory shall be wiped with zeroes (\texttt{Arrays.fill(dek, (byte) 0)}) immediately following cipher execution.
+    \item \textbf{SR3 (Memory Paging Prevention):} Container \texttt{IPC\_LOCK} capability shall enable memory locking, with Vault enforcing native \texttt{mlock()} system calls and the JVM enforcing scoped primitive array zeroization (\texttt{Arrays.fill(dek, (byte) 0)}) to prevent leaking sensitive key material to unencrypted disk swap partitions.
+    \item \textbf{SR4 (Separation of Duties):} Infrastructure administrators managing database instances and cluster nodes shall have zero cryptographic access to decrypt patient records.
+\end{itemize}
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{System Requirements Summary and Evaluation Results.}
+\label{tab:requirements-summary}
+\begin{tabular}{lll}
+\toprule
+\textbf{Requirement} & \textbf{Target Metric / Constraint} & \textbf{Verification Result} \\
+\midrule
+FR1--FR3 & Zero plaintext in DB; AES-256-GCM & Validated (100\% pass) \\
+FR4 & Dual RSA-2048 + ML-DSA-65 signatures & Validated (Tier 1--4 pass) \\
+FR5 & Valid HL7 FHIR R4 JSON & Validated (Schema compliant) \\
+FR6--FR7 & Strict RBAC; zero-plaintext key re-wrapping & Validated (29 assertions) \\
+FR8 & Coupled DB + Vault + WORM snapshot bundle & Validated (SHA-256 verified) \\
+\midrule
+NFR1 & $T_{\text{shred}} < 10\text{~ms}$ constant time & Validated ($5.63\text{--}7.65\text{~ms}$) \\
+NFR2 & Failover $< 2.5\text{~s}$ (0\% request loss) & Validated ($2.15\text{~s}$ reroute) \\
+NFR3 & $100.000\%$ Zero Data Leakage & Validated ($0.000\%$ leakage) \\
+NFR4 & Throughput $> 50{,}000\text{~req/s}$ & Validated ($96{,}820\text{~req/s}$) \\
+NFR5 & System Availability $99.99\%$ & Validated (3-node consensus) \\
+\midrule
+SR1 & Zero PII in permanent storage / WAL & Validated (0 plaintext rows) \\
+SR2 & Explicit \texttt{byte[]} memory zeroization & Validated (\texttt{Arrays.fill}) \\
+SR3 & \texttt{IPC\_LOCK} swap prevention & Validated (Docker cap\_add) \\
+SR4 & Administrative separation of duties & Validated (Zero PII access) \\
+\bottomrule
+\end{tabular}
+\end{table}

@@ -1,0 +1,22 @@
+\thispagestyle{abstractpagestyle}
+
+\vspace*{24pt}
+
+\begin{center}
+    \textbf{\fontsize{18pt}{22pt} \selectfont ABSTRACT}
+    
+    \vspace{12pt}
+    \textbf{\fontsize{13pt}{16pt} \selectfont Beyond Physical Deletion: Enforcing Verifiable Cryptographic Erasure Across Distributed Storage Layers in Zero-Plaintext Electronic Health Record Architectures}
+\end{center}
+
+\vspace{16pt}
+
+Modern Electronic Health Record (EHR) platforms replicate sensitive clinical data across distributed databases, message streams, in-memory caches, and immutable Write-Once-Read-Many (WORM) backup archives. This multi-tier persistence creates a fundamental tension between enforceable data subject privacy under Article~17 of the General Data Protection Regulation (GDPR) and mandatory statutory health preservation obligations (such as the UK NHS Code of Practice, HIPAA, or national health laws). Because modifying physical storage blocks across immutable media and append-only journals is technically impossible, conventional SQL relational deletions update pointers while leaving residual clinical records exposed across logs and disaster recovery snapshots.
+
+This dissertation presents \textit{CryptoShred Health}, an enterprise zero-plaintext EHR platform that decouples physical persistence from cryptographic accessibility. The architecture implements a two-tier envelope encryption hierarchy: ephemeral AES-256-GCM Data Encryption Keys (DEKs) bind to clinical record identifiers via Authenticated Associated Data (AAD) and are wrapped under dedicated per-patient and per-encounter Key Encryption Keys (KEKs) maintained within a high-availability 3-node HashiCorp Vault Raft cluster. Destroying a KEK renders all associated ciphertexts computationally irrecoverable, reducing any recovery attempt to an average work factor of $2^{255}$ symmetric evaluations over a $2^{256}$-bit key space.
+
+The system delivers three core technical contributions: (1) deterministic HMAC-SHA256 blind indexing that enables constant-time ($\mathcal{O}(1)$) exact-match queries without decrypting identifiers on the database tier; (2) an erasure verification pipeline combining classical RSA-2048 and post-quantum ML-DSA-65 signatures within an append-only binary Merkle tree, enabling third-party inclusion proof verification in $2.48\text{~ms}$ across $100{,}000$ historical leaves; and (3) an automated tombstone reconciler that harvests immutable WORM deletion receipts at startup, eliminating the KMS Snapshot Restoration Paradox by purging resurrected encryption keys in $1.69\text{~ms}$ per key.
+
+Empirical evaluation demonstrates that end-to-end cryptographic erasure executes in $5.63\text{--}7.65\text{~ms}$, delivering a $4\text{--}5\times$ speedup over transactional PostgreSQL cascades ($25.19\text{--}39.12\text{~ms}$), while isolated CPU microbenchmarks confirm constant-time algorithmic invariance ($59.50\,\mu\text{s}$). Under distributed k6 load testing with 500 concurrent virtual users, the platform sustains $96{,}820.5\text{~requests/s}$ on cached clinical reads and $13{,}420.7\text{~erasures/s}$. Adversarial validation across $2{,}377{,}883$ queries targeting shredded entities confirms a strict $0.000\%$ plaintext leakage rate.
+
+\vfill
