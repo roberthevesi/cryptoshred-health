@@ -30,7 +30,7 @@ public class PatientController {
             @RequestParam(required = false) UUID gpId,
             @RequestParam(required = false, defaultValue = "true") boolean includeDeleted) {
         if (search != null && !search.isBlank()) {
-            return ResponseEntity.ok(patientService.search(search));
+            return ResponseEntity.ok(patientService.search(search, includeDeleted));
         }
         if (gpId != null) {
             return ResponseEntity.ok(patientService.findByGp(gpId));

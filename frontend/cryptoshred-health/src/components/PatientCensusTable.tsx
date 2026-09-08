@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -39,6 +39,7 @@ export default function PatientCensusTable() {
   const queryClient = useQueryClient();
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [activeCensusTab, setActiveCensusTab] = useState<CensusTab>('active');
   const [selectedPatientForEdit, setSelectedPatientForEdit] = useState<Patient | null>(null);
   const [showPatientModal, setShowPatientModal] = useState(false);
@@ -47,15 +48,28 @@ export default function PatientCensusTable() {
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
-  // 1. Fetch Patients from /api/patients (includes shredded records)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+      setCurrentPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // 1. Fetch Patients from /api/patients (triggers backend HMAC blind index lookups when search is specified)
   const {
     data: patients = [],
     isLoading: isPatientsLoading,
     isError: isPatientsError,
     refetch: refetchPatients,
   } = useQuery<Patient[]>({
-    queryKey: ['patients'],
-    queryFn: () => apiClient.get<Patient[]>('/patients?includeDeleted=true').then((r) => r.data),
+    queryKey: ['patients', debouncedSearch],
+    queryFn: () => {
+      const url = debouncedSearch
+        ? `/patients?includeDeleted=true&search=${encodeURIComponent(debouncedSearch)}`
+        : '/patients?includeDeleted=true';
+      return apiClient.get<Patient[]>(url).then((r) => r.data);
+    },
   });
 
   const isDoctor = user?.role === 'DOCTOR';
@@ -106,19 +120,27 @@ export default function PatientCensusTable() {
     if (activeCensusTab === 'shredded' && !isShredded) return false;
 
     if (!searchQuery) return true;
+    // If backend already filtered using debouncedSearch, keep the backend results
+    if (debouncedSearch && debouncedSearch.toLowerCase() === searchQuery.trim().toLowerCase()) {
+      return true;
+    }
+
     const q = searchQuery.toLowerCase();
-    const fullName = `${p.firstName} ${p.lastName}`.toLowerCase();
-    const gpName = p.gp ? `${p.gp.firstName} ${p.gp.lastName}`.toLowerCase() : '';
+    const fullName = `${p.firstName ?? ''} ${p.lastName ?? ''}`.toLowerCase();
+    const gpName = p.gp ? `${p.gp.firstName ?? ''} ${p.gp.lastName ?? ''}`.toLowerCase() : '';
     const practice = p.gp?.practiceName?.toLowerCase() ?? '';
     const nhs = p.nhsNumber?.toLowerCase() ?? '';
+    const mrn = p.mrn?.toLowerCase() ?? '';
     const id = p.patientId.toLowerCase();
 
     return (
       fullName.includes(q) ||
       id.includes(q) ||
       nhs.includes(q) ||
+      mrn.includes(q) ||
       gpName.includes(q) ||
-      practice.includes(q)
+      practice.includes(q) ||
+      (isShredded && '[shredded]'.includes(q))
     );
   });
 

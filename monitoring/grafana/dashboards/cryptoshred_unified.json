@@ -600,7 +600,7 @@
       "gridPos": { "h": 7, "w": 8, "x": 16, "y": 12 },
       "targets": [
         {
-          "expr": "sum by (field) (rate(cryptoshred_blind_index_lookups_total[1m]))",
+          "expr": "sum by (field) (rate(cryptoshred_blind_index_lookups_total[1m])) or (sum by (field) (cryptoshred_blind_index_lookups_total) * 0)",
           "legendFormat": "{{field}}",
           "refId": "A"
         }
@@ -608,11 +608,49 @@
       "fieldConfig": {
         "defaults": {
           "custom": {
-            "drawStyle": "bars",
-            "lineWidth": 1,
-            "fillOpacity": 40
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "fillOpacity": 15
           },
           "unit": "ops"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "last_name" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "#3274D9", "mode": "fixed" } },
+              { "id": "displayName", "value": "last_name (Surname)" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "mrn" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "#56A64B", "mode": "fixed" } },
+              { "id": "displayName", "value": "mrn (MRN / Patient ID)" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "nhs_number" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "#FA6400", "mode": "fixed" } },
+              { "id": "displayName", "value": "nhs_number (NHS #)" }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "showLegend": true,
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["lastNotNull", "max"]
         }
       }
     },

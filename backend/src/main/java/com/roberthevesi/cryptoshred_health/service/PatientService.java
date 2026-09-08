@@ -161,8 +161,13 @@ public class PatientService {
 
     @Transactional(readOnly = true)
     public List<PatientResponse> search(String query) {
+        return search(query, true);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PatientResponse> search(String query, boolean includeDeleted) {
         if (query == null || query.isBlank()) {
-            return findAll(false);
+            return findAll(includeDeleted);
         }
         String q = query.trim();
         String blindIndex = cryptoService.computeBlindIndex(q, null);
@@ -170,37 +175,113 @@ public class PatientService {
         Set<String> matchedPatientIds = new HashSet<>();
         List<PatientResponse> results = new ArrayList<>();
 
-        // 1. O(1) indexed lookup by NHS Number
-        if (cryptoMetricsService != null) {
-            cryptoMetricsService.recordBlindIndexLookup("nhs_number");
-        }
-        patientRepository.findByBlindIndexNhs(blindIndex)
-                .filter(p -> p.isActive() && !p.isShredded())
-                .ifPresent(p -> {
-                    matchedPatientIds.add(p.getPatientId());
-                    results.add(resolvePatientResponse(p));
-                });
+        // Detect query candidate type for targeted O(1) blind index lookup
+        String qDigitsOnly = q.replaceAll("[\\s-]", "");
+        boolean isNhsCandidate = qDigitsOnly.matches("^\\d+$");
+        boolean isMrnCandidate = q.toUpperCase().startsWith("PAT-")
+                || q.toUpperCase().startsWith("MRN-")
+                || (q.length() >= 6 && q.matches("^[A-Za-z0-9_-]+$") && q.matches(".*\\d.*") && q.matches(".*[A-Za-z].*"));
+        boolean isLastNameCandidate = !isNhsCandidate && !isMrnCandidate;
 
-        // 2. O(1) indexed lookup by MRN
-        if (cryptoMetricsService != null) {
-            cryptoMetricsService.recordBlindIndexLookup("mrn");
+        // 1. O(1) indexed lookup by NHS Number
+        if (isNhsCandidate) {
+            if (cryptoMetricsService != null) {
+                cryptoMetricsService.recordBlindIndexLookup("nhs_number");
+            }
+            String nhsIndex = cryptoService.computeBlindIndex(qDigitsOnly, null);
+            patientRepository.findByBlindIndexNhs(nhsIndex)
+                    .or(() -> patientRepository.findByBlindIndexNhs(blindIndex))
+                    .filter(p -> includeDeleted || (p.isActive() && !p.isShredded()))
+                    .ifPresent(p -> {
+                        matchedPatientIds.add(p.getPatientId());
+                        results.add(resolvePatientResponse(p));
+                    });
+            if (!results.isEmpty()) {
+                return results;
+            }
         }
-        patientRepository.findByBlindIndexMrn(blindIndex)
-                .filter(p -> p.isActive() && !p.isShredded() && !matchedPatientIds.contains(p.getPatientId()))
-                .ifPresent(p -> {
-                    matchedPatientIds.add(p.getPatientId());
-                    results.add(resolvePatientResponse(p));
-                });
+
+        // 2. O(1) indexed lookup by MRN / Patient ID
+        if (isMrnCandidate) {
+            if (cryptoMetricsService != null) {
+                cryptoMetricsService.recordBlindIndexLookup("mrn");
+            }
+            patientRepository.findByBlindIndexMrn(blindIndex)
+                    .filter(p -> !matchedPatientIds.contains(p.getPatientId()) && (includeDeleted || (p.isActive() && !p.isShredded())))
+                    .ifPresent(p -> {
+                        matchedPatientIds.add(p.getPatientId());
+                        results.add(resolvePatientResponse(p));
+                    });
+            if (!results.isEmpty()) {
+                return results;
+            }
+        }
 
         // 3. O(1) indexed lookup by Surname
-        if (cryptoMetricsService != null) {
-            cryptoMetricsService.recordBlindIndexLookup("last_name");
+        if (isLastNameCandidate) {
+            if (cryptoMetricsService != null) {
+                cryptoMetricsService.recordBlindIndexLookup("last_name");
+            }
+            List<Patient> byLastName = patientRepository.findByBlindIndexLastName(blindIndex);
+            for (Patient p : byLastName) {
+                if (!matchedPatientIds.contains(p.getPatientId()) && (includeDeleted || (p.isActive() && !p.isShredded()))) {
+                    matchedPatientIds.add(p.getPatientId());
+                    results.add(resolvePatientResponse(p));
+                }
+            }
+            if (!results.isEmpty()) {
+                return results;
+            }
         }
-        List<Patient> byLastName = patientRepository.findByBlindIndexLastName(blindIndex);
-        for (Patient p : byLastName) {
-            if (p.isActive() && !p.isShredded() && !matchedPatientIds.contains(p.getPatientId())) {
-                matchedPatientIds.add(p.getPatientId());
-                results.add(resolvePatientResponse(p));
+
+        // Fallback: If primary candidate did not yield a match, check other blind indexes before full scan
+        if (!isLastNameCandidate) {
+            List<Patient> byLastName = patientRepository.findByBlindIndexLastName(blindIndex);
+            if (!byLastName.isEmpty()) {
+                if (cryptoMetricsService != null) {
+                    cryptoMetricsService.recordBlindIndexLookup("last_name");
+                }
+                for (Patient p : byLastName) {
+                    if (!matchedPatientIds.contains(p.getPatientId()) && (includeDeleted || (p.isActive() && !p.isShredded()))) {
+                        matchedPatientIds.add(p.getPatientId());
+                        results.add(resolvePatientResponse(p));
+                    }
+                }
+                if (!results.isEmpty()) {
+                    return results;
+                }
+            }
+        }
+        if (!isMrnCandidate) {
+            Optional<Patient> byMrn = patientRepository.findByBlindIndexMrn(blindIndex);
+            if (byMrn.isPresent()) {
+                if (cryptoMetricsService != null) {
+                    cryptoMetricsService.recordBlindIndexLookup("mrn");
+                }
+                byMrn.filter(p -> !matchedPatientIds.contains(p.getPatientId()) && (includeDeleted || (p.isActive() && !p.isShredded())))
+                        .ifPresent(p -> {
+                            matchedPatientIds.add(p.getPatientId());
+                            results.add(resolvePatientResponse(p));
+                        });
+                if (!results.isEmpty()) {
+                    return results;
+                }
+            }
+        }
+        if (!isNhsCandidate) {
+            Optional<Patient> byNhs = patientRepository.findByBlindIndexNhs(blindIndex);
+            if (byNhs.isPresent()) {
+                if (cryptoMetricsService != null) {
+                    cryptoMetricsService.recordBlindIndexLookup("nhs_number");
+                }
+                byNhs.filter(p -> !matchedPatientIds.contains(p.getPatientId()) && (includeDeleted || (p.isActive() && !p.isShredded())))
+                        .ifPresent(p -> {
+                            matchedPatientIds.add(p.getPatientId());
+                            results.add(resolvePatientResponse(p));
+                        });
+                if (!results.isEmpty()) {
+                    return results;
+                }
             }
         }
 
@@ -210,8 +291,8 @@ public class PatientService {
 
         // 4. Graceful in-memory fuzzy search fallback for substring matches
         String qLower = q.toLowerCase();
-        return findAll(false).stream()
-                .filter(p -> p.isActive() && !p.isShredded())
+        return findAll(includeDeleted).stream()
+                .filter(p -> includeDeleted || (p.isActive() && !p.isShredded()))
                 .filter(p -> (p.getPatientId() != null && p.getPatientId().toLowerCase().contains(qLower))
                         || (p.getFirstName() != null && p.getFirstName().toLowerCase().contains(qLower))
                         || (p.getLastName() != null && p.getLastName().toLowerCase().contains(qLower))
