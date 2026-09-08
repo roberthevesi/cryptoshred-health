@@ -710,8 +710,32 @@ export default function ProofVerificationModal({
                     <div className="p-3.5 rounded-xl bg-white border border-slate-200 space-y-2 text-[11px]">
                       <span className="font-bold text-slate-900 flex items-center gap-1.5">
                         <Layers className="h-4 w-4 text-emerald-600" />
-                        Immutable Audit Trail &amp; Merkle Root
+                        Immutable Audit Trail &amp; Legal Metadata
                       </span>
+                      {currentProof.overrideReason && (
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                          <span className="text-slate-500 font-medium">Legal Ground:</span>
+                          <span className="font-mono font-bold text-emerald-900 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                            {currentProof.overrideReason === 'COURT_ORDER'
+                              ? 'Court Order (GDPR Art. 17(1)(e))'
+                              : currentProof.overrideReason === 'CONSENT_WITHDRAWN'
+                              ? 'Consent Withdrawn (GDPR Art. 17(1)(b))'
+                              : currentProof.overrideReason === 'UNLAWFUL_PROCESSING'
+                              ? 'Unlawful Processing (GDPR Art. 17(1)(d))'
+                              : currentProof.overrideReason === 'STATUTORY_EXPIRED'
+                              ? 'Statutory Retention Expired'
+                              : currentProof.overrideReason}
+                          </span>
+                        </div>
+                      )}
+                      {currentProof.retentionStatus && (
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                          <span className="text-slate-500 font-medium">Retention Status:</span>
+                          <span className="font-mono text-slate-800 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
+                            {currentProof.retentionStatus}
+                          </span>
+                        </div>
+                      )}
                       {currentProof.merkleRoot && (
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                           <span className="text-slate-500 font-medium">Merkle Root:</span>

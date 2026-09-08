@@ -103,6 +103,17 @@ export default function DeletionProofCard({
     ? (verificationResult.pqcSignatureValid ?? verificationResult.signatureValid)
     : true;
 
+  const rawReason = proof.overrideReason || (proof as unknown as { statutoryOverrideReason?: string }).statutoryOverrideReason;
+  const legalGroundText = rawReason === 'COURT_ORDER'
+    ? 'Court Order (GDPR Art. 17(1)(e))'
+    : rawReason === 'CONSENT_WITHDRAWN'
+    ? 'Consent Withdrawn (GDPR Art. 17(1)(b))'
+    : rawReason === 'UNLAWFUL_PROCESSING'
+    ? 'Unlawful Processing (GDPR Art. 17(1)(d))'
+    : rawReason === 'STATUTORY_EXPIRED'
+    ? 'Statutory Retention Expired'
+    : rawReason || (proof.retentionStatus === 'ELIGIBLE' ? 'Statutory Retention Expired' : 'Consent Withdrawn (GDPR Art. 17)');
+
   return (
     <div className={`rounded-2xl border border-emerald-300 bg-white p-4 sm:p-5 shadow-xl space-y-3.5 ${className}`}>
       {/* 1. Modal Top Bar: Title, Badges, and Action Buttons */}
@@ -197,8 +208,8 @@ export default function DeletionProofCard({
           <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1 mb-1">
             <Scale className="h-3 w-3 text-emerald-600" /> Legal Ground &amp; Origin
           </span>
-          <p className="text-xs font-bold text-emerald-800 truncate">
-            {proof.statutoryOverrideReason || 'CONSENT_WITHDRAWN'}
+          <p className="text-xs font-bold text-emerald-800 truncate" title={legalGroundText}>
+            {legalGroundText}
           </p>
           <span className="text-[10px] text-slate-500 truncate block">
             Auth: {proof.requestedBy || 'Data Protection Officer'}

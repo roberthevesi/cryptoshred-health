@@ -1402,7 +1402,7 @@ export default function PatientDetailPage() {
           if (visitToShred) {
             visitErasureMutation.mutate({
               visitId: visitToShred.id,
-              overrideReason: visitOverrideReason,
+              overrideReason: patient?.retentionStatus === 'PROTECTED' ? visitOverrideReason : 'STATUTORY_EXPIRED',
             });
           }
         }}
@@ -1464,7 +1464,7 @@ export default function PatientDetailPage() {
           if (patient) {
             patientErasureMutation.mutate({
               pid: patient.patientId,
-              overrideReason: patientOverrideReason,
+              overrideReason: patient.retentionStatus === 'PROTECTED' ? patientOverrideReason : 'STATUTORY_EXPIRED',
             });
           }
         }}
