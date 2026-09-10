@@ -10,9 +10,9 @@
 
 \section{Cryptographic and Security Foundations}\label{section:crypto-foundations}
 
-CryptoShred Health enforces zero-plaintext storage by layering five cryptographic mechanisms: AES-256-GCM envelope encryption with contextual AAD binding, hybrid post-quantum digital signatures, binary Merkle audit trees, POSIX memory locking, and HMAC-SHA256 blind indexing.
+CryptoShred Health enforces zero-plaintext storage by layering five cryptographic mechanisms: AES-256-GCM envelope encryption with contextual Additional Authenticated Data (AAD) binding, hybrid post-quantum digital signatures, binary Merkle audit trees, POSIX memory locking, and HMAC-SHA256 blind indexing.
 
-\subsection{Symmetric Envelope Encryption and Context Binding}
+\subsection{Symmetric Envelope Encryption and Additional Authenticated Data (AAD) Context Binding}
 
 Directly encrypting high-throughput database payloads with asymmetric algorithms exhausts CPU cycles and introduces severe message size inflation. To maintain wire-speed read and write throughput, the platform implements symmetric envelope encryption~\cite{boneh_shoup_2020}, segregating key lifecycles into a two-tier hierarchy:
 \begin{enumerate}
@@ -27,12 +27,12 @@ The storage engine encrypts all patient attributes using AES-256 in Galois/Count
 \end{equation}
 In Equation~\ref{eq:aes-gcm-formal}:
 \begin{itemize}
-    \item $C$ is the resulting encrypted ciphertext stored in PostgreSQL.
+    \item $C$ is the resulting ciphertext stored in PostgreSQL.
     \item $T$ is the 128-bit authentication tag---a cryptographic checksum that proves the ciphertext has not been altered or moved.
     \item $K_{\text{DEK}}$ is the ephemeral 256-bit symmetric Data Encryption Key generated for this specific record.
     \item $IV$ is a unique 96-bit initialization vector generated securely for each write operation.
     \item $P$ is the raw clinical plaintext (such as medical history or diagnostic notes).
-    \item $\text{AAD}$ is the Authenticated Associated Data, which binds unencrypted metadata (such as the patient or visit UUID) directly to the cryptographic proof.
+    \item $\text{AAD}$ is the Additional Authenticated Data (AAD), which binds unencrypted metadata (such as the patient or visit UUID) directly to the ciphertext payload.
 \end{itemize}
 
 A key architectural advantage of this design is that each $K_{\text{DEK}}$ is strictly single-use: generated for an individual clinical record, used once to encrypt the payload, wrapped under the corresponding KEK, and immediately zeroized in heap memory. In standard AES-GCM deployments, reusing an Initialization Vector under the same key completely compromises authenticity and enables polynomial-time key recovery; NIST SP~800-38D also restricts the invocation count under a single key to $2^{32}$ encryption operations~\cite{dworkin_gcm_2007}. Provisioning a fresh 256-bit $K_{\text{DEK}}$ per record eliminates IV collision risks across clinical records and renders the $2^{32}$ message invocation ceiling irrelevant by construction.
@@ -40,27 +40,27 @@ Binding the patient or visit UUID inside $\text{AAD}$ prevents ciphertext splici
 
 \subsection{Classical versus Post-Quantum Digital Signatures}
 
-When destroying a Key Encryption Key, the system must issue an immutable, cryptographically verifiable deletion certificate for compliance auditors. Standard enterprise systems generate certificates using classic RSA-2048 algorithms.
+When destroying a Key Encryption Key, the system must issue an immutable, cryptographically verifiable deletion certificate for compliance auditors. Standard enterprise systems generate certificates using classical RSA-2048 signatures.
 
 Standard digital signatures like RSA rely on mathematical problems that classical computers cannot easily solve: factoring large integers and calculating discrete logarithms. However, quantum computers running Shor's algorithm will solve these problems in polynomial time $\mathcal{O}((\log N)^3)$~\cite{nist_fips_204}. Because healthcare regulations require patient records to remain auditable for years, deletion receipts signed using classical algorithms today risk retroactive forgery long before their legal retention period ends.
 
-To prevent future quantum attacks against audit archives, \textit{CryptoShred Health} implements a hybrid digital signature scheme. The platform signs every deletion certificate twice: first using classical Vault RSA-2048, and second using the post-quantum standard, ML-DSA-65~\cite{nist_fips_204}. ML-DSA-65 bases its security on the hardness of lattice problems, which resist both classical and quantum solvers. This dual-signature model ensures immediate compatibility with existing enterprise Public Key Infrastructure (PKI) systems while guaranteeing that deletion proofs remain tamper-evident against quantum computers for decades to come.
+To prevent future quantum attacks against audit archives, \textit{CryptoShred Health} implements a hybrid digital signature scheme. The platform signs every deletion certificate twice: first using classical Vault RSA-2048, and second using the post-quantum standard, ML-DSA-65~\cite{nist_fips_204}. ML-DSA-65 bases its security on the hardness of lattice problems, which resist both classical and quantum solvers. This dual-signature model ensures immediate compatibility with existing enterprise Public Key Infrastructure (PKI) systems while providing long-term resistance against both classical and quantum cryptanalytic attacks.
 
 \subsection{Authenticated Data Structures: Binary Merkle Trees}
 
-To establish the historical existence of a deletion event without exposing database tables or full audit trails, the platform structures deletion receipts into an append-only binary Merkle tree~\cite{merkle1989}. Every leaf node stores the SHA-256 hash of a signed deletion certificate. The leaf hash provides a deterministic integrity digest of the canonical deletion payload, while the dual digital signatures ($\sigma_{\text{RSA}}$ and $\sigma_{\text{ML-DSA-65}}$) enforce source authenticity and non-repudiation. Internal parent nodes in \texttt{MerkleTreeService} combine children using lexicographical sorted-pair hashing:
+To establish the historical existence of a deletion event without exposing database tables or full audit trails, the platform structures deletion receipts into an append-only binary Merkle tree~\cite{merkle1989}. Every leaf node stores the SHA-256 hash of a signed deletion certificate. The leaf hash provides a deterministic integrity digest of the canonical deletion payload, while the dual digital signatures ($\sigma_{\text{RSA}}$ and $\sigma_{\text{ML-DSA-65}}$) enforce source authenticity and non-repudiation. Internal parent nodes in \texttt{MerkleTreeService} combine children using lexicographically sorted-pair hashing:
 \begin{equation}
     H_{\text{parent}} = \text{SHA-256}(\min(H_{\text{left}}, H_{\text{right}}) \parallel \max(H_{\text{left}}, H_{\text{right}}))
     \label{eq:merkle-parent-node}
 \end{equation}
 The Merkle root hash $H_{\text{root}}$ at the top of the tree provides a 256-bit cryptographic commitment across all prior deletion events.
 
-Verifying a specific deletion receipt requires only the target certificate leaf hash and an authenticated audit path consisting of sibling hashes up to the tree root. Sibling hashes are combined at each step using sorted-pair evaluation:
+Verifying a specific deletion receipt requires only the target certificate leaf hash and an authenticated audit path consisting of sibling hashes up to the tree root. Sibling hashes are combined at each step using lexicographically sorted-pair hashing:
 \begin{equation}
     H_{i+1} = \text{SHA-256}(\min(H_i, S_i) \parallel \max(H_i, S_i))
     \label{eq:merkle-directional-calc}
 \end{equation}
-Equation~\ref{eq:merkle-directional-calc} guarantees that verification scales with tree height in $\mathcal{O}(\log N)$ time, where $N$ represents total logged deletions. While audit paths carry positional prefixes (``\texttt{L:}'' and ``\texttt{R:}'') for logging clarity, sorted-pair concatenation eliminates tree traversal ambiguity. An external compliance auditor verifies an inclusion proof across $100{,}000$ recorded certificates by evaluating exactly $\lceil \log_2(100{,}000) \rceil = 17$ SHA-256 hash iterations. The raw CPU computation executes in under $0.85\text{~\textmu s}$ on preloaded in-memory buffers; in contrast, when verifying proofs over persistent storage, database index retrieval and object deserialization bring end-to-end audit latency to $2.478\text{~ms}$ (as measured in Chapter~\ref{section:evaluation}, Table~5.3).
+Equation~\ref{eq:merkle-directional-calc} guarantees that verification scales with tree height in $\mathcal{O}(\log N)$ time, where $N$ represents total logged deletions. While audit paths carry positional prefixes (``\texttt{L:}'' and ``\texttt{R:}'') for logging clarity, lexicographically sorted-pair concatenation eliminates tree traversal ambiguity. An external compliance auditor verifies an inclusion proof across $100{,}000$ recorded certificates by evaluating exactly $\lceil \log_2(100{,}000) \rceil = 17$ SHA-256 hash iterations. The raw CPU computation executes in under $0.85\text{~\textmu s}$ on preloaded in-memory buffers; in contrast, when verifying proofs over persistent storage, database index retrieval and object deserialization bring end-to-end audit latency to $2.48\text{~ms}$ (as measured in Chapter~\ref{section:evaluation}, Table~5.3).
 
 \subsection{Searchable Encryption via Deterministic HMAC Blind Indexing}
 
@@ -73,7 +73,7 @@ To restore indexing throughput without exposing plaintext values to PostgreSQL, 
 \end{equation}
 In Equation~\ref{eq:blind-index-theory}, the normalization function is defined as $\text{Normalize}(v) = v.\text{trim}().\text{toLowerCase}()$, stripping leading and trailing whitespace and converting the string to lowercase. The 256-bit secret key $K_{\text{salt}}$ resides inside HashiCorp Vault and is never revealed to the database process.
 
-Because HMAC-SHA256 is deterministic under fixed key $K_{\text{salt}}$, querying an NHS Number always yields an identical 64-character hexadecimal digest. PostgreSQL indexes these column values using standard B-Trees, executing point lookups in $\mathcal{O}(1)$ time ($< 1.2\text{~ms}$). Database administrators with full disk access observe only pseudorandom hashes, eliminating identifier inference without incurring full-table decryption overhead.
+Because HMAC-SHA256 is deterministic under fixed key $K_{\text{salt}}$, querying an NHS Number always yields an identical 64-character hexadecimal digest. PostgreSQL indexes these column values using standard B-trees, executing point lookups via $\mathcal{O}(\log N)$ index scans ($< 1.2\text{~ms}$). Database administrators with full disk access observe only pseudorandom hashes, eliminating identifier inference without incurring full-table decryption overhead.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %         SECTION 2.2: REGULATORY & HEALTHCARE STANDARDS HARMONIZATION         %
@@ -142,7 +142,7 @@ The platform implements eight core functional capabilities:
     \item \textbf{FR5 (FHIR R4 Export):} Export clinical datasets as compliant HL7 FHIR R4 JSON bundles with standardized \texttt{REDACTED} tags.
     \item \textbf{FR6 (Role-Based Access Control):} Enforce granular Spring Security RBAC isolating Administrators, Clinicians, Auditors, and Patients.
     \item \textbf{FR7 (Zero-Plaintext Key Rotation):} Re-encrypt Data Encryption Keys under rotated KMS master keys without decrypting ciphertexts into application memory.
-    \item \textbf{FR8 (Atomic Backup Bundles):} Package PostgreSQL database dumps, Vault Raft snapshots, and Kafka event logs into synchronized, signed disaster recovery archives.
+    \item \textbf{FR8 (Atomic Backup Bundles):} Package PostgreSQL database dumps, Vault Raft snapshots, and immutable WORM deletion receipts into synchronized, signed disaster recovery archives.
 \end{itemize}
 
 \subsection{Non-Functional Requirements}
@@ -175,7 +175,7 @@ The platform enforces four hardware and runtime isolation controls:
 \toprule
 \textbf{Requirement} & \textbf{Target Metric / Constraint} & \textbf{Verification Result} \\
 \midrule
-FR1--FR3 & Zero plaintext in DB; AES-256-GCM & Validated (100\% pass) \\
+FR1--FR3 & Zero plaintext in DB; AES-256-GCM & Validated (144/144 tests pass) \\
 FR4 & Dual RSA-2048 + ML-DSA-65 signatures & Validated (Tier 1--4 pass) \\
 FR5 & Valid HL7 FHIR R4 JSON & Validated (Schema compliant) \\
 FR6--FR7 & Strict RBAC; zero-plaintext key re-wrapping & Validated (29 assertions) \\
@@ -184,10 +184,10 @@ FR8 & Coupled DB + Vault + WORM snapshot bundle & Validated (SHA-256 verified) \
 NFR1 & $T_{\text{shred}} < 10\text{~ms}$ constant time & Validated ($5.63\text{--}7.65\text{~ms}$) \\
 NFR2 & Failover $< 2.5\text{~s}$ (0\% request loss) & Validated ($2.15\text{~s}$ reroute) \\
 NFR3 & $100.000\%$ Zero Data Leakage & Validated ($0.000\%$ leakage) \\
-NFR4 & Throughput $> 50{,}000\text{~req/s}$ & Validated ($96{,}820\text{~req/s}$) \\
+NFR4 & Throughput $> 50{,}000\text{~req/s}$ & Validated ($96{,}820.5\text{~req/s}$) \\
 NFR5 & System Availability $99.99\%$ & Validated (3-node consensus) \\
 \midrule
-SR1 & Zero PII in permanent storage / WAL & Validated (0 plaintext rows) \\
+SR1 & Zero PII in permanent storage / WAL records & Validated (0 plaintext rows) \\
 SR2 & Explicit \texttt{byte[]} memory zeroization & Validated (\texttt{Arrays.fill}) \\
 SR3 & \texttt{IPC\_LOCK} swap prevention & Validated (Docker cap\_add) \\
 SR4 & Administrative separation of duties & Validated (Zero PII access) \\

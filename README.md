@@ -238,6 +238,6 @@ cryptoshred-health/
 
 ## 📄 License & Academic Attribution
 
-Developed by **Robert Hevesi** as part of the Master's Dissertation in Cybersecurity:  
-*“Beyond Physical Deletion: Enforcing Verifiable Cryptographic Erasure Across Distributed Storage Layers in Zero-Plaintext Electronic Health Record Architectures”*  
-Universitatea Politehnica din Timișoara — Faculty of Automatics and Computers.
+Developed by **Robert Hevesi** as part of the Master's Dissertation in Software Engineering:  
+*“Beyond Physical Deletion: Enforcing Verifiable Cryptographic Erasure Across Distributed Storage Layers in Zero-Plaintext Electronic Health Record Architectures (CryptoShred Health)”*  
+Universitatea Politehnica din Timișoara — Faculty of Automation and Computers.

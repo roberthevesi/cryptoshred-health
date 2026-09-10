@@ -26,7 +26,6 @@
 \usepackage{booktabs}
 \usepackage{pgf-pie}
 \usepackage{svg}
-\usepackage{pdfpages}
 \usepackage{algorithm}
 \usepackage{algpseudocode}
 
@@ -102,7 +101,7 @@
 \clearpage
 \listoftables
 \clearpage
-\listof{lstlisting}{List of Snippets}
+\listof{lstlisting}{List of Listings}
 \include{chapters/4.Introduction}
 \include{chapters/5.TheoreticalFoundations}
 \include{chapters/6.SystemDesign}
@@ -114,6 +113,6 @@
 % Print the bibliography
 \printbibliography
 
-% \includepdf[pages={1}]{\declarationPath}
+\includepdf[pages={1}]{\declarationPath}
 
 \end{document}

@@ -16,7 +16,7 @@ The backend service runs on Java~21 and Spring Boot~3.3.4. It enforces zero-plai
 
 In CryptoShred Health, the Java Persistence API (JPA) entities \texttt{Patient} and \texttt{PatientVisit} isolate runtime clinical objects from relational disk tables.
 
-As detailed in Listing~\ref{lst:patient-entity}, all identifiable demographic attributes carry Hibernate's \texttt{@Transient} annotation. This mapping completely omits fields such as \texttt{firstName}, \texttt{lastName}, \texttt{dateOfBirth}, and \texttt{nhsNumber} from the PostgreSQL DDL schema.
+As detailed in Listing~\ref{lst:patient-entity}, all identifiable demographic attributes carry the JPA \texttt{@Transient} annotation. This mapping completely omits fields such as \texttt{firstName}, \texttt{lastName}, \texttt{dateOfBirth}, and \texttt{nhsNumber} from the PostgreSQL DDL schema.
 
 \begin{lstlisting}[language=Java, caption={Zero-plaintext JPA entity implementation in \texttt{Patient.java}.}, label={lst:patient-entity}]
 @Entity
@@ -25,48 +25,30 @@ As detailed in Listing~\ref{lst:patient-entity}, all identifiable demographic at
     @Index(name = "idx_patient_blind_mrn", columnList = "blind_index_mrn"),
     @Index(name = "idx_patient_blind_last_name", columnList = "blind_index_last_name")
 })
-@Getter @Setter @NoArgsConstructor
 public class Patient {
-    @Id
-    @Column(name = "id", updatable = false, nullable = false)
-    private UUID id;
-
+    @Id private UUID id;
     @Column(nullable = false, unique = true)
     private String patientId; // Public identifier: PAT-XXXXXXXX
 
-    @Column(columnDefinition = "TEXT")
-    @JsonIgnore
+    @Column(columnDefinition = "TEXT") @JsonIgnore
     private String encryptedDataBlob; // Base64 ciphertext package
 
     @ManyToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name = "encryption_key_id")
-    @JsonIgnore
+    @JoinColumn(name = "encryption_key_id") @JsonIgnore
     private EncryptionKey encryptionKey; // Dedicated Vault Transit KEK & wrapped DEK
 
     // Blind indices for O(1) exact-match database queries
     @Column(name = "blind_index_nhs", length = 64)
     private String blindIndexNhs;
 
-    @Column(name = "blind_index_mrn", length = 64)
-    private String blindIndexMrn;
+    @Column(nullable = false) private boolean isActive = true;
+    @Column(nullable = false) private boolean shredded = false;
 
-    @Column(name = "blind_index_last_name", length = 64)
-    private String blindIndexLastName;
-
-    @Column(nullable = false)
-    private boolean isActive = true;
-
-    @Column(nullable = false)
-    private boolean shredded = false;
-
-    // Transient attributes: omitted from SQL schema, decrypted only in RAM
+    // Transient attributes: decrypted strictly in RAM
     @Transient private String firstName;
     @Transient private String lastName;
-    @Transient private LocalDate dateOfBirth;
     @Transient private String nhsNumber;
-    @Transient private String email;
-    @Transient private String phoneNumber;
-    @Transient private String address;
+    // ... remaining clinical and demographic fields ...
 }
 \end{lstlisting}
 
@@ -80,39 +62,22 @@ Listing~\ref{lst:blind-index-code} presents the normalization and hashing logic 
 
 \begin{lstlisting}[language=Java, caption={Deterministic blind index computation in \texttt{CryptoService.java}.}, label={lst:blind-index-code}]
 public String computeBlindIndex(String value, String salt) {
-    if (value == null || value.isBlank()) {
-        return null;
-    }
+    if (value == null || value.isBlank()) return null;
     byte[] saltBytes = salt.getBytes(StandardCharsets.UTF_8);
-    byte[] valueBytes = null;
     try {
-        // 1. Normalize: strip whitespace and convert to lowercase
-        String normalized = value.trim().toLowerCase();
-        valueBytes = normalized.getBytes(StandardCharsets.UTF_8);
-
-        // 2. Compute HMAC-SHA256 using KMS-derived salt
         Mac mac = Mac.getInstance("HmacSHA256");
-        SecretKeySpec secretKeySpec = new SecretKeySpec(saltBytes, "HmacSHA256");
-        mac.init(secretKeySpec);
-        byte[] hmacBytes = mac.doFinal(valueBytes);
-
-        StringBuilder sb = new StringBuilder(64);
-        for (byte b : hmacBytes) {
-            sb.append(String.format("%02x", b));
-        }
-        return sb.toString();
+        mac.init(new SecretKeySpec(saltBytes, "HmacSHA256"));
+        byte[] hmac = mac.doFinal(value.trim().toLowerCase().getBytes(StandardCharsets.UTF_8));
+        return HexFormat.of().formatHex(hmac);
     } catch (Exception e) {
         throw new IllegalStateException("HMAC-SHA256 blind index computation failed", e);
     } finally {
         Arrays.fill(saltBytes, (byte) 0);
-        if (valueBytes != null) {
-            Arrays.fill(valueBytes, (byte) 0);
-        }
     }
 }
 \end{lstlisting}
 
-PostgreSQL builds standard $\text{B-Tree}$ indexes on \texttt{blind\_index\_nhs}, \texttt{blind\_index\_mrn}, and \texttt{blind\_index\_last\_name}. When a doctor searches for NHS Number \texttt{485-777-3456}, the backend computes the deterministic hash and dispatches the indexed SQL query shown in Equation~\ref{eq:sql-blind-search}, executing the match in $\mathcal{O}(1)$ time without reading unencrypted demographic data.
+Because demographic inputs (such as fixed-length NHS numbers, MRNs, and bounded surnames) have strictly bounded byte lengths, HMAC-SHA256 digest computation executes in invariant $\mathcal{O}(1)$ time. PostgreSQL maintains standard B-tree indexes over \texttt{blind\_index\_nhs}, \texttt{blind\_index\_mrn}, and \texttt{blind\_index\_last\_name}. When a clinician searches for NHS Number \texttt{485-777-3456}, the backend normalizes the input, evaluates the deterministic HMAC-SHA256 hash in $\mathcal{O}(1)$ time, and dispatches the indexed SQL query shown in Equation~\ref{eq:sql-blind-search}. PostgreSQL executes point lookups via B-tree index scans, resolving record pointers in logarithmic $\mathcal{O}(\log N)$ index traversal time without reading unencrypted demographic data or scanning ciphertext blobs.
 
 \subsection{Scoped Heap Zeroization and Container Memory Pinning}
 
@@ -120,7 +85,7 @@ Garbage-collected runtimes do not guarantee immediate memory wiping when objects
 
 To eliminate this vulnerability, \texttt{PatientService} enforces scoped byte-array zeroization. All ephemeral Data Encryption Keys and decrypted buffers are manipulated as primitive \texttt{byte[]} buffers inside mandatory \texttt{try-finally} blocks:
 
-\begin{lstlisting}[language=Java, caption={Memory zeroization in \texttt{PatientService.java}.}, label={lst:memory-zeroization}]
+\begin{lstlisting}[language=Java, caption={Scoped memory zeroization in \texttt{PatientService.java}.}, label={lst:memory-zeroization}]
 byte[] dek = null;
 byte[] decryptedBytes = null;
 try {
@@ -138,77 +103,34 @@ try {
             dek,
             aad);
 
-    String piiJson = new String(decryptedBytes, StandardCharsets.UTF_8);
-    Map<?, ?> map = objectMapper.readValue(piiJson, Map.class);
-    firstName = (String) map.get("firstName");
-    lastName = (String) map.get("lastName");
-    // ... map remaining transient demographic fields ...
+    // ... transient DTO deserialization and processing ...
 } catch (Exception e) {
-    log.warn("Vault decryption failed for patient {}: key destroyed or invalid", patient.getPatientId());
+    log.warn("Vault decryption failed for patient {}: key destroyed", patient.getPatientId());
     isShredded = true;
 } finally {
-    // 3. Explicit zeroization of ephemeral keys and decrypted plaintext
-    if (dek != null) {
-        Arrays.fill(dek, (byte) 0);
-    }
-    if (decryptedBytes != null) {
-        Arrays.fill(decryptedBytes, (byte) 0);
-    }
+    // 3. Scoped zeroization of ephemeral keys and decrypted plaintext in RAM
+    if (dek != null) Arrays.fill(dek, (byte) 0);
+    if (decryptedBytes != null) Arrays.fill(decryptedBytes, (byte) 0);
 }
 \end{lstlisting}
 
-Executing \texttt{Arrays.fill(dek, (byte) 0)} and \texttt{Arrays.fill(decryptedBytes, (byte) 0)} immediately overwrites the raw 256-bit symmetric key and decrypted byte arrays with binary zeroes inside the \texttt{finally} block before the method frame unrolls. This explicitly minimizes the residency window of sensitive binary key material on the heap. However, as an engineering constraint of Java's managed runtime, converting decrypted bytes into domain strings (\texttt{new String(decryptedBytes, ...)}) and parsing them via Jackson's \texttt{ObjectMapper} allocates immutable \texttt{String} and DTO objects on the JVM heap. Because Java \texttt{String} internal character arrays cannot be safely mutated without unsafe reflection, these transient copies persist in memory until reclaimed and overwritten by HotSpot garbage collection cycles.
+Executing \texttt{Arrays.fill(dek, (byte) 0)} and \texttt{Arrays.fill(decryptedBytes, (byte) 0)} immediately overwrites the raw 256-bit symmetric key and decrypted byte arrays with binary zeroes inside the \texttt{finally} block before the method returns. This zeroization of primitive \texttt{byte[]} buffers minimizes the exposure window of raw key material in heap memory. Within managed-runtime engineering constraints, converting decrypted bytes into domain strings (\texttt{new String(decryptedBytes, ...)}) and parsing them via Jackson's \texttt{ObjectMapper} allocates immutable \texttt{String} and DTO objects on the JVM heap. Because Java \texttt{String} instances are immutable and their internal character arrays cannot be wiped without unsafe reflection, these transient domain representations remain governed by standard garbage collection lifecycles until reclaimed and overwritten by HotSpot GC cycles.
 
 The backend is packaged using a multi-stage Docker build: Eclipse Temurin JDK~21 compiles the source code, while the production container executes on a minimal Alpine Linux JRE~21 image run by an unprivileged system user.
 
-Linux kernel memory locking requires an architectural distinction between the KMS engine and Java runtimes. In the HashiCorp Vault container, the \texttt{IPC\_LOCK} capability (\texttt{cap\_add: [IPC\_LOCK]}) is used natively by Vault's Go runtime to execute the POSIX \texttt{mlock()} system call, preventing Vault's in-memory key ring from being paged to disk. In the Spring Boot container, however, the HotSpot JVM does not execute \texttt{mlockall()} on heap allocations; granting \texttt{IPC\_LOCK} merely provides the kernel capability without pinning Java heap pages. To eliminate swap leakage for transient JVM objects, the container runtime enforces anti-swap protection through Docker cgroup memory constraints that disable swap space entirely (\texttt{--memory-swap = --memory} with \texttt{mem\_swappiness = 0}). This ensures that physical host RAM never flushes idle JVM memory sectors to unencrypted swap partitions (requirement~SR3).
+Linux kernel memory locking requires an architectural distinction between the KMS engine and Java runtimes. In the HashiCorp Vault container, the \texttt{IPC\_LOCK} capability (\texttt{cap\_add: [IPC\_LOCK]}) is used natively by Vault's Go runtime to execute the POSIX \texttt{mlock()} system call, pinning Vault's in-memory key ring into physical RAM and preventing it from being paged to disk. In the Spring Boot container, however, the HotSpot JVM does not execute \texttt{mlockall()} on heap allocations; granting \texttt{IPC\_LOCK} merely provides the kernel capability without pinning Java heap pages. To eliminate swap leakage for transient JVM objects, swap mitigation is enforced via container host memory management through Docker cgroup memory constraints that disable swap space entirely (\texttt{--memory-swap = --memory} with \texttt{mem\_swappiness = 0}). This ensures that physical host RAM never flushes idle JVM memory pages to unencrypted swap partitions (requirement~SR3).
 
 \subsection{Encrypted Binary File Attachments and Lifecycle Cascading}
 
 Clinical environments routinely generate unstructured binary files, such as diagnostic imaging scans, specialist referral letters, and laboratory discharge summaries in PDF format. Storing these files on conventional filesystem shares risks orphaned data retention and complicates cryptographic erasure. In \textit{CryptoShred Health}, binary files inherit the zero-plaintext database architecture through the \texttt{PatientAttachment} JPA entity and \texttt{AttachmentService}.
 
-As illustrated in Listing~\ref{lst:attachment-service}, binary files are ingested via multipart HTTP requests (\texttt{POST /api/attachments/visit/\{visitId\}}). Uploads require \texttt{Role.DOCTOR} or explicit patient ownership authorization:
-
-\begin{lstlisting}[language=Java, caption={Encrypted attachment ingestion and memory zeroization in \texttt{AttachmentService.java}.}, label={lst:attachment-service}]
-@Transactional
-public AttachmentResponse uploadAttachment(UUID visitId, MultipartFile file, String currentUserEmail) throws IOException {
-    PatientVisit visit = visitRepository.findById(visitId)
-            .orElseThrow(() -> new IllegalArgumentException("Patient visit not found: " + visitId));
-    if (visit.isShredded()) {
-        throw new IllegalStateException("Cannot attach files to a shredded visit");
-    }
-    // 1. Retrieve visit DEK via Vault Transit KEK unwrap
-    byte[] dek = null;
-    EnvelopeEncryptionService.EncryptedPayload encryptedPayload;
-    try {
-        dek = vaultKmsService.unwrapDek(
-                visit.getEncryptionKey().getVaultKeyName(),
-                visit.getEncryptionKey().getWrappedDek());
-        // 2. Encrypt binary payload with AES-256-GCM
-        encryptedPayload = envelopeEncryptionService.encrypt(file.getBytes(), dek);
-    } finally {
-        if (dek != null) {
-            Arrays.fill(dek, (byte) 0); // Scoped zeroization
-        }
-    }
-    PatientAttachment attachment = new PatientAttachment();
-    attachment.setFileName(file.getOriginalFilename());
-    attachment.setContentType(file.getContentType());
-    attachment.setFileSize(file.getSize());
-    attachment.setEncryptedDataBlob(encryptedPayload.ciphertextBase64());
-    attachment.setIv(encryptedPayload.ivBase64());
-    attachment.setPatientVisit(visit);
-    attachmentRepository.save(attachment);
-}
-\end{lstlisting}
-
-The relational schema stores non-sensitive file metadata (\texttt{fileName}, \texttt{contentType}, \texttt{fileSize}) alongside the Base64 ciphertext blob and unique initialization vector. The raw file payload is shielded from accidental JSON serialization via Jackson's \texttt{@JsonIgnore}. When an authorized clinician requests a download (\texttt{GET /api/attachments/\{attachmentId\}/download}), the service unwraps the visit DEK, decrypts the ciphertext in memory, wipes the DEK buffer via \texttt{Arrays.fill(dek, (byte) 0)}, and streams the decrypted binary payload to the HTTP response.
+Binary files are ingested via multipart HTTP requests (\texttt{POST /api/attachments/visit/\{visitId\}}), requiring \texttt{Role.DOCTOR} or explicit patient ownership authorization. The service unwraps the visit DEK from Vault Transit, encrypts the file byte stream with AES-256-GCM, immediately wipes the in-memory DEK buffer inside a scoped \texttt{finally} block, and persists the resulting Base64 ciphertext alongside non-sensitive metadata (\texttt{fileName}, \texttt{contentType}, \texttt{fileSize}) in the \texttt{PatientAttachment} table. The raw file payload is shielded from accidental JSON serialization via Jackson's \texttt{@JsonIgnore}. When an authorized clinician requests a download (\texttt{GET /api/attachments/\{attachmentId\}/download}), the service unwraps the visit DEK, decrypts the ciphertext in memory, wipes the DEK buffer via \texttt{Arrays.fill(dek, (byte) 0)}, and streams the decrypted binary payload to the HTTP response.
 
 When a clinical encounter or patient profile is crypto-shredded, \texttt{ErasureService} executes a cascading erasure protocol. In PostgreSQL, the service nullifies the attachment ciphertext and IV (\texttt{encrypted\_data\_blob = NULL}, \texttt{iv = NULL}) and marks \texttt{shredded = true}. In cold backup snapshots and WORM archives, the attachment ciphertext remains immutable but becomes mathematically undecryptable ($P \approx 2^{-256}$) because the parent encounter's $\text{KEK}_{\text{visit}}$ is permanently eradicated inside HashiCorp Vault.
 
 \subsection{Policy-Driven Lawful Retention Engine and Distributed Cache Invalidation}
 
-To implement the dynamic retention model (Equations~\ref{eq:active-encounter-set}--\ref{eq:retention-status}), \texttt{RetentionPolicyService} tracks hospital-wide statutory retention rules using thread-safe, non-blocking atomic holders. The service encapsulates five concurrent state variables: \texttt{AtomicInteger retentionPeriodYears}, \texttt{AtomicReference<String> regulatoryStandard}, \texttt{AtomicReference<String> description}, \texttt{AtomicReference<LocalDateTime> lastUpdated}, and \texttt{AtomicReference<String> updatedBy}. 
+To implement the dynamic retention model (Equations~\ref{eq:active-encounter-set}--\ref{eq:retention-status}), the \texttt{RetentionPolicyService} component tracks hospital-wide statutory retention rules using thread-safe, non-blocking atomic holders. The service encapsulates five concurrent state variables: \texttt{AtomicInteger retentionPeriodYears}, \texttt{AtomicReference<String> regulatoryStandard}, \texttt{AtomicReference<String> description}, \texttt{AtomicReference<LocalDateTime> lastUpdated}, and \texttt{AtomicReference<String> updatedBy}. 
 
 Hospital administrators can adjust statutory retention schedules at runtime via authenticated REST endpoints (\texttt{PUT /api/admin/retention-policy}) without restarting the Spring Boot container. When a new retention duration $Y \in [1, 100]$ is submitted, \texttt{RetentionPolicyService} dynamically derives the applicable regulatory framework:
 \begin{itemize}
@@ -221,23 +143,15 @@ Hospital administrators can adjust statutory retention schedules at runtime via 
 Listing~\ref{lst:retention-service} illustrates the core horizon evaluation and active encounter querying implemented in \texttt{PatientService} and \texttt{PatientVisitRepository}:
 
 \begin{lstlisting}[language=Java, caption={Active encounter querying and rolling retention calculation.}, label={lst:retention-service}]
-// 1. Query the latest activity strictly over active (non-shredded) visits
+// 1. Query latest activity strictly over active (non-shredded) visits
 @Query("SELECT MAX(v.createdAt) FROM PatientVisit v " +
        "WHERE (v.patient.id = :patientId OR v.patient.patientId = :patientBusinessId) " +
        "AND v.shredded = false")
 LocalDateTime findMaxActiveCreatedAtByPatient(@Param("patientId") UUID patientId, @Param("patientBusinessId") String patientBusinessId);
 
 // 2. Evaluate rolling retention boundary
-int retentionYears = retentionPolicyService.getRetentionPeriodYears();
-LocalDateTime latestActivityDate = patient.getCreatedAt() != null ? patient.getCreatedAt() : LocalDateTime.now();
-LocalDateTime maxActiveVisit = patientVisitRepository.findMaxActiveCreatedAtByPatient(patient.getId(), patient.getPatientId());
-
-if (maxActiveVisit != null && maxActiveVisit.isAfter(latestActivityDate)) {
-    latestActivityDate = maxActiveVisit;
-}
-
-LocalDateTime legalErasureEligibleDate = latestActivityDate.plusYears(retentionYears);
-String retentionStatus = LocalDateTime.now().isAfter(legalErasureEligibleDate) ? "ELIGIBLE" : "PROTECTED";
+LocalDateTime eligibleDate = latestActivityDate.plusYears(retentionYears);
+String retentionStatus = LocalDateTime.now().isAfter(eligibleDate) ? "ELIGIBLE" : "PROTECTED";
 \end{lstlisting}
 
 A critical challenge in distributed architectures is preventing stale cache entries from masking updated retention states. When a clinical encounter is cryptographically erased, \texttt{ErasureService} triggers a multi-tier cache invalidation cascade:
@@ -262,10 +176,7 @@ CryptoShred Health deploys a 3-node HashiCorp Vault cluster running the Raft con
 Container bootstrapping is orchestrated by an automated startup script (\texttt{vault/entrypoint.sh}). When the cluster boots:
 \begin{enumerate}
     \item \textbf{Leader Initialization:} Node~1 checks its initialization status via \texttt{vault status}. If uninitialized, it executes \texttt{vault operator init -key-shares=1 -key-threshold=1 -format=json}, writing the master root token and unseal key to an encrypted runtime volume.
-    \item \textbf{Automated Follower Joining:} Nodes~2 and 3 poll Node~1 over the internal Docker network. Once Node~1 is initialized and unsealed, follower nodes execute:
-    \begin{lstlisting}[language=bash]
-vault operator raft join http://vault-1:8200
-    \end{lstlisting}
+    \item \textbf{Automated Follower Joining:} Nodes~2 and 3 poll Node~1 over the internal Docker network. Once Node~1 is initialized and unsealed, follower nodes join the consensus group via \texttt{vault operator raft join http://vault-1:8200}.
     \item \textbf{Consensus Quorum:} Once the Raft cluster achieves quorum ($N/2 + 1 = 2$ active nodes), the Transit Secrets Engine is mounted at the key path \texttt{transit/}, and the asymmetric proof-signing key is initialized.
 \end{enumerate}
 
@@ -291,13 +202,13 @@ backend vault_cluster
     server vault-3 vault-3:8200 check
 \end{lstlisting}
 
-Vault's \texttt{GET /v1/sys/health} endpoint returns HTTP status~\texttt{200} for the active leader, status~\texttt{429} for standby followers, and status~\texttt{503} for unsealed or offline nodes. HAProxy evaluates node health every $500\text{~ms}$. If the active leader fails, HAProxy detects the failure within two intervals ($1.0\text{~s}$) and redirects application traffic to the newly elected leader without dropping active clinical transactions.
+Vault's \texttt{GET /v1/sys/health} endpoint returns HTTP status~\texttt{200} for the active leader, status~\texttt{429} for standby followers, and status~\texttt{503} for sealed nodes. HAProxy evaluates node health every $500\text{~ms}$. If the active leader fails, HAProxy detects the failure within two intervals ($1.0\text{~s}$) and redirects application traffic to the newly elected leader without dropping active clinical transactions.
 
 \subsection{Zero-Plaintext Granular KMS Key Rotation Protocol}
 
 Cryptographic hygiene guidelines (such as NIST SP~800-57~\cite{barker_nist_sp800_57}) mandate periodic key rotation to limit the volume of ciphertext protected under a single key version. Standard re-encryption requires reading ciphertext from storage, decrypting it into memory under the old key, and re-encrypting it under a newly minted key. In an enterprise healthcare deployment, this approach introduces severe CPU bottlenecks, requires extensive database row locks, and exposes bulk clinical plaintext in application heap memory.
 
-\textit{CryptoShred Health} eliminates plaintext exposure by implementing an in-enclave zero-plaintext key rotation protocol orchestrated by \texttt{KeyManagementService} and exposed via \texttt{KeyManagementController} (\texttt{POST /api/keys/rotate}). The controller supports granular rotation across four distinct operational scopes:
+\textit{CryptoShred Health} eliminates plaintext exposure by implementing an in-KMS zero-plaintext key rotation protocol orchestrated by \texttt{KeyManagementService} and exposed via \texttt{KeyManagementController} (\texttt{POST /api/keys/rotate}). The controller supports granular rotation across four distinct operational scopes:
 \begin{enumerate}
     \item \textbf{Global Scope (\texttt{ALL}):} Iterates through every active encryption key registered in the database, rotating the KEK version and re-wrapping the associated DEK.
     \item \textbf{Patient Scope (\texttt{PATIENT}):} Resolves the patient's demographic master key and all associated clinical visit keys for a specified \texttt{patientId} (\texttt{POST /api/keys/patients/\{patientId\}/rotate}).
@@ -309,44 +220,26 @@ Listing~\ref{lst:key-rotation} illustrates the rotation and re-wrapping pipeline
 
 \begin{lstlisting}[language=Java, caption={Zero-plaintext DEK re-wrapping in \texttt{KeyManagementService.java}.}, label={lst:key-rotation}]
 for (EncryptionKey key : keysToProcess) {
-    if (key.isInvalidated()) {
-        skippedCount++; // Preserve shredded tombstones
-        continue;
-    }
-    try {
-        // 1. Advance KEK version inside Vault Transit
-        vaultKmsService.rotateKey(key.getVaultKeyName());
+    if (key.isInvalidated()) continue; // Preserve shredded tombstones
 
-        // 2. Re-wrap DEK under new KEK version inside Vault enclave
-        String newWrappedDek = vaultKmsService.rewrapDek(
-                key.getVaultKeyName(), key.getWrappedDek());
+    // 1. Advance KEK version inside Vault Transit
+    vaultKmsService.rotateKey(key.getVaultKeyName());
 
-        // 3. Update persistent key entity metadata
-        int newVersion = key.getKeyVersion() + 1;
-        key.setKeyVersion(newVersion);
-        key.setWrappedDek(newWrappedDek);
-        key.setRotatedAt(LocalDateTime.now());
-        encryptionKeyRepository.save(key);
+    // 2. Re-wrap DEK under new KEK version inside KMS memory (zero plaintext exposure)
+    String newWrappedDek = vaultKmsService.rewrapDek(
+            key.getVaultKeyName(), key.getWrappedDek());
 
-        // 4. Emit PATIENT_KEY_ROTATED event to Kafka audit log
-        eventLogPublisher.publishEvent(PatientVisitEventDto.builder()
-                .eventId(UUID.randomUUID())
-                .eventType("PATIENT_KEY_ROTATED")
-                .vaultKeyName(key.getVaultKeyName())
-                .wrappedDek(newWrappedDek)
-                .timestamp(LocalDateTime.now())
-                .build());
-        rotatedCount++;
-    } catch (Exception e) {
-        log.error("Failed to rotate key {}: {}", key.getKeyId(), e.getMessage());
-        failedCount++;
-    }
+    // 3. Update persistent key entity metadata
+    key.setKeyVersion(key.getKeyVersion() + 1);
+    key.setWrappedDek(newWrappedDek);
+    key.setRotatedAt(LocalDateTime.now());
+    encryptionKeyRepository.save(key);
 }
 \end{lstlisting}
 
 During re-wrapping, HashiCorp Vault's Transit engine decrypts the DEK under KEK version $v$ and immediately re-encrypts it under version $v+1$ entirely within KMS memory. The plaintext DEK never crosses the network or enters the Spring Boot heap. Keys flagged as shredded (\texttt{invalidated = true}) are automatically skipped with status \texttt{SKIPPED\_INVALIDATED}, ensuring that cryptographic tombstones cannot be re-encrypted or restored to an active state. Advancing the KEK version alone does not prevent older key versions from decrypting legacy ciphertexts; to enforce cryptographic hygiene, \texttt{KeyManagementService} propagates an updated \texttt{min\_decryption\_version} configuration parameter to Vault Transit (\texttt{POST /v1/transit/keys/\{name\}/config}), setting it to the newly minted version $v+1$. This permanently disables decryption under superseded KEK versions directly at the KMS barrier, rendering compromised historical key backups useless. High-level key metrics (total keys, active keys, and shredded tombstones) are monitored via \texttt{GET /api/keys/summary}.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %     SECTION 4.3: POST-QUANTUM HYBRID SIGNING & MERKLE RECONCILER             %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -376,7 +269,7 @@ public String signPqc(String data) {
 }
 \end{lstlisting}
 
-HashiCorp Vault Transit generates the classical signature directly within the isolated KMS using the standard \texttt{SHA256withRSA} algorithm. The private RSA key never leaves the KMS boundary. In parallel, the Spring Boot backend uses the BouncyCastle provider to generate a 3{,}309-byte post-quantum ML-DSA-65 lattice signature over a normalized JSON representation of the deletion certificate (with deterministically ordered fields to guarantee consistent verification). The prototype instantiates the algorithm identifier \texttt{"Dilithium3"} through the BouncyCastle Post-Quantum provider (\texttt{BCPQC}), which implements the round-3 CRYSTALS-Dilithium parameter set standardized in NIST FIPS~204 as ML-DSA-65.
+HashiCorp Vault Transit generates the classical signature directly within the isolated KMS using standard 2048-bit RSA (\texttt{SHA256withRSA}). The private RSA key never leaves the KMS boundary. In parallel, the Spring Boot backend generates a 3{,}309-byte post-quantum digital signature over the canonical delimited string representation ($m_{\text{canonical}}$, Equation~\ref{eq:canonical-payload}) of the deletion certificate. Specifically, the prototype implements CRYSTALS-Dilithium3 (standardized by NIST in FIPS~204 as ML-DSA-65) via the BouncyCastle Post-Quantum Cryptography provider (\texttt{BCPQC}) using the algorithm identifier \texttt{"Dilithium3"}.
 
 \subsection{4-Tier Verification Pipeline}
 
@@ -401,17 +294,17 @@ If the reconstructed hash matches the public Merkle root stored in the database 
 
 In regulatory compliance audits, relying on the inspected entity's live backend to verify deletion certificates introduces trust dependencies. An adversary could compromise the application server to spoof verification responses. To ensure zero-trust, air-gapped verifiability, \texttt{ErasureController} exposes the public endpoint \texttt{GET /api/erasure/public-key}.
 
-This endpoint invokes \texttt{ProofSigningService.getPublicKeyPem()} to export the platform's 2048-bit RSA public key formatted as a standard PEM block. Vault Transit generates RSA signatures using the Probabilistic Signature Scheme (PSS). External Data Protection Officers (DPOs), patient representatives, and legal auditors can download this public key once, disconnect from the network, and verify the classical signature $\sigma_{\text{RSA}}$ on certificate $\mathcal{C}_{\text{erasure}}$ (Equation~\ref{eq:certificate-structure}) using standard OpenSSL tools with PSS padding:
+This endpoint invokes \texttt{ProofSigningService.getPublicKeyPem()} to export the platform's 2048-bit RSA public key formatted as a standard PEM block. Vault Transit generates standard 2048-bit RSA signatures using \texttt{SHA256withRSA}. External Data Protection Officers (DPOs), patient representatives, and legal auditors can download this public key once, disconnect from the network, and verify the classical signature $\sigma_{\text{RSA}}$ on certificate $\mathcal{C}_{\text{erasure}}$ (Equation~\ref{eq:certificate-structure}) using standard OpenSSL tools:
 \begin{lstlisting}[language=bash]
-openssl dgst -sha256 -sigopt rsa_padding_mode:pss -sigopt rsa_pss_saltlen:-1 -verify public-key.pem -signature cert.sig cert_payload.json
+openssl dgst -sha256 -verify public-key.pem -signature cert.sig cert_payload.json
 \end{lstlisting}
 Because the public key is mathematically bound to Vault Transit's internal private key, external parties can establish the authenticity of the deletion receipt and recalculate the Merkle root without accessing or trusting internal hospital microservices.
 
 \subsection{Merkle Tombstone Reconciliation Engine}
 
-To prevent keys from being resurrected after restoring older backup snapshots (Section~\ref{section:kms-ha-tombstone}), \texttt{MerkleTombstoneReconciliationService} runs an automated audit whenever the application starts up. To guarantee resilience against pre-shred ($T_0 < T_1$) database restorations, the service harvests tombstones from two independent locations: relational entity records (\texttt{findByShreddedTrue()}) and external immutable WORM deletion receipts (\texttt{backups/deletion-receipt\_*.json}) read via non-blocking directory streams (\texttt{Files.newDirectoryStream}). The service gathers all destroyed key identifiers into an aggregated tombstone set $\mathcal{K}_{\text{tombstones}}$ and compares them against Vault's active keys.
+To prevent keys from being resurrected after restoring older backup snapshots (Section~\ref{section:kms-ha-tombstone}), \texttt{MerkleTombstoneReconciliationService} runs an automated audit whenever the application starts up. To guarantee resilience against pre-shred ($T_0 < T_1$) database restorations, the service harvests tombstones from two independent locations: relational entity records (\texttt{findByShreddedTrue()}) and external immutable WORM deletion receipts (\texttt{backups/deletion-receipt\_*.json}) read via directory streams (\texttt{Files.newDirectoryStream}). The service gathers all destroyed key identifiers into an aggregated tombstone set $\mathcal{K}_{\text{tombstones}}$ and compares them against Vault's active keys.
 
-Algorithm~\ref{alg:tombstone-reconciler} outlines this reconciliation procedure, which executes before the server accepts incoming network traffic:
+Algorithm~\ref{alg:tombstone-reconciler} outlines this reconciliation procedure, which executes during application startup on \texttt{ApplicationReadyEvent} before processing incoming user traffic:
 
 \begin{algorithm}[H]
 \caption{Merkle Tombstone Reconciliation and Key Purge}\label{alg:tombstone-reconciler}
@@ -429,7 +322,7 @@ Algorithm~\ref{alg:tombstone-reconciler} outlines this reconciliation procedure,
 \end{algorithmic}
 \end{algorithm}
 
-By running this reconciliation audit before opening network ports, CryptoShred Health guarantees that restoring an older backup snapshot cannot resurrect previously destroyed encryption keys.
+By running this reconciliation audit on startup before processing user traffic, CryptoShred Health guarantees that restoring an older backup snapshot cannot resurrect previously destroyed encryption keys.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %   SECTION 4.4: IMMUTABLE STREAMING, REDIS CACHE & DISASTER RECOVERY          %
@@ -448,7 +341,7 @@ To process high-throughput event streams without race conditions, Kafka splits i
     \text{Partition}(E) = \text{Hash}(\text{patientId}) \pmod{N_{\text{partitions}}}
     \label{eq:kafka-partition-impl}
 \end{equation}
-In Equation~\ref{eq:kafka-partition-impl}, hashing the \texttt{patientId} and dividing by the total number of partitions $N_{\text{partitions}}$ calculates a consistent partition index ($0$ to $N-1$). This mathematical routing guarantees that while different patients are processed in parallel across separate queues, all events for a given patient (from registration to eventual cryptographic shredding) land on the exact same queue in strict chronological sequence.
+In Equation~\ref{eq:kafka-partition-impl}, taking the hash modulo the number of partitions $N_{\text{partitions}}$ calculates a consistent partition index ($0$ to $N-1$). This mathematical routing guarantees that while different patients are processed in parallel across separate queues, all events for a given patient (from registration to eventual cryptographic shredding) land on the exact same queue in strict chronological sequence.
 
 The system streams nine distinct lifecycle events across three operational boundaries:
 \begin{enumerate}
@@ -457,7 +350,7 @@ The system streams nine distinct lifecycle events across three operational bound
     \item \textbf{Clinical Encounter Events:} \texttt{VISIT\_CREATED} (consultation intake), \texttt{VISIT\_UPDATED} (vitals/notes amendments), and \texttt{VISIT\_SHREDDED} (granular encounter erasure).
 \end{enumerate}
 
-When downstream analytics services consume historical events from Kafka, reading an event from a shredded patient causes Vault Transit decryption to fail because the underlying KEK has been destroyed. \texttt{EventLogConsumer} implements a fail-safe error recovery pattern: when a cryptographic decryption failure is caught during message processing, the consumer logs the expected post-shred condition and handles un-decryptable records cleanly rather than crashing or stalling the consumer group.
+When downstream analytics services consume historical events from Kafka, reading an event from a shredded patient causes Vault Transit decryption to fail because the underlying KEK has been destroyed. \texttt{EventLogConsumer} implements a fail-safe error recovery pattern: when a cryptographic decryption failure is caught during message processing, the consumer logs the expected post-shred condition and handles undecryptable records cleanly rather than crashing or stalling the consumer group.
 
 \subsection{Redis L2 Cache with Shredded-Entity Bypass Filter}
 
@@ -496,14 +389,7 @@ The controller provides an audit-grade interface restricted to users with \textt
     \item \textbf{Post-Shred Verification (\texttt{POST /api/backups/verify-shred}):} Validates that a crypto-shredded encounter stored on immutable WORM media cannot be decrypted.
 \end{itemize}
 
-When an auditor triggers shred verification for an encounter ID within a target snapshot file, \texttt{WormBackupExporterService} locates the entry, extracts the stored \texttt{vaultKeyName} and \texttt{wrappedDek}, and attempts to unwrap the DEK via \texttt{vaultKmsService.unwrapDek()}. Because the underlying KEK was destroyed in Vault Transit during crypto-shredding, the KMS call throws an exception. The service catches the failure and returns a verified status message:
-\begin{lstlisting}[language=json]
-{
-  "fileName": "worm_snapshot_2026-03-01_10-00-00.json",
-  "visitId": "8b51a5c6-4b9e-4e65-8b1e-b8d1b3e94a12",
-  "result": "[ZERO_PURGE_SUCCESS] Vault KEK destroyed. Data in immutable WORM snapshot remains un-decryptable ciphertext."
-}
-\end{lstlisting}
+When an auditor triggers shred verification for an encounter ID within a target snapshot file, \texttt{WormBackupExporterService} locates the entry, extracts the stored \texttt{vaultKeyName} and \texttt{wrappedDek}, and attempts to unwrap the DEK via \texttt{vaultKmsService.unwrapDek()}. Because the underlying KEK was destroyed in Vault Transit during crypto-shredding, the KMS call throws an exception. The service catches the failure and returns an audit confirmation with status token \texttt{[ZERO\_PURGE\_SUCCESS]}, verifying that the Vault KEK is destroyed and ciphertext on immutable WORM media remains mathematically undecryptable.
 
 If key unwrapping unexpectedly succeeds, the endpoint returns a high-priority warning (\texttt{[WARNING\_DECRYPTION\_SUCCEEDED]}), immediately flagging the anomaly to compliance staff. Upon every cryptographic erasure event, the service writes a standalone WORM deletion receipt (\texttt{deletion-receipt\_*.json}) sealed with POSIX read-only file permissions (\texttt{file.setReadOnly()}) and an embedded SHA-256 fingerprint, guaranteeing an immutable physical audit trail.
 
@@ -531,19 +417,7 @@ The exporter maps internal relational models into a suite of official UK Core FH
     \item \textbf{\texttt{UKCore-DocumentReference}:} Encapsulates clinical attachments (PDFs and diagnostic imaging), recording MIME types, file sizes, creation timestamps, and redaction flags.
 \end{itemize}
 
-When exporting records for a crypto-shredded patient, the service strips all PII fields and injects a standard FHIR security extension using the canonical \texttt{REDACTED} code from the HL7 \texttt{v3-ObservationValue} code system:
-\begin{lstlisting}[language=json]
-"meta": {
-  "tag": [
-    {
-      "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationValue",
-      "code": "REDACTED",
-      "display": "Crypto-Shredded under GDPR Art. 17"
-    }
-  ]
-}
-\end{lstlisting}
-Using the standard \texttt{REDACTED} vocabulary token guarantees strict schema validation across standard HL7 FHIR R4 validator suites, while the accompanying display descriptor preserves clear human-readable legal semantics for medical compliance auditors.
+When exporting records for a crypto-shredded patient, the service strips all PII fields and injects a standard FHIR security tag (\texttt{code: "REDACTED"}, \texttt{system: "http://terminology.hl7.org/CodeSystem/v3-ObservationValue"}, \texttt{display: "Crypto-Shredded under GDPR Art. 17"}). Using the standard \texttt{REDACTED} vocabulary token guarantees strict schema validation across HL7 FHIR R4 validator suites, while preserving human-readable legal semantics for medical compliance auditors.
 
 \subsection{React 19 Clinical Dashboard and Containerized Nginx Delivery}
 
@@ -566,7 +440,7 @@ The Primary Care Patient Census dashboard (\texttt{PatientCensusTable.tsx}) orga
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.95\textwidth]{images/ui_patient_census.png}
-    \caption{Primary Care Patient Census dashboard with 5-record pagination view, presenting blind-indexed NHS numbers, Medical Record Numbers, assigned General Practitioners, and dynamic statutory retention status badges.}
+    \caption{Primary Care Patient Census dashboard with 5-record pagination view, displaying NHS numbers retrieved using blind indexes, Medical Record Numbers, assigned General Practitioners, and retention status badges.}
     \label{fig:ui-patient-census}
 \end{figure}
 
@@ -583,7 +457,7 @@ Role-Based Access Control (RBAC) is enforced through React context providers (\t
 
 To isolate infrastructure tiers while supporting flexible evaluation environments, the platform orchestrates containerized services through structured operational profiles:
 \begin{enumerate}
-    \item \textbf{Core Persistence and KMS Tier (\texttt{default}):} Orchestrates the PostgreSQL~15 database, the 3-node HashiCorp Vault Raft cluster fronted by HAProxy, Apache Kafka~3.7 in KRaft consensus mode, and Redis~7. All datastores bind strictly to private container interfaces on the internal bridge network (\texttt{cryptoshred-net}) with zero public host port exposure.
+    \item \textbf{Core Persistence and KMS Tier (\texttt{default}):} Orchestrates the PostgreSQL~15 database, the 3-node HashiCorp Vault Raft cluster fronted by HAProxy, Apache Kafka~3.7 in KRaft consensus mode, and Redis~7. In production configurations, all datastores bind strictly to private container interfaces on the internal bridge network (\texttt{cryptoshred-net}) with zero public host port exposure (while development Compose manifests expose debug ports for developer tooling).
     \item \textbf{Application and Ingress Tier (\texttt{app}):} Executes the Spring Boot Java~21 application and the Nginx web container, communicating with persistence and KMS engines exclusively over authenticated internal container networks.
     \item \textbf{Observability Tier (\texttt{monitoring}):} Provisions Prometheus and Grafana instances alongside specialized metrics exporters to collect continuous runtime telemetry without interfering with clinical transactions.
 \end{enumerate}
