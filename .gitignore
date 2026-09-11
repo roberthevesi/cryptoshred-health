@@ -107,3 +107,8 @@ coordinator_feedback_action_plan*
 *.toc
 /main.pdf
 thesis/main.pdf
+
+# ── Personal & Sensitive Academic Documents ────────────────────────────────
+*authenticity_statement*
+thesis/authenticity_statement.pdf
+
